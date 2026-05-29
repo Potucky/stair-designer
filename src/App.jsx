@@ -1,122 +1,89 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useMemo } from 'react';
+import './styles.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+import Header from './components/Header.jsx';
+import Toolbar from './components/Toolbar.jsx';
+import StairScene from './components/StairScene.jsx';
+import RightPanel from './components/RightPanel.jsx';
+import StatusBar from './components/StatusBar.jsx';
+
+import { calcStair, buildMaterialList } from './geometry/stairMath.js';
+import { validateStair } from './geometry/validation.js';
+import { saveProjectJson } from './utils/saveJson.js';
+import { generatePdf } from './pdf/generatePdf.js';
+
+const DEFAULT_STAIR = {
+  height: 108,
+  run: 144,
+  width: 48,
+  steps: 14,
+  tubeSize: '2x2',
+  railingEnabled: true,
+  handrailHeight: 36,
+  pinOpening: 3.875,
+  postSpacing: 48,
+};
+
+const DEFAULT_PROJECT = {
+  name: '',
+  client: '',
+};
+
+export default function App() {
+  const [project, setProject] = useState(DEFAULT_PROJECT);
+  const [stairConfig, setStairConfig] = useState(DEFAULT_STAIR);
+  const [activeTool, setActiveTool] = useState('select');
+  const [view, setView] = useState('3d');
+
+  const calc = useMemo(() => calcStair(stairConfig), [stairConfig]);
+
+  const warnings = useMemo(() => validateStair({
+    angleDeg: calc.angleDeg,
+    riserHeight: calc.riserHeight,
+    treadDepth: calc.treadDepth,
+    width: stairConfig.width,
+    steps: stairConfig.steps,
+    handrailHeight: stairConfig.handrailHeight,
+    pinOpening: stairConfig.pinOpening,
+    railingEnabled: stairConfig.railingEnabled,
+  }), [calc, stairConfig]);
+
+  const materials = useMemo(() => buildMaterialList({
+    height: stairConfig.height,
+    run: stairConfig.run,
+    width: stairConfig.width,
+    steps: stairConfig.steps,
+    stringerLength: calc.stringerLength,
+    postCount: calc.postCount,
+    handrailLength: calc.handrailLength,
+    railingEnabled: stairConfig.railingEnabled,
+    handrailHeight: stairConfig.handrailHeight,
+    tubeSize: stairConfig.tubeSize,
+  }), [stairConfig, calc]);
+
+  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials });
+
+  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials });
+
+  const handlePrint = () => window.print();
+
+  const handleViewChange = (v) => setView(v);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    <div className="app-shell">
+      <Header onSaveJson={handleSaveJson} onExportPdf={handleExportPdf} onPrint={handlePrint} />
+      <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} />
+      <StairScene stairConfig={stairConfig} calc={calc} view={view} />
+      <RightPanel
+        project={project}
+        setProject={setProject}
+        stairConfig={stairConfig}
+        setStairConfig={setStairConfig}
+        calc={calc}
+        warnings={warnings}
+        materials={materials}
+      />
+      <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} />
+    </div>
+  );
 }
-
-export default App
