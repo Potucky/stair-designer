@@ -56,9 +56,248 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
     );
   };
 
-  // ── PAGE 1 — Project Summary ───────────────────────────────────────────────
+  // ── PAGE 1 — Side View Dimensioned Drawing ─────────────────────────────────
 
-  let y = pageHeader(1, 'Project Summary');
+  let y = pageHeader(1, 'Side View — Dimensioned Drawing');
+
+  const { height, run, steps } = stairConfig;
+  const { riserHeight, treadDepth, angleDeg, stringerLength } = calc;
+  const railEnabled = stairConfig.railingEnabled;
+  const hhIn = stairConfig.handrailHeight || 36;
+
+  // Drawing area layout
+  const dAreaX = M + 62;                         // room for H-dim label on left
+  const dAreaY = y + 8;                          // just below header  (≈84)
+  const dAreaW = PW - dAreaX - M - 12;           // ≈442 pts wide
+  const dAreaH = 510;                            // drawing area height
+
+  // Ground line sits 50 pts above the bottom of dArea (run-dim label below)
+  const groundY = dAreaY + dAreaH - 50;          // ≈544
+
+  // Scale: include railing height so everything fits above the ground line
+  const visualHeightIn = height + (railEnabled ? hhIn : 0);
+  const availAbovePts = groundY - dAreaY - 8;    // ≈452 pts headroom
+  const scaleX = (dAreaW * 0.84) / (run || 1);
+  const scaleY = availAbovePts / ((visualHeightIn || 1) * 1.08);
+  const sc = Math.min(scaleX, scaleY);
+
+  const dw = run * sc;
+  const dh = height * sc;
+  const rPx = riserHeight * sc;
+  const tPx = treadDepth * sc;
+  const hhPx = hhIn * sc;
+
+  // Stair origin: bottom-left corner, centred horizontally in drawing area
+  const ox = dAreaX + (dAreaW - dw) / 2;
+  const oy = groundY;
+
+  // Ground line
+  doc.setDrawColor('#888888');
+  doc.setLineWidth(1);
+  doc.line(ox - 28, oy, ox + dw + 28, oy);
+
+  // Wall line — dashed vertical reference at left
+  doc.setDrawColor('#cccccc');
+  doc.setLineWidth(0.5);
+  doc.setLineDashPattern([4, 3], 0);
+  doc.line(ox, oy + 8, ox, oy - dh - 14);
+  doc.setLineDashPattern([], 0);
+
+  // Stair step profile
+  doc.setDrawColor('#1a1a2e');
+  doc.setLineWidth(2);
+  {
+    let sx = ox;
+    let sy = oy;
+    for (let i = 0; i < steps; i++) {
+      doc.line(sx, sy, sx, sy - rPx);
+      doc.line(sx, sy - rPx, sx + tPx, sy - rPx);
+      sx += tPx;
+      sy -= rPx;
+    }
+  }
+
+  // Stringer — diagonal dashed blue line
+  doc.setDrawColor('#3366cc');
+  doc.setLineWidth(1.2);
+  doc.setLineDashPattern([7, 3], 0);
+  doc.line(ox, oy, ox + dw, oy - dh);
+  doc.setLineDashPattern([], 0);
+
+  // Stringer length label (alongside diagonal)
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor('#3366cc');
+  doc.text(`Stringer: ${stringerLength.toFixed(2)}"`, ox + dw / 2 + 6, oy - dh / 2 - 8);
+
+  // ── Height dimension (left side) ──────────────────────────────────────────
+  const hdX = ox - 42;
+  doc.setDrawColor('#555555');
+  doc.setLineWidth(0.5);
+  doc.line(hdX, oy, hdX, oy - dh);
+  doc.line(hdX - 5, oy, hdX + 5, oy);
+  doc.line(hdX - 5, oy - dh, hdX + 5, oy - dh);
+  doc.line(hdX - 3, oy - 9, hdX, oy);
+  doc.line(hdX + 3, oy - 9, hdX, oy);
+  doc.line(hdX - 3, oy - dh + 9, hdX, oy - dh);
+  doc.line(hdX + 3, oy - dh + 9, hdX, oy - dh);
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor('#1a1a2e');
+  doc.text(`H = ${height}"`, hdX - 7, oy - dh / 2 + 4, { align: 'right' });
+
+  // ── Run dimension (bottom) ─────────────────────────────────────────────────
+  const rdY = oy + 34;
+  doc.setDrawColor('#555555');
+  doc.setLineWidth(0.5);
+  doc.line(ox, rdY, ox + dw, rdY);
+  doc.line(ox, rdY - 5, ox, rdY + 5);
+  doc.line(ox + dw, rdY - 5, ox + dw, rdY + 5);
+  doc.line(ox + 6, rdY - 4, ox, rdY);
+  doc.line(ox + 6, rdY + 4, ox, rdY);
+  doc.line(ox + dw - 6, rdY - 4, ox + dw, rdY);
+  doc.line(ox + dw - 6, rdY + 4, ox + dw, rdY);
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor('#1a1a2e');
+  doc.text(`Run = ${run}"`, ox + dw / 2, rdY + 13, { align: 'center' });
+
+  // ── Angle arc at base ──────────────────────────────────────────────────────
+  const arcR = 36;
+  const angleRad = (angleDeg * Math.PI) / 180;
+  doc.setDrawColor('#cc6600');
+  doc.setLineWidth(0.9);
+  for (let i = 1; i <= 20; i++) {
+    const a0 = ((i - 1) / 20) * angleRad;
+    const a1 = (i / 20) * angleRad;
+    doc.line(
+      ox + arcR * Math.cos(a0), oy - arcR * Math.sin(a0),
+      ox + arcR * Math.cos(a1), oy - arcR * Math.sin(a1)
+    );
+  }
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor('#cc6600');
+  doc.text(`${angleDeg.toFixed(1)}°`, ox + arcR + 5, oy - arcR * 0.58);
+
+  // ── Riser + Tread callout on first step ───────────────────────────────────
+  if (steps > 0) {
+    const callX = ox + tPx + 14;
+    const callRY = oy - rPx * 0.55;
+    const callTY = callRY + 14;
+    doc.setDrawColor('#666666');
+    doc.setLineWidth(0.4);
+    doc.setLineDashPattern([2, 2], 0);
+    doc.line(ox, oy - rPx / 2, callX - 2, callRY);
+    doc.line(ox + tPx / 2, oy - rPx, callX - 2, callTY);
+    doc.setLineDashPattern([], 0);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor('#1a1a2e');
+    doc.text(`R = ${riserHeight.toFixed(3)}"`, callX, callRY + 3);
+    doc.text(`T = ${treadDepth.toFixed(3)}"`, callX, callTY + 3);
+  }
+
+  // ── Railing posts + handrail (if enabled) ─────────────────────────────────
+  if (railEnabled) {
+    const numPosts = Math.max(2, calc.postCount || 2);
+
+    // Post positions: evenly spaced along stringer diagonal
+    const postPts = [];
+    for (let i = 0; i < numPosts; i++) {
+      const t = i / (numPosts - 1);
+      postPts.push({ px: ox + t * dw, py: oy - t * dh });
+    }
+
+    // Vertical posts
+    doc.setDrawColor('#444444');
+    doc.setLineWidth(1.5);
+    for (const { px, py } of postPts) {
+      doc.line(px, py, px, py - hhPx);
+    }
+
+    // Handrail connecting post tops
+    doc.setDrawColor('#6b2d0a');
+    doc.setLineWidth(2);
+    for (let i = 1; i < postPts.length; i++) {
+      doc.line(
+        postPts[i - 1].px, postPts[i - 1].py - hhPx,
+        postPts[i].px, postPts[i].py - hhPx
+      );
+    }
+
+    // Handrail height dimension at last post (top-right of stair)
+    const lp = postPts[postPts.length - 1];
+    const hhDimX = lp.px + 16;
+    doc.setDrawColor('#555555');
+    doc.setLineWidth(0.5);
+    doc.line(hhDimX, lp.py, hhDimX, lp.py - hhPx);
+    doc.line(hhDimX - 4, lp.py, hhDimX + 4, lp.py);
+    doc.line(hhDimX - 4, lp.py - hhPx, hhDimX + 4, lp.py - hhPx);
+    doc.line(hhDimX - 2, lp.py - 8, hhDimX, lp.py);
+    doc.line(hhDimX + 2, lp.py - 8, hhDimX, lp.py);
+    doc.line(hhDimX - 2, lp.py - hhPx + 8, hhDimX, lp.py - hhPx);
+    doc.line(hhDimX + 2, lp.py - hhPx + 8, hhDimX, lp.py - hhPx);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor('#555555');
+    doc.text(`HH = ${hhIn}"`, hhDimX + 7, lp.py - hhPx / 2 + 3);
+
+    // Handrail annotation: length / post count / spacing
+    const annotY = Math.max(dAreaY + 12, lp.py - hhPx - 14);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor('#6b2d0a');
+    doc.text(
+      `Handrail: ${calc.handrailLength.toFixed(2)}"  |  ${numPosts} posts @ ${stairConfig.postSpacing}" o.c.`,
+      ox + dw / 2, annotY, { align: 'center' }
+    );
+  }
+
+  // ── Top-view width inset ───────────────────────────────────────────────────
+  const insetW = 138;
+  const insetH = 56;
+  const insetX = PW - M - insetW;   // right-aligned to page margin
+  const insetY = oy + 55;            // below run-dimension label
+
+  doc.setFillColor('#f0f4ff');
+  doc.setDrawColor('#1a1a2e');
+  doc.setLineWidth(0.6);
+  doc.roundedRect(insetX, insetY, insetW, insetH, 3, 3, 'FD');
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor('#1a1a2e');
+  doc.text('TOP VIEW (width detail)', insetX + insetW / 2, insetY + 10, { align: 'center' });
+
+  const tvPad = 10;
+  const tvX1 = insetX + tvPad;
+  const tvX2 = insetX + insetW - tvPad;
+  const tvY1 = insetY + 16;
+  const tvY2 = insetY + insetH - 9;
+  doc.setDrawColor('#1a1a2e');
+  doc.setLineWidth(1.2);
+  doc.rect(tvX1, tvY1, tvX2 - tvX1, tvY2 - tvY1);
+
+  const tvMidY = (tvY1 + tvY2) / 2;
+  doc.setDrawColor('#555555');
+  doc.setLineWidth(0.5);
+  doc.line(tvX1, tvMidY, tvX2, tvMidY);
+  doc.line(tvX1 + 5, tvMidY - 3, tvX1, tvMidY);
+  doc.line(tvX1 + 5, tvMidY + 3, tvX1, tvMidY);
+  doc.line(tvX2 - 5, tvMidY - 3, tvX2, tvMidY);
+  doc.line(tvX2 - 5, tvMidY + 3, tvX2, tvMidY);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor('#1a1a2e');
+  doc.text(`Stair Width = ${stairConfig.width}"`, insetX + insetW / 2, tvMidY + 11, { align: 'center' });
+
+  pageFooter();
+
+  // ── PAGE 2 — Project Summary ───────────────────────────────────────────────
+
+  doc.addPage();
+  y = pageHeader(2, 'Project Summary');
 
   doc.setFillColor('#f0f4ff');
   doc.roundedRect(M, y, PW - M * 2, 44, 4, 4, 'F');
@@ -110,152 +349,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
 
   pageFooter();
 
-  // ── PAGE 2 — Side View Diagram ─────────────────────────────────────────────
-
-  doc.addPage();
-  y = pageHeader(2, 'Side View Diagram');
-
-  const dAreaX = M + 50;
-  const dAreaY = y + 20;
-  const dAreaW = PW - M * 2 - 80;
-  const dAreaH = 360;
-
-  const { height, run, steps } = stairConfig;
-  const { riserHeight, treadDepth, angleDeg, stringerLength } = calc;
-
-  const scaleX = (dAreaW * 0.82) / (run || 1);
-  const scaleY = (dAreaH * 0.82) / (height || 1);
-  const sc = Math.min(scaleX, scaleY);
-
-  const dw = run * sc;
-  const dh = height * sc;
-
-  // Origin: bottom-left of stair at ground level
-  const ox = dAreaX + (dAreaW - dw) / 2;
-  const oy = dAreaY + dAreaH - (dAreaH - dh) / 2;
-
-  // Ground line
-  doc.setDrawColor('#888888');
-  doc.setLineWidth(1);
-  doc.line(ox - 24, oy, ox + dw + 24, oy);
-
-  // Vertical reference (wall line, dashed)
-  doc.setDrawColor('#cccccc');
-  doc.setLineWidth(0.5);
-  doc.setLineDashPattern([4, 3], 0);
-  doc.line(ox, oy, ox, oy - dh - 14);
-  doc.setLineDashPattern([], 0);
-
-  // Stair step profile
-  doc.setDrawColor('#1a1a2e');
-  doc.setLineWidth(1.8);
-  const rPx = riserHeight * sc;
-  const tPx = treadDepth * sc;
-  let sx = ox;
-  let sy = oy;
-  for (let i = 0; i < steps; i++) {
-    doc.line(sx, sy, sx, sy - rPx);
-    doc.line(sx, sy - rPx, sx + tPx, sy - rPx);
-    sx += tPx;
-    sy -= rPx;
-  }
-  // Close bottom
-  doc.setLineWidth(1);
-  doc.setDrawColor('#888888');
-  doc.line(ox, oy, ox + dw, oy);
-
-  // Stringer (diagonal, dashed blue)
-  doc.setDrawColor('#3366cc');
-  doc.setLineWidth(0.9);
-  doc.setLineDashPattern([6, 3], 0);
-  doc.line(ox, oy, ox + dw, oy - dh);
-  doc.setLineDashPattern([], 0);
-
-  // Stringer label
-  const slMidX = ox + dw / 2;
-  const slMidY = oy - dh / 2;
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor('#3366cc');
-  doc.text(`Stringer ${stringerLength.toFixed(2)}"`, slMidX + 6, slMidY - 8);
-
-  // Height dimension (left side)
-  doc.setDrawColor('#555555');
-  doc.setLineWidth(0.5);
-  const hdX = ox - 30;
-  doc.line(hdX, oy, hdX, oy - dh);
-  doc.line(hdX - 4, oy, hdX + 4, oy);
-  doc.line(hdX - 4, oy - dh, hdX + 4, oy - dh);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor('#333333');
-  doc.text(`H = ${height}"`, hdX - 6, oy - dh / 2 + 4, { align: 'right' });
-
-  // Run dimension (bottom)
-  const rdY = oy + 26;
-  doc.line(ox, rdY, ox + dw, rdY);
-  doc.line(ox, rdY - 4, ox, rdY + 4);
-  doc.line(ox + dw, rdY - 4, ox + dw, rdY + 4);
-  doc.text(`Run = ${run}"`, ox + dw / 2, rdY + 11, { align: 'center' });
-
-  // Angle arc approximation at base
-  const arcR = 28;
-  const angleRad = (angleDeg * Math.PI) / 180;
-  doc.setDrawColor('#cc6600');
-  doc.setLineWidth(0.7);
-  for (let i = 1; i <= 16; i++) {
-    const a0 = ((i - 1) / 16) * angleRad;
-    const a1 = (i / 16) * angleRad;
-    doc.line(ox + arcR * Math.cos(a0), oy - arcR * Math.sin(a0), ox + arcR * Math.cos(a1), oy - arcR * Math.sin(a1));
-  }
-  doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor('#cc6600');
-  doc.text(`${angleDeg.toFixed(1)}°`, ox + arcR + 5, oy - arcR * 0.5);
-
-  // Riser + tread callout on first step
-  if (steps > 0) {
-    const annX = ox + tPx * 1.2;
-    const annY = oy - rPx * 1.2;
-    doc.setDrawColor('#666666');
-    doc.setLineWidth(0.4);
-    doc.setLineDashPattern([2, 2], 0);
-    doc.line(annX, annY, annX + 24, annY - 22);
-    doc.setLineDashPattern([], 0);
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor('#444444');
-    doc.text(`R = ${riserHeight.toFixed(3)}"`, annX + 26, annY - 24);
-    doc.text(`T = ${treadDepth.toFixed(3)}"`, annX + 26, annY - 13);
-  }
-
-  // Legend box
-  const lgX = dAreaX + dAreaW - 140;
-  const lgY = dAreaY + dAreaH + 22;
-  doc.setFillColor('#f8f9fa');
-  doc.roundedRect(lgX - 8, lgY - 12, 148, 44, 3, 3, 'F');
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor('#222222');
-  doc.text('Legend', lgX, lgY);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setDrawColor('#1a1a2e');
-  doc.setLineWidth(1.8);
-  doc.line(lgX, lgY + 11, lgX + 18, lgY + 11);
-  doc.setTextColor('#1a1a2e');
-  doc.text('Stair Profile', lgX + 22, lgY + 14);
-
-  doc.setDrawColor('#3366cc');
-  doc.setLineWidth(0.9);
-  doc.setLineDashPattern([4, 2], 0);
-  doc.line(lgX, lgY + 22, lgX + 18, lgY + 22);
-  doc.setLineDashPattern([], 0);
-  doc.setTextColor('#3366cc');
-  doc.text('Stringer', lgX + 22, lgY + 25);
-
-  pageFooter();
-
   // ── PAGE 3 — Material / Cut List ──────────────────────────────────────────
 
   doc.addPage();
@@ -266,7 +359,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
   const cW = [180, 40, 90, 120, 0];
   const cx = [M, M + cW[0], M + cW[0] + cW[1], M + cW[0] + cW[1] + cW[2], M + cW[0] + cW[1] + cW[2] + cW[3]];
 
-  // Table header row
   doc.setFillColor('#1a1a2e');
   doc.rect(M, y - 10, PW - M * 2, 18, 'F');
   doc.setFontSize(9);
@@ -407,7 +499,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
     },
   ];
 
-  // Table header
   doc.setFillColor('#e8eaf6');
   doc.rect(M, y - 9, PW - M * 2, 16, 'F');
   doc.setFontSize(8.5);
