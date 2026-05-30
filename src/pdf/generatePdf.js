@@ -108,8 +108,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
   rowR('Code Errors:', errCount === 0 ? 'None' : String(errCount));
   rowR('Code Warnings:', warnCount === 0 ? 'None' : String(warnCount));
 
-  y = Math.max(yL, yR) + 8;
-
   pageFooter();
 
   // ── PAGE 2 — Side View Diagram ─────────────────────────────────────────────
@@ -174,7 +172,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
   doc.setLineDashPattern([], 0);
 
   // Stringer label
-  const slAngle = Math.atan2(dh, dw);
   const slMidX = ox + dw / 2;
   const slMidY = oy - dh / 2;
   doc.setFontSize(8);
@@ -334,7 +331,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
   doc.addPage();
   y = pageHeader(4, 'Warnings, Code Notes & Disclaimer');
 
-  y = sectionHead('CODE COMPLIANCE CHECK', y);
+  y = sectionHead('MVP VALIDATION NOTES', y);
 
   const errors = warnings.filter((w) => w.level === 'error');
   const warns = warnings.filter((w) => w.level === 'warning');
@@ -346,7 +343,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor('#1b5e20');
-    doc.text('No errors or warnings — inputs appear within typical code ranges.', M + 12, y + 8);
+    doc.text('No MVP validation errors or warnings — verify against current local code before building.', M + 12, y + 8);
     y += 34;
   } else {
     for (const w of errors) {
@@ -374,44 +371,38 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
   }
 
   y += 6;
-  y = sectionHead('FLORIDA BUILDING CODE REFERENCE NOTES', y);
+  y = sectionHead('Residential Code Reference Notes — Verify Locally', y);
 
   const rH = calc.riserHeight;
   const tD = calc.treadDepth;
   const hH = stairConfig.handrailHeight;
   const pO = stairConfig.pinOpening;
-  const sW = stairConfig.width;
   const rail = stairConfig.railingEnabled;
 
   const codeRows = [
     {
-      section: 'FBC 1011.5.2',
-      req: `Max riser: 7¾" (7.750")  —  Min tread: 10"`,
-      status: rH > 7.75 ? 'FAIL' : tD < 10 ? 'FAIL' : 'OK',
+      section: 'FBC Res. R311.7.5.1',
+      req: 'Max riser height: 7¾" (7.750")',
+      status: rH > 7.75 ? 'FAIL' : 'OK',
     },
     {
-      section: 'FBC 1011.5.3',
-      req: 'Max riser/tread variation between steps: ⅜" (0.375")',
-      status: null,
+      section: 'FBC Res. R311.7.5.2',
+      req: 'Min tread depth: 10"',
+      status: tD < 10 ? 'FAIL' : 'OK',
     },
     {
-      section: 'FBC 1012.2',
+      section: 'FBC Res. R311.7.8.1',
       req: 'Handrail height: 34"–38" above nosing',
       status: rail ? (hH < 34 || hH > 38 ? 'FAIL' : 'OK') : 'N/A',
     },
     {
-      section: 'FBC 1015.4',
+      section: 'FBC Res. R312.1.3',
       req: 'Guard openings: max 4" (sphere test)',
       status: rail ? (pO > 4 ? 'FAIL' : 'OK') : 'N/A',
     },
     {
-      section: 'FBC 1011.3',
-      req: 'Min stair width: 44" (occupant load > 49)',
-      status: sW < 44 ? 'NOTE' : 'OK',
-    },
-    {
-      section: 'OSHA 1910.25',
-      req: 'Commercial: riser 6½"–9½", tread ≥9½" (if applicable)',
+      section: 'Note',
+      req: 'Stair width, occupancy type, and additional requirements vary by jurisdiction and code edition. Verify locally.',
       status: null,
     },
   ];
@@ -458,10 +449,12 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
   y = sectionHead('DISCLAIMER', y);
 
   const disclaimerText =
-    'CODE / ENGINEERING DISCLAIMER: This drawing is a fabrication-assist document generated from user-entered dimensions. ' +
-    'It is NOT a permitted set of construction documents. Verify all field measurements, site conditions, and current Florida Building Code ' +
-    'requirements (including local amendments) before fabrication or installation. This document does not substitute for approved permit ' +
-    "drawings, a licensed structural engineer's review, or an architect's stamp where required by law. The designer / software provider " +
+    'FABRICATION HELPER — NOT A CODE-COMPLIANCE DOCUMENT: This output is generated from user-entered dimensions as a ' +
+    'fabrication aid only. It is NOT a permitted set of construction documents and does not represent full code compliance. ' +
+    'Local jurisdiction, project type, occupancy classification, field measurements, structural requirements, and the current ' +
+    'Florida Building Code edition (including local amendments) must be verified before fabrication or installation. ' +
+    'This document does not substitute for approved permit drawings, a licensed structural engineer\'s review, or an ' +
+    'architect\'s stamp where required by law. Obtain all required permits before building. The designer / software provider ' +
     'assumes no liability for errors, omissions, or code non-compliance resulting from use of this document.';
 
   const dLines = doc.splitTextToSize(disclaimerText, PW - M * 2 - 20);
