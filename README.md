@@ -40,6 +40,13 @@ React · Vite · Three.js · @react-three/fiber · @react-three/drei · jsPDF ·
 - No authentication yet
 - Schematic fabrication helper only — verify all field measurements, local codes, permits, and structural requirements before building
 
+## Supabase Frontend Configuration
+
+- Copy `.env.example` to `.env.local` and fill in your project values when ready
+- Use only the **anon key** (`VITE_SUPABASE_ANON_KEY`) in the frontend — it is safe to expose in the browser
+- **Never** use the `service_role` key in the frontend — it bypasses Row Level Security
+- Save/Load cloud integration is a later step; this file only sets up the client placeholder
+
 ## Current Milestone
 
 `checkpoint/2026-05-29-2140-pdf-side-view-drawing-sheet`
