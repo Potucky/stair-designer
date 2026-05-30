@@ -228,6 +228,34 @@ html, body, #root {
 .field-label-sm { color: var(--text-dim); font-size: 10px; }
 .field-value-sm { color: var(--text); font-size: 10px; }
 
+/* ─── Panel Buttons ────────────────────────────────────────────────── */
+.save-project-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.panel-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.panel-btn:hover:not(:disabled) { background: var(--bg-panel2); color: var(--text); }
+.panel-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.panel-btn-primary { background: var(--accent); border-color: var(--accent-dark); color: #fff; }
+.panel-btn-primary:hover:not(:disabled) { background: var(--accent-dark); color: #fff; }
+
+.save-status-ok    { font-size: 10px; color: var(--ok); font-weight: 600; }
+.save-status-error { font-size: 10px; color: var(--error); }
+
 /* ─── Results ──────────────────────────────────────────────────────── */
 .results-grid {
   display: grid;

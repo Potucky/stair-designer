@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { TUBE_SIZES } from '../data/materialProfiles.js';
 import { fmtIn, fmtDeg, fmt2 } from '../utils/format.js';
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject }) {
+  const [saveStatus, setSaveStatus] = useState(null);
+
   const num = (field, min, max) => (e) => {
     const v = parseFloat(e.target.value);
     if (!isNaN(v)) setStairConfig((s) => ({ ...s, [field]: Math.min(max, Math.max(min, v)) }));
@@ -29,6 +32,24 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         <div className="field-row">
           <span className="field-label-sm">Units</span>
           <span className="field-value-sm">Inches (Imperial)</span>
+        </div>
+        <div className="save-project-row">
+          <button
+            className="panel-btn panel-btn-primary"
+            disabled={saveStatus === 'saving'}
+            onClick={async () => {
+              setSaveStatus('saving');
+              const result = await onSaveProject();
+              setSaveStatus(result.ok ? 'saved' : result.error);
+            }}
+          >
+            {saveStatus === 'saving' ? 'Saving…' : 'Save Project'}
+          </button>
+          {saveStatus && saveStatus !== 'saving' && (
+            <span className={saveStatus === 'saved' ? 'save-status-ok' : 'save-status-error'}>
+              {saveStatus === 'saved' ? 'Saved' : saveStatus}
+            </span>
+          )}
         </div>
       </section>
 

@@ -11,6 +11,7 @@ import { calcStair, buildMaterialList } from './geometry/stairMath.js';
 import { validateStair } from './geometry/validation.js';
 import { saveProjectJson } from './utils/saveJson.js';
 import { generatePdf } from './pdf/generatePdf.js';
+import { saveProject } from './lib/saveProject.js';
 
 const DEFAULT_STAIR = {
   height: 108,
@@ -65,6 +66,8 @@ export default function App() {
 
   const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials });
 
+  const handleSaveProject = () => saveProject({ project, stairConfig, calc, warnings, materials });
+
   const handlePrint = () => window.print();
 
   const handleViewChange = (v) => setView(v);
@@ -82,6 +85,7 @@ export default function App() {
         calc={calc}
         warnings={warnings}
         materials={materials}
+        onSaveProject={handleSaveProject}
       />
       <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} />
     </div>
