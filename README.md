@@ -47,6 +47,12 @@ React · Vite · Three.js · @react-three/fiber · @react-three/drei · jsPDF ·
 - **Never** use the `service_role` key in the frontend — it bypasses Row Level Security
 - Save/Load cloud integration is a later step; this file only sets up the client placeholder
 
+## GitHub Pages
+
+Deployed automatically on every push to `main`.
+
+URL: [https://potucky.github.io/stair-designer/](https://potucky.github.io/stair-designer/)
+
 ## Current Milestone
 
 `checkpoint/2026-05-29-2140-pdf-side-view-drawing-sheet`
