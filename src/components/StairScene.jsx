@@ -1,10 +1,9 @@
-import { useRef, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
-import * as THREE from 'three';
 
 function CameraController({ view }) {
-  const { camera, controls } = useThree();
+  const { camera } = useThree();
 
   useEffect(() => {
     if (view === 'top') {
@@ -25,7 +24,7 @@ function CameraController({ view }) {
 }
 
 function StairModel({ height, run, width, steps, railingEnabled, handrailHeight, postCount }) {
-  const INtoU = 0.5; // 1 inch = 0.5 scene units — keeps things visible
+  const INtoU = 0.5;
 
   const h = height * INtoU;
   const r = run * INtoU;
@@ -42,16 +41,17 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
   const angleRad = Math.atan2(h, r);
   const stringerLen = Math.sqrt(h * h + r * r);
 
-  const metalMat = <meshStandardMaterial color="#6b7280" metalness={0.6} roughness={0.4} />;
-  const handrailMat = <meshStandardMaterial color="#374151" metalness={0.7} roughness={0.3} />;
-  const treadMat = <meshStandardMaterial color="#9ca3af" metalness={0.4} roughness={0.6} />;
+  // Darker metals so they read clearly on the light background
+  const metalMat = <meshStandardMaterial color="#475569" metalness={0.55} roughness={0.35} />;
+  const handrailMat = <meshStandardMaterial color="#1e3a5f" metalness={0.65} roughness={0.3} />;
+  const treadMat = <meshStandardMaterial color="#64748b" metalness={0.4} roughness={0.5} />;
 
   const treads = [];
   for (let i = 0; i < steps; i++) {
     const tx = (i + 0.5) * treadD;
     const ty = (i + 1) * riserH;
     treads.push(
-      <mesh key={i} position={[tx - r / 2, ty - riserH / 2 + treadThick / 2, 0]} castShadow>
+      <mesh key={i} position={[tx - r / 2, ty - riserH / 2 + treadThick / 2, 0]} castShadow receiveShadow>
         <boxGeometry args={[treadD, treadThick, w]} />
         {treadMat}
       </mesh>
@@ -76,7 +76,6 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
       });
     }
 
-    // Handrails — one per side
     [-w / 2 - postThick / 2, w / 2 + postThick / 2].forEach((zOff, si) => {
       posts.push(
         <mesh
@@ -94,12 +93,10 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
 
   return (
     <group position={[0, 0, 0]}>
-      {/* Left stringer */}
       <mesh position={[0, h / 2, -w / 2]} rotation={[0, 0, -angleRad]} castShadow>
         <boxGeometry args={[stringerLen, stringerThick, stringerThick]} />
         {metalMat}
       </mesh>
-      {/* Right stringer */}
       <mesh position={[0, h / 2, w / 2]} rotation={[0, 0, -angleRad]} castShadow>
         <boxGeometry args={[stringerLen, stringerThick, stringerThick]} />
         {metalMat}
@@ -111,10 +108,7 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
 }
 
 export default function StairScene({ stairConfig, calc, view }) {
-  const { height, run, width, steps, railingEnabled, handrailHeight, postCount } = {
-    ...stairConfig,
-    postCount: calc.postCount,
-  };
+  const { height, run, width, steps, railingEnabled, handrailHeight } = stairConfig;
 
   return (
     <div className="scene-container">
@@ -122,20 +116,27 @@ export default function StairScene({ stairConfig, calc, view }) {
         camera={{ position: [80, 80, 120], fov: 45, near: 0.1, far: 5000 }}
         shadows
       >
-        <CameraController view={view} />
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[100, 200, 100]} intensity={1} castShadow />
-        <directionalLight position={[-100, 100, -100]} intensity={0.3} />
+        {/* Light CAD workspace background */}
+        <color attach="background" args={['#e8ecf1']} />
 
+        <CameraController view={view} />
+
+        {/* Brighter lighting for the light theme */}
+        <ambientLight intensity={1.0} />
+        <directionalLight position={[100, 200, 100]} intensity={1.4} castShadow shadow-mapSize={[1024, 1024]} />
+        <directionalLight position={[-80, 100, -60]} intensity={0.5} />
+        <directionalLight position={[0, -50, 80]} intensity={0.15} />
+
+        {/* Subtle grid — dark lines on light background */}
         <Grid
           args={[500, 500]}
           cellSize={10}
-          cellThickness={0.5}
-          cellColor="#4b5563"
+          cellThickness={0.4}
+          cellColor="#b8bec9"
           sectionSize={50}
-          sectionThickness={1}
-          sectionColor="#6b7280"
-          fadeDistance={600}
+          sectionThickness={0.9}
+          sectionColor="#8b96a8"
+          fadeDistance={550}
           infiniteGrid
         />
 
