@@ -41,7 +41,6 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
   const angleRad = Math.atan2(h, r);
   const stringerLen = Math.sqrt(h * h + r * r);
 
-  // Darker metals so they read clearly on the light background
   const metalMat = <meshStandardMaterial color="#475569" metalness={0.55} roughness={0.35} />;
   const handrailMat = <meshStandardMaterial color="#1e3a5f" metalness={0.65} roughness={0.3} />;
   const treadMat = <meshStandardMaterial color="#64748b" metalness={0.4} roughness={0.5} />;
@@ -116,27 +115,24 @@ export default function StairScene({ stairConfig, calc, view }) {
         camera={{ position: [80, 80, 120], fov: 45, near: 0.1, far: 5000 }}
         shadows
       >
-        {/* Light CAD workspace background */}
-        <color attach="background" args={['#e8ecf1']} />
+        <color attach="background" args={['#edf2f7']} />
 
         <CameraController view={view} />
 
-        {/* Brighter lighting for the light theme */}
-        <ambientLight intensity={1.0} />
-        <directionalLight position={[100, 200, 100]} intensity={1.4} castShadow shadow-mapSize={[1024, 1024]} />
+        <ambientLight intensity={1.1} />
+        <directionalLight position={[100, 200, 100]} intensity={1.5} castShadow shadow-mapSize={[1024, 1024]} />
         <directionalLight position={[-80, 100, -60]} intensity={0.5} />
-        <directionalLight position={[0, -50, 80]} intensity={0.15} />
+        <directionalLight position={[0, -50, 80]} intensity={0.12} />
 
-        {/* Subtle grid — dark lines on light background */}
         <Grid
           args={[500, 500]}
           cellSize={10}
-          cellThickness={0.4}
-          cellColor="#b8bec9"
+          cellThickness={0.35}
+          cellColor="#c8d0dc"
           sectionSize={50}
-          sectionThickness={0.9}
-          sectionColor="#8b96a8"
-          fadeDistance={550}
+          sectionThickness={0.8}
+          sectionColor="#9aabbf"
+          fadeDistance={600}
           infiniteGrid
         />
 
