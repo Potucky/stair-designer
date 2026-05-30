@@ -33,6 +33,7 @@ create table if not exists stair_projects (
   updated_at   timestamptz not null default now()
 );
 
+drop trigger if exists trg_stair_projects_updated_at on stair_projects;
 create trigger trg_stair_projects_updated_at
   before update on stair_projects
   for each row
@@ -72,10 +73,17 @@ create table if not exists app_checkpoints (
   id          uuid        primary key default gen_random_uuid(),
   label       text        not null,
   git_commit  text,
-  git_tag     text,
+  git_tag     text        unique,
   description text,
   created_at  timestamptz not null default now()
 );
+
+-- ---------------------------------------------------------------------------
+-- Helpful indexes
+-- ---------------------------------------------------------------------------
+create index if not exists idx_stair_config_versions_project_id on stair_config_versions(project_id);
+create index if not exists idx_pdf_exports_project_id           on pdf_exports(project_id);
+create index if not exists idx_pdf_exports_config_version_id    on pdf_exports(config_version_id);
 
 -- ---------------------------------------------------------------------------
 -- Row Level Security
@@ -84,13 +92,16 @@ create table if not exists app_checkpoints (
 -- No public insert/update/delete policies are created here because
 -- authentication is not yet implemented.
 --
--- When auth is added, create policies such as:
+-- When auth is added, add a user_id (or owner_id) column to stair_projects
+-- and create policies such as:
 --
 --   create policy "Users can read own projects"
 --     on stair_projects for select
---     using (auth.uid() = owner_id);
+--     using (auth.uid() = user_id);
 --
--- Until then, all access is restricted to the service_role key (admin only).
+-- Note: no owner_id or user_id column exists yet — it will be added in a
+-- future auth phase. Until then, all access is restricted to the
+-- service_role key (admin only).
 -- Do NOT expose the service_role key to the frontend.
 -- ---------------------------------------------------------------------------
 alter table stair_projects        enable row level security;
@@ -107,4 +118,5 @@ values (
   '4379356',
   'checkpoint/2026-05-29-2155-github-ready',
   'GitHub-ready Stair Designer MVP with printable side-view PDF drawing sheet.'
-);
+)
+on conflict (git_tag) do nothing;
