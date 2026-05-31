@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
@@ -69,6 +69,20 @@ function CameraController({ view, viewResetToken, controlsRef }) {
 
   return null;
 }
+
+const MEASURE_COLOR = '#10b981';
+const MEASURE_LABEL_STYLE = {
+  background: 'rgba(5, 150, 105, 0.92)',
+  color: '#f0fdf4',
+  fontSize: '10px',
+  fontFamily: 'ui-monospace, monospace',
+  padding: '2px 6px',
+  borderRadius: '3px',
+  whiteSpace: 'nowrap',
+  pointerEvents: 'none',
+  userSelect: 'none',
+  letterSpacing: '0.02em',
+};
 
 const DIM_COLOR = '#1e3a5f';
 const EXT_COLOR = '#4a7fad';
@@ -294,12 +308,139 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions }) {
-  const { height, run, width, steps, railingEnabled, handrailHeight } = stairConfig;
-  const orbitRef = useRef();
+function MeasureTool({ active, units }) {
+  const [phase, setPhase] = useState('idle'); // 'idle' | 'placing'
+  const [startPt, setStartPt] = useState(null);
+  const [endPt, setEndPt] = useState(null);
+  const [cursorPt, setCursorPt] = useState(null);
+
+  useEffect(() => {
+    if (!active) {
+      setPhase('idle');
+      setStartPt(null);
+      setEndPt(null);
+      setCursorPt(null);
+    }
+  }, [active]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape' && active && phase === 'placing') {
+        setPhase('idle');
+        setStartPt(null);
+        setCursorPt(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [active, phase]);
+
+  const onMove = (e) => {
+    e.stopPropagation();
+    setCursorPt(e.point.clone());
+  };
+
+  const onLeave = (e) => {
+    e.stopPropagation();
+    setCursorPt(null);
+  };
+
+  const onDown = (e) => e.stopPropagation();
+
+  const onClickPlane = (e) => {
+    e.stopPropagation();
+    if (phase === 'idle') {
+      setStartPt(e.point.clone());
+      setEndPt(null);
+      setPhase('placing');
+    } else {
+      setEndPt(e.point.clone());
+      setPhase('idle');
+    }
+  };
+
+  const INtoU = 0.5;
+  const dist = (a, b) => {
+    if (!a || !b) return '';
+    return fmtUnit(a.distanceTo(b) / INtoU, units);
+  };
+
+  const livePt = phase === 'placing' ? cursorPt : endPt;
+
+  if (!active) return null;
 
   return (
-    <div className="scene-container">
+    <>
+      {/* Ground plane intercepts pointer events while measure is active */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        onPointerMove={onMove}
+        onPointerLeave={onLeave}
+        onPointerDown={onDown}
+        onClick={onClickPlane}
+      >
+        <planeGeometry args={[5000, 5000]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* Measurement line + markers */}
+      {startPt && livePt && (
+        <>
+          <Line
+            points={[startPt.toArray(), livePt.toArray()]}
+            color={MEASURE_COLOR}
+            lineWidth={phase === 'placing' ? 1.5 : 2}
+          />
+          {/* Start point */}
+          <mesh position={startPt.toArray()}>
+            <sphereGeometry args={[0.5, 10, 10]} />
+            <meshBasicMaterial color={MEASURE_COLOR} />
+          </mesh>
+          {/* End / cursor point */}
+          <mesh position={livePt.toArray()}>
+            <sphereGeometry args={[0.5, 10, 10]} />
+            <meshBasicMaterial color={MEASURE_COLOR} />
+          </mesh>
+          {/* Distance label at midpoint, slightly elevated */}
+          <Html
+            position={[
+              (startPt.x + livePt.x) / 2,
+              (startPt.y + livePt.y) / 2 + 2,
+              (startPt.z + livePt.z) / 2,
+            ]}
+            center
+          >
+            <div style={MEASURE_LABEL_STYLE}>{dist(startPt, livePt)}</div>
+          </Html>
+        </>
+      )}
+
+      {/* Start marker shown after first click before mouse moves */}
+      {startPt && !livePt && (
+        <mesh position={startPt.toArray()}>
+          <sphereGeometry args={[0.5, 10, 10]} />
+          <meshBasicMaterial color={MEASURE_COLOR} />
+        </mesh>
+      )}
+
+      {/* Cursor ring indicator */}
+      {cursorPt && (
+        <mesh position={cursorPt.toArray()} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.5, 0.9, 16]} />
+          <meshBasicMaterial color={MEASURE_COLOR} side={THREE.DoubleSide} transparent opacity={0.75} />
+        </mesh>
+      )}
+    </>
+  );
+}
+
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool }) {
+  const { height, run, width, steps, railingEnabled, handrailHeight } = stairConfig;
+  const orbitRef = useRef();
+  const isMeasure = activeTool === 'measure';
+
+  return (
+    <div className="scene-container" style={isMeasure ? { cursor: 'crosshair' } : undefined}>
       <Canvas
         camera={{ position: [80, 55, 110], fov: 45, near: 0.1, far: 5000 }}
         shadows
@@ -339,9 +480,12 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
 
         {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
 
+        <MeasureTool active={isMeasure} units={units} />
+
         <OrbitControls
           ref={orbitRef}
           makeDefault
+          enabled={!isMeasure}
           enableDamping
           dampingFactor={0.08}
           screenSpacePanning
