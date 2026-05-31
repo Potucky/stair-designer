@@ -268,7 +268,7 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
         <mesh
           key={`rail-${si}`}
           position={[0, h / 2 + railH, zOff]}
-          rotation={[0, 0, -angleRad]}
+          rotation={[0, 0, angleRad]}
           castShadow
         >
           <boxGeometry args={[stringerLen, railThick, railThick]} />
