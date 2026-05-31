@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Grid } from '@react-three/drei';
+import { OrbitControls, Grid, Html } from '@react-three/drei';
+import { fmtUnit } from '../utils/format.js';
 
 function CameraController({ view }) {
   const { camera } = useThree();
@@ -21,6 +22,54 @@ function CameraController({ view }) {
   }, [view, camera]);
 
   return null;
+}
+
+const DIM_STYLE = {
+  background: 'rgba(30, 58, 92, 0.82)',
+  color: '#e8f0fe',
+  fontSize: '10px',
+  fontFamily: 'ui-monospace, monospace',
+  padding: '2px 5px',
+  borderRadius: '3px',
+  whiteSpace: 'nowrap',
+  pointerEvents: 'none',
+  userSelect: 'none',
+  lineHeight: '1.4',
+};
+
+function DimLabel({ position, text }) {
+  return (
+    <Html position={position} center>
+      <div style={DIM_STYLE}>{text}</div>
+    </Html>
+  );
+}
+
+function DimensionLabels({ stairConfig, calc, units }) {
+  const INtoU = 0.5;
+  const { height, run, width, steps, railingEnabled, handrailHeight, postSpacing } = stairConfig;
+
+  const h = height * INtoU;
+  const r = run * INtoU;
+  const w = width * INtoU;
+  const riserH = steps > 0 ? h / steps : h;
+  const railH = handrailHeight * INtoU;
+
+  return (
+    <>
+      <DimLabel position={[-r / 2 - 10, h / 2, 0]}      text={`Rise: ${fmtUnit(height, units)}`} />
+      <DimLabel position={[0, -8, 0]}                    text={`Run: ${fmtUnit(run, units)}`} />
+      <DimLabel position={[0, h / 2, w / 2 + 10]}        text={`Width: ${fmtUnit(width, units)}`} />
+      <DimLabel position={[r / 2 + 10, riserH / 2, 0]}   text={`Riser: ${fmtUnit(calc.riserHeight, units)}`} />
+      <DimLabel position={[r / 2 + 10, -4, 0]}            text={`Tread: ${fmtUnit(calc.treadDepth, units)}`} />
+      {railingEnabled && (
+        <>
+          <DimLabel position={[-r / 2 - 18, h + railH / 2, 0]} text={`Rail H: ${fmtUnit(handrailHeight, units)}`} />
+          <DimLabel position={[0, h + railH + 7, 0]}             text={`Post Sp: ${fmtUnit(postSpacing, units)}`} />
+        </>
+      )}
+    </>
+  );
 }
 
 function StairModel({ height, run, width, steps, railingEnabled, handrailHeight, postCount }) {
@@ -106,7 +155,7 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
   );
 }
 
-export default function StairScene({ stairConfig, calc, view }) {
+export default function StairScene({ stairConfig, calc, view, units }) {
   const { height, run, width, steps, railingEnabled, handrailHeight } = stairConfig;
 
   return (
@@ -145,6 +194,8 @@ export default function StairScene({ stairConfig, calc, view }) {
           handrailHeight={handrailHeight}
           postCount={calc.postCount}
         />
+
+        <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />
 
         <OrbitControls makeDefault enableDamping dampingFactor={0.08} />
       </Canvas>

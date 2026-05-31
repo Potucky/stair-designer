@@ -71,7 +71,7 @@ export default function App() {
     <div className="app-shell">
       <Header onOpenJson={handleOpenJson} onSaveJson={handleSaveJson} onExportPdf={handleExportPdf} onPrint={handlePrint} units={units} onUnitsChange={setUnits} />
       <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} />
-      <StairScene stairConfig={stairConfig} calc={calc} view={view} />
+      <StairScene stairConfig={stairConfig} calc={calc} view={view} units={units} />
       <RightPanel
         project={project}
         setProject={setProject}

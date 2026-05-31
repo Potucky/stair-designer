@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TUBE_SIZES } from '../data/materialProfiles.js';
-import { fmtIn, fmtDeg, fmt2, fmtUnit, INCH_TO_MM } from '../utils/format.js';
+import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
 
 export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, units }) {
   const [saveStatus, setSaveStatus] = useState(null);
