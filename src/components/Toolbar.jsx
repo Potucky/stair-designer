@@ -1,6 +1,6 @@
 import ToolButton from './ToolButton.jsx';
 
-export default function Toolbar({ activeTool, onToolSelect, onViewChange }) {
+export default function Toolbar({ activeTool, onToolSelect, onViewChange, showDimensions, onToggleDimensions }) {
   const activeTools = [
     { id: 'select',       label: 'Select',       icon: '↖' },
     { id: 'measure',      label: 'Measure',      icon: '📏' },
@@ -54,6 +54,17 @@ export default function Toolbar({ activeTool, onToolSelect, onViewChange }) {
             onClick={() => handleView(t.id)}
           />
         ))}
+      </div>
+
+      <div className="tool-divider" />
+
+      <div className="tool-group">
+        <ToolButton
+          label="Dims"
+          icon="⊢"
+          active={showDimensions}
+          onClick={onToggleDimensions}
+        />
       </div>
 
       <div className="tool-divider" />

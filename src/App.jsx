@@ -20,6 +20,7 @@ export default function App() {
   const [units, setUnits] = useState('in');
   const [activeTool, setActiveTool] = useState('select');
   const [view, setView] = useState('3d');
+  const [showDimensions, setShowDimensions] = useState(true);
 
   const calc = useMemo(() => calcStair(stairConfig), [stairConfig]);
 
@@ -70,8 +71,8 @@ export default function App() {
   return (
     <div className="app-shell">
       <Header onOpenJson={handleOpenJson} onSaveJson={handleSaveJson} onExportPdf={handleExportPdf} onPrint={handlePrint} units={units} onUnitsChange={setUnits} />
-      <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} />
-      <StairScene stairConfig={stairConfig} calc={calc} view={view} units={units} />
+      <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} showDimensions={showDimensions} onToggleDimensions={() => setShowDimensions((v) => !v)} />
+      <StairScene stairConfig={stairConfig} calc={calc} view={view} units={units} showDimensions={showDimensions} />
       <RightPanel
         project={project}
         setProject={setProject}

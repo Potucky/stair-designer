@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Grid, Html } from '@react-three/drei';
+import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import { fmtUnit } from '../utils/format.js';
 
 function CameraController({ view }) {
@@ -24,48 +24,133 @@ function CameraController({ view }) {
   return null;
 }
 
-const DIM_STYLE = {
-  background: 'rgba(30, 58, 92, 0.82)',
+const DIM_COLOR = '#1e3a5f';
+const EXT_COLOR = '#4a7fad';
+const LABEL_STYLE = {
+  background: 'rgba(30, 58, 92, 0.88)',
   color: '#e8f0fe',
-  fontSize: '10px',
+  fontSize: '9px',
   fontFamily: 'ui-monospace, monospace',
-  padding: '2px 5px',
-  borderRadius: '3px',
+  padding: '1px 4px',
+  borderRadius: '2px',
   whiteSpace: 'nowrap',
   pointerEvents: 'none',
   userSelect: 'none',
-  lineHeight: '1.4',
 };
 
-function DimLabel({ position, text }) {
+const S = 1.4; // arrowhead size (scene units)
+
+function ArrowCone({ position, rotation }) {
   return (
-    <Html position={position} center>
-      <div style={DIM_STYLE}>{text}</div>
-    </Html>
+    <mesh position={position} rotation={rotation}>
+      <coneGeometry args={[S * 0.25, S, 5]} />
+      <meshBasicMaterial color={DIM_COLOR} />
+    </mesh>
   );
+}
+
+function VDim({ x, z, y1, y2, label }) {
+  const lo = Math.min(y1, y2);
+  const hi = Math.max(y1, y2);
+  if (hi - lo < 2 * S + 0.5) return null;
+  return (
+    <>
+      <Line points={[[x, lo + S, z], [x, hi - S, z]]} color={DIM_COLOR} lineWidth={1.5} />
+      <ArrowCone position={[x, lo + S / 2, z]} rotation={[Math.PI, 0, 0]} />
+      <ArrowCone position={[x, hi - S / 2, z]} rotation={[0, 0, 0]} />
+      <Html position={[x, (lo + hi) / 2, z]} center>
+        <div style={LABEL_STYLE}>{label}</div>
+      </Html>
+    </>
+  );
+}
+
+function HDimX({ y, z, x1, x2, label }) {
+  const lo = Math.min(x1, x2);
+  const hi = Math.max(x1, x2);
+  if (hi - lo < 2 * S + 0.5) return null;
+  return (
+    <>
+      <Line points={[[lo + S, y, z], [hi - S, y, z]]} color={DIM_COLOR} lineWidth={1.5} />
+      <ArrowCone position={[lo + S / 2, y, z]} rotation={[0, 0, Math.PI / 2]} />
+      <ArrowCone position={[hi - S / 2, y, z]} rotation={[0, 0, -Math.PI / 2]} />
+      <Html position={[(lo + hi) / 2, y, z]} center>
+        <div style={LABEL_STYLE}>{label}</div>
+      </Html>
+    </>
+  );
+}
+
+function HDimZ({ x, y, z1, z2, label }) {
+  const lo = Math.min(z1, z2);
+  const hi = Math.max(z1, z2);
+  if (hi - lo < 2 * S + 0.5) return null;
+  return (
+    <>
+      <Line points={[[x, y, lo + S], [x, y, hi - S]]} color={DIM_COLOR} lineWidth={1.5} />
+      <ArrowCone position={[x, y, lo + S / 2]} rotation={[-Math.PI / 2, 0, 0]} />
+      <ArrowCone position={[x, y, hi - S / 2]} rotation={[Math.PI / 2, 0, 0]} />
+      <Html position={[x, y, (lo + hi) / 2]} center>
+        <div style={LABEL_STYLE}>{label}</div>
+      </Html>
+    </>
+  );
+}
+
+function ExtLine({ p1, p2 }) {
+  return <Line points={[p1, p2]} color={EXT_COLOR} lineWidth={0.8} />;
 }
 
 function DimensionLabels({ stairConfig, calc, units }) {
   const INtoU = 0.5;
-  const { height, run, width, steps, railingEnabled, handrailHeight, postSpacing } = stairConfig;
+  const { height, run, width, railingEnabled, handrailHeight, postSpacing } = stairConfig;
 
   const h = height * INtoU;
   const r = run * INtoU;
   const w = width * INtoU;
-  const riserH = steps > 0 ? h / steps : h;
+  const riserH = calc.riserHeight * INtoU;
+  const treadD = calc.treadDepth * INtoU;
   const railH = handrailHeight * INtoU;
+  const postSpU = Math.min(postSpacing, run) * INtoU;
+
+  const riseX  = -r / 2 - 10;
+  const runY   = -7;
+  const widthX = r / 2 + 10;
+  const riserX = r / 2 + 5;
+  const treadY = h - riserH - 3;
+  const railX  = -r / 2 - 20;
+  const postSpY = h + railH + 6;
 
   return (
     <>
-      <DimLabel position={[-r / 2 - 10, h / 2, 0]}      text={`Rise: ${fmtUnit(height, units)}`} />
-      <DimLabel position={[0, -8, 0]}                    text={`Run: ${fmtUnit(run, units)}`} />
-      <DimLabel position={[0, h / 2, w / 2 + 10]}        text={`Width: ${fmtUnit(width, units)}`} />
-      <DimLabel position={[r / 2 + 10, riserH / 2, 0]}   text={`Riser: ${fmtUnit(calc.riserHeight, units)}`} />
-      <DimLabel position={[r / 2 + 10, -4, 0]}            text={`Tread: ${fmtUnit(calc.treadDepth, units)}`} />
+      {/* Total Rise */}
+      <ExtLine p1={[-r / 2, 0, 0]} p2={[riseX, 0, 0]} />
+      <ExtLine p1={[-r / 2, h, 0]} p2={[riseX, h, 0]} />
+      <VDim x={riseX} z={0} y1={0} y2={h} label={`Rise: ${fmtUnit(height, units)}`} />
+
+      {/* Total Run */}
+      <ExtLine p1={[-r / 2, 0, 0]} p2={[-r / 2, runY, 0]} />
+      <ExtLine p1={[r / 2, 0, 0]} p2={[r / 2, runY, 0]} />
+      <HDimX y={runY} z={0} x1={-r / 2} x2={r / 2} label={`Run: ${fmtUnit(run, units)}`} />
+
+      {/* Stair Width */}
+      <ExtLine p1={[r / 2, h / 2, -w / 2]} p2={[widthX, h / 2, -w / 2]} />
+      <ExtLine p1={[r / 2, h / 2, w / 2]} p2={[widthX, h / 2, w / 2]} />
+      <HDimZ x={widthX} y={h / 2} z1={-w / 2} z2={w / 2} label={`W: ${fmtUnit(width, units)}`} />
+
+      {/* Riser (last step) */}
+      <VDim x={riserX} z={0} y1={h - riserH} y2={h} label={`Riser: ${fmtUnit(calc.riserHeight, units)}`} />
+
+      {/* Tread (last step) */}
+      <HDimX y={treadY} z={0} x1={r / 2 - treadD} x2={r / 2} label={`Tread: ${fmtUnit(calc.treadDepth, units)}`} />
+
+      {/* Railing dims */}
       {railingEnabled && (
         <>
-          <DimLabel position={[-r / 2 - 18, h + railH / 2, 0]} text={`Rail H: ${fmtUnit(handrailHeight, units)}`} />
-          <DimLabel position={[0, h + railH + 7, 0]}             text={`Post Sp: ${fmtUnit(postSpacing, units)}`} />
+          <ExtLine p1={[-r / 2, h, 0]} p2={[railX, h, 0]} />
+          <ExtLine p1={[-r / 2, h + railH, 0]} p2={[railX, h + railH, 0]} />
+          <VDim x={railX} z={0} y1={h} y2={h + railH} label={`Rail H: ${fmtUnit(handrailHeight, units)}`} />
+          <HDimX y={postSpY} z={0} x1={-r / 2} x2={-r / 2 + postSpU} label={`Post Sp: ${fmtUnit(postSpacing, units)}`} />
         </>
       )}
     </>
@@ -155,7 +240,7 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, units }) {
+export default function StairScene({ stairConfig, calc, view, units, showDimensions }) {
   const { height, run, width, steps, railingEnabled, handrailHeight } = stairConfig;
 
   return (
@@ -195,7 +280,7 @@ export default function StairScene({ stairConfig, calc, view, units }) {
           postCount={calc.postCount}
         />
 
-        <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />
+        {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
 
         <OrbitControls makeDefault enableDamping dampingFactor={0.08} />
       </Canvas>
