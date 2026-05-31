@@ -100,6 +100,12 @@ html, body, #root {
 .header-btn:hover { background: var(--bg-panel2); color: var(--text); }
 .header-btn-primary { background: var(--accent); border-color: var(--accent-dark); color: #fff; }
 .header-btn-primary:hover { background: var(--accent-dark); color: #fff; }
+.header-btn-active { background: rgba(37, 99, 235, 0.1); color: var(--accent); border-color: var(--accent); }
+.header-btn-active:hover { background: rgba(37, 99, 235, 0.15); color: var(--accent); }
+.units-toggle-group { display: flex; gap: 0; }
+.units-toggle-group .units-btn { border-radius: 0; border-right-width: 0; }
+.units-toggle-group .units-btn:first-child { border-radius: 4px 0 0 4px; }
+.units-toggle-group .units-btn:last-child { border-radius: 0 4px 4px 0; border-right-width: 1px; }
 
 /* ─── Toolbar ──────────────────────────────────────────────────────── */
 .toolbar {

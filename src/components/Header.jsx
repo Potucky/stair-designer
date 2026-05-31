@@ -12,13 +12,22 @@ export default function Header({ onOpenJson, onSaveJson, onExportPdf, onPrint, u
         </nav>
       </div>
       <div className="header-right">
-        <button
-          className="header-btn units-toggle"
-          title={`Switch to ${units === 'in' ? 'millimeters' : 'inches'}`}
-          onClick={() => onUnitsChange(units === 'in' ? 'mm' : 'in')}
-        >
-          {units === 'in' ? 'in' : 'mm'}
-        </button>
+        <div className="units-toggle-group">
+          <button
+            className={`header-btn units-btn${units === 'in' ? ' header-btn-active' : ''}`}
+            title="Switch to inches"
+            onClick={() => onUnitsChange('in')}
+          >
+            Inch
+          </button>
+          <button
+            className={`header-btn units-btn${units === 'mm' ? ' header-btn-active' : ''}`}
+            title="Switch to millimeters"
+            onClick={() => onUnitsChange('mm')}
+          >
+            mm
+          </button>
+        </div>
         <button className="header-btn" onClick={onOpenJson}>Open JSON</button>
         <button className="header-btn" onClick={onSaveJson}>Save JSON</button>
         <button className="header-btn header-btn-primary" onClick={onExportPdf}>Export PDF</button>
