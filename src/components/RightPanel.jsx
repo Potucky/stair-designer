@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { TUBE_SIZES } from '../data/materialProfiles.js';
 import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, units }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units }) {
   const [saveStatus, setSaveStatus] = useState(null);
 
   const num = (field, min, max) => (e) => {
@@ -179,6 +179,17 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             <div className="obj-item">⊟ Railing 1</div>
           )}
         </div>
+      </section>
+
+      {/* PDF Output */}
+      <section className="panel-section">
+        <h3 className="section-title">PDF Output</h3>
+        <p className="field-label" style={{ marginBottom: 8, lineHeight: '1.4' }}>
+          Includes stair views, dimensions, and results.
+        </p>
+        <button className="panel-btn panel-btn-primary" style={{ width: '100%' }} onClick={onExportPdf}>
+          Export PDF
+        </button>
       </section>
 
     </aside>

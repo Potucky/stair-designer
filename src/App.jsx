@@ -86,6 +86,7 @@ export default function App() {
         warnings={warnings}
         materials={materials}
         onSaveProject={handleSaveProject}
+        onExportPdf={handleExportPdf}
         units={units}
       />
       <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} units={units} />
