@@ -1,7 +1,15 @@
-const VALID_STAIR_KEYS = new Set([
-  'height', 'run', 'width', 'steps', 'tubeSize',
-  'railingEnabled', 'handrailHeight', 'pinOpening', 'postSpacing',
+const NUMERIC_KEYS = new Set([
+  'height', 'run', 'width', 'handrailHeight', 'pinOpening', 'postSpacing',
 ]);
+const ALL_STAIR_KEYS = [...NUMERIC_KEYS, 'steps', 'railingEnabled', 'tubeSize'];
+
+function isValidStairValue(key, value) {
+  if (key === 'steps') return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value > 0;
+  if (key === 'railingEnabled') return typeof value === 'boolean';
+  if (key === 'tubeSize') return typeof value === 'string' && value.length > 0;
+  if (NUMERIC_KEYS.has(key)) return typeof value === 'number' && Number.isFinite(value);
+  return false;
+}
 
 export function openProjectJson(onLoad, onError) {
   const input = document.createElement('input');
@@ -23,8 +31,10 @@ export function openProjectJson(onLoad, onError) {
         }
         const stairConfig = {};
         if (data.stairConfig && typeof data.stairConfig === 'object') {
-          for (const key of VALID_STAIR_KEYS) {
-            if (key in data.stairConfig) stairConfig[key] = data.stairConfig[key];
+          for (const key of ALL_STAIR_KEYS) {
+            if (key in data.stairConfig && isValidStairValue(key, data.stairConfig[key])) {
+              stairConfig[key] = data.stairConfig[key];
+            }
           }
         }
         onLoad({ project, stairConfig });
