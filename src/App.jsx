@@ -21,6 +21,7 @@ export default function App() {
   const [activeTool, setActiveTool] = useState('select');
   const [view, setView] = useState('3d');
   const [showDimensions, setShowDimensions] = useState(true);
+  const [viewResetToken, setViewResetToken] = useState(0);
 
   const calc = useMemo(() => calcStair(stairConfig), [stairConfig]);
 
@@ -66,13 +67,16 @@ export default function App() {
 
   const handlePrint = () => window.print();
 
-  const handleViewChange = (v) => setView(v);
+  const handleViewChange = (v) => {
+    setView(v);
+    setViewResetToken((t) => t + 1);
+  };
 
   return (
     <div className="app-shell">
       <Header onOpenJson={handleOpenJson} onSaveJson={handleSaveJson} onExportPdf={handleExportPdf} onPrint={handlePrint} units={units} onUnitsChange={setUnits} />
       <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} showDimensions={showDimensions} onToggleDimensions={() => setShowDimensions((v) => !v)} />
-      <StairScene stairConfig={stairConfig} calc={calc} view={view} units={units} showDimensions={showDimensions} />
+      <StairScene stairConfig={stairConfig} calc={calc} view={view} viewResetToken={viewResetToken} units={units} showDimensions={showDimensions} />
       <RightPanel
         project={project}
         setProject={setProject}

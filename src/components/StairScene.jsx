@@ -43,7 +43,7 @@ function KeyboardNudge({ controlsRef }) {
   return null;
 }
 
-function CameraController({ view, controlsRef }) {
+function CameraController({ view, viewResetToken, controlsRef }) {
   const { camera } = useThree();
 
   useEffect(() => {
@@ -64,7 +64,8 @@ function CameraController({ view, controlsRef }) {
       ctrl.update();
     }
     camera.updateProjectionMatrix();
-  }, [view, camera, controlsRef]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, viewResetToken, camera, controlsRef]);
 
   return null;
 }
@@ -285,7 +286,7 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, units, showDimensions }) {
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions }) {
   const { height, run, width, steps, railingEnabled, handrailHeight } = stairConfig;
   const orbitRef = useRef();
 
@@ -297,7 +298,7 @@ export default function StairScene({ stairConfig, calc, view, units, showDimensi
       >
         <color attach="background" args={['#edf2f7']} />
 
-        <CameraController view={view} controlsRef={orbitRef} />
+        <CameraController view={view} viewResetToken={viewResetToken} controlsRef={orbitRef} />
         <KeyboardNudge controlsRef={orbitRef} />
 
         <ambientLight intensity={1.1} />
