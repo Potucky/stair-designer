@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
@@ -84,13 +84,21 @@ const LABEL_STYLE = {
   userSelect: 'none',
 };
 
-const S = 1.4; // arrowhead size (scene units)
+const S = 1.4;  // arrowhead length (scene units)
+const AW = S * 0.28; // arrowhead half-width
 
-function ArrowCone({ position, rotation }) {
+function ArrowHead({ tip, wingA, wingB }) {
+  const verts = useMemo(
+    () => new Float32Array([...tip, ...wingA, ...wingB]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [...tip, ...wingA, ...wingB]
+  );
   return (
-    <mesh position={position} rotation={rotation}>
-      <coneGeometry args={[S * 0.25, S, 5]} />
-      <meshBasicMaterial color={DIM_COLOR} />
+    <mesh>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" array={verts} count={3} itemSize={3} />
+      </bufferGeometry>
+      <meshBasicMaterial color={DIM_COLOR} side={THREE.DoubleSide} />
     </mesh>
   );
 }
@@ -102,8 +110,8 @@ function VDim({ x, z, y1, y2, label }) {
   return (
     <>
       <Line points={[[x, lo + S, z], [x, hi - S, z]]} color={DIM_COLOR} lineWidth={1.5} />
-      <ArrowCone position={[x, lo + S / 2, z]} rotation={[Math.PI, 0, 0]} />
-      <ArrowCone position={[x, hi - S / 2, z]} rotation={[0, 0, 0]} />
+      <ArrowHead tip={[x, lo, z]} wingA={[x - AW, lo + S, z]} wingB={[x + AW, lo + S, z]} />
+      <ArrowHead tip={[x, hi, z]} wingA={[x - AW, hi - S, z]} wingB={[x + AW, hi - S, z]} />
       <Html position={[x, (lo + hi) / 2, z]} center>
         <div style={LABEL_STYLE}>{label}</div>
       </Html>
@@ -118,8 +126,8 @@ function HDimX({ y, z, x1, x2, label }) {
   return (
     <>
       <Line points={[[lo + S, y, z], [hi - S, y, z]]} color={DIM_COLOR} lineWidth={1.5} />
-      <ArrowCone position={[lo + S / 2, y, z]} rotation={[0, 0, Math.PI / 2]} />
-      <ArrowCone position={[hi - S / 2, y, z]} rotation={[0, 0, -Math.PI / 2]} />
+      <ArrowHead tip={[lo, y, z]} wingA={[lo + S, y - AW, z]} wingB={[lo + S, y + AW, z]} />
+      <ArrowHead tip={[hi, y, z]} wingA={[hi - S, y - AW, z]} wingB={[hi - S, y + AW, z]} />
       <Html position={[(lo + hi) / 2, y, z]} center>
         <div style={LABEL_STYLE}>{label}</div>
       </Html>
@@ -134,8 +142,8 @@ function HDimZ({ x, y, z1, z2, label }) {
   return (
     <>
       <Line points={[[x, y, lo + S], [x, y, hi - S]]} color={DIM_COLOR} lineWidth={1.5} />
-      <ArrowCone position={[x, y, lo + S / 2]} rotation={[-Math.PI / 2, 0, 0]} />
-      <ArrowCone position={[x, y, hi - S / 2]} rotation={[Math.PI / 2, 0, 0]} />
+      <ArrowHead tip={[x, y, lo]} wingA={[x, y - AW, lo + S]} wingB={[x, y + AW, lo + S]} />
+      <ArrowHead tip={[x, y, hi]} wingA={[x, y - AW, hi - S]} wingB={[x, y + AW, hi - S]} />
       <Html position={[x, y, (lo + hi) / 2]} center>
         <div style={LABEL_STYLE}>{label}</div>
       </Html>
