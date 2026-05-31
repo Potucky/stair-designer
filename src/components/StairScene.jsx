@@ -1,10 +1,47 @@
 import { useEffect, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
+import * as THREE from 'three';
 import { fmtUnit } from '../utils/format.js';
 
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
+
+function KeyboardNudge({ controlsRef }) {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    const onKey = (e) => {
+      const ctrl = controlsRef.current;
+      if (!ctrl) return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      const dist = camera.position.distanceTo(ctrl.target);
+      const step = dist * 0.04;
+
+      const right = new THREE.Vector3();
+      const up = new THREE.Vector3();
+      camera.matrixWorld.extractBasis(right, up, new THREE.Vector3());
+
+      let delta;
+      if (e.key === 'ArrowLeft')       delta = right.multiplyScalar(-step);
+      else if (e.key === 'ArrowRight') delta = right.multiplyScalar(step);
+      else if (e.key === 'ArrowUp')    delta = up.multiplyScalar(step);
+      else if (e.key === 'ArrowDown')  delta = up.multiplyScalar(-step);
+      else return;
+
+      e.preventDefault();
+      camera.position.add(delta);
+      ctrl.target.add(delta);
+      ctrl.update();
+    };
+
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [camera, controlsRef]);
+
+  return null;
+}
 
 function CameraController({ view, controlsRef }) {
   const { camera } = useThree();
@@ -17,7 +54,7 @@ function CameraController({ view, controlsRef }) {
       camera.position.set(160, SCENE_CENTER_Y, 0);
       camera.up.set(0, 1, 0);
     } else {
-      camera.position.set(100, 80, 140);
+      camera.position.set(80, 55, 110);
       camera.up.set(0, 1, 0);
     }
     camera.lookAt(0, SCENE_CENTER_Y, 0);
@@ -255,12 +292,13 @@ export default function StairScene({ stairConfig, calc, view, units, showDimensi
   return (
     <div className="scene-container">
       <Canvas
-        camera={{ position: [80, 80, 120], fov: 45, near: 0.1, far: 5000 }}
+        camera={{ position: [80, 55, 110], fov: 45, near: 0.1, far: 5000 }}
         shadows
       >
         <color attach="background" args={['#edf2f7']} />
 
         <CameraController view={view} controlsRef={orbitRef} />
+        <KeyboardNudge controlsRef={orbitRef} />
 
         <ambientLight intensity={1.1} />
         <directionalLight position={[100, 200, 100]} intensity={1.5} castShadow shadow-mapSize={[1024, 1024]} />

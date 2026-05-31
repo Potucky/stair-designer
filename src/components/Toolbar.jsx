@@ -15,14 +15,6 @@ export default function Toolbar({ activeTool, onToolSelect, onViewChange, showDi
     { id: '3d',     label: '3D View',   icon: '◈' },
   ];
 
-  const comingTools = [
-    { id: 'landing', label: 'Landing' },
-    { id: 'lstair',  label: 'L-Stair' },
-    { id: 'ustair',  label: 'U-Stair' },
-    { id: 'plate',   label: 'Plate' },
-    { id: 'holes',   label: 'Holes' },
-  ];
-
   const handleView = (id) => {
     onViewChange(id);
     onToolSelect(id);
@@ -67,19 +59,6 @@ export default function Toolbar({ activeTool, onToolSelect, onViewChange, showDi
         />
       </div>
 
-      <div className="tool-divider" />
-
-      <div className="tool-group">
-        {comingTools.map((t) => (
-          <ToolButton
-            key={t.id}
-            label={t.label}
-            icon="○"
-            disabled
-            comingSoon
-          />
-        ))}
-      </div>
     </aside>
   );
 }
