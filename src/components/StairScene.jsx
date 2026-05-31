@@ -235,7 +235,6 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
   const treadD = steps > 0 ? r / steps : r;
   const railH = handrailHeight * INtoU;
 
-  const stringerThick = 0.5;
   const treadThick = 0.3;
   const postThick = 0.4;
   const railThick = 0.35;
@@ -243,7 +242,6 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
   const angleRad = Math.atan2(h, r);
   const stringerLen = Math.sqrt(h * h + r * r);
 
-  const metalMat = <meshStandardMaterial color="#475569" metalness={0.55} roughness={0.35} />;
   const handrailMat = <meshStandardMaterial color="#1e3a5f" metalness={0.65} roughness={0.3} />;
   const treadMat = <meshStandardMaterial color="#64748b" metalness={0.4} roughness={0.5} />;
 
@@ -294,14 +292,6 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
 
   return (
     <group position={[0, 0, 0]}>
-      <mesh position={[0, h / 2, -w / 2]} rotation={[0, 0, -angleRad]} castShadow>
-        <boxGeometry args={[stringerLen, stringerThick, stringerThick]} />
-        {metalMat}
-      </mesh>
-      <mesh position={[0, h / 2, w / 2]} rotation={[0, 0, -angleRad]} castShadow>
-        <boxGeometry args={[stringerLen, stringerThick, stringerThick]} />
-        {metalMat}
-      </mesh>
       {treads}
       {posts}
     </group>
