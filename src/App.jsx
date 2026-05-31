@@ -9,7 +9,7 @@ import StatusBar from './components/StatusBar.jsx';
 
 import { calcStair, buildMaterialList } from './geometry/stairMath.js';
 import { validateStair } from './geometry/validation.js';
-import { saveProjectJson } from './utils/saveJson.js';
+import { saveProjectJson, openProjectJson } from './utils/saveJson.js';
 import { generatePdf } from './pdf/generatePdf.js';
 import { saveProject } from './lib/saveProject.js';
 
@@ -62,6 +62,15 @@ export default function App() {
     tubeSize: stairConfig.tubeSize,
   }), [stairConfig, calc]);
 
+  const handleOpenJson = () =>
+    openProjectJson(
+      ({ project: p, stairConfig: sc }) => {
+        setProject((prev) => ({ ...prev, ...p }));
+        setStairConfig((prev) => ({ ...prev, ...sc }));
+      },
+      (msg) => alert(`Could not open file: ${msg}`),
+    );
+
   const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials });
 
   const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials });
@@ -74,7 +83,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Header onSaveJson={handleSaveJson} onExportPdf={handleExportPdf} onPrint={handlePrint} />
+      <Header onOpenJson={handleOpenJson} onSaveJson={handleSaveJson} onExportPdf={handleExportPdf} onPrint={handlePrint} />
       <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} />
       <StairScene stairConfig={stairConfig} calc={calc} view={view} />
       <RightPanel

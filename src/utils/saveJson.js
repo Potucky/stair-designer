@@ -1,3 +1,42 @@
+const VALID_STAIR_KEYS = new Set([
+  'height', 'run', 'width', 'steps', 'tubeSize',
+  'railingEnabled', 'handrailHeight', 'pinOpening', 'postSpacing',
+]);
+
+export function openProjectJson(onLoad, onError) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,application/json';
+  input.onchange = () => {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (data.app !== 'Stair Designer') throw new Error('Not a Stair Designer file');
+        const project = {};
+        if (data.project && typeof data.project === 'object') {
+          if (typeof data.project.name === 'string') project.name = data.project.name;
+          if (typeof data.project.client === 'string') project.client = data.project.client;
+          if (typeof data.project.notes === 'string') project.notes = data.project.notes;
+        }
+        const stairConfig = {};
+        if (data.stairConfig && typeof data.stairConfig === 'object') {
+          for (const key of VALID_STAIR_KEYS) {
+            if (key in data.stairConfig) stairConfig[key] = data.stairConfig[key];
+          }
+        }
+        onLoad({ project, stairConfig });
+      } catch (err) {
+        onError(err.message || 'Invalid file');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
 export function saveProjectJson({ project, stairConfig, calc, warnings, materials }) {
   const payload = {
     app: 'Stair Designer',
