@@ -3,23 +3,30 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import { fmtUnit } from '../utils/format.js';
 
+// Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
+const SCENE_CENTER_Y = 27;
+
 function CameraController({ view }) {
-  const { camera } = useThree();
+  const { camera, controls } = useThree();
 
   useEffect(() => {
     if (view === 'top') {
-      camera.position.set(0, 120, 0.01);
+      camera.position.set(0, 150, 0.01);
       camera.up.set(0, 0, -1);
     } else if (view === 'side') {
-      camera.position.set(120, 60, 0);
+      camera.position.set(160, SCENE_CENTER_Y, 0);
       camera.up.set(0, 1, 0);
     } else {
-      camera.position.set(80, 80, 120);
+      camera.position.set(100, 80, 140);
       camera.up.set(0, 1, 0);
     }
-    camera.lookAt(0, 30, 0);
+    camera.lookAt(0, SCENE_CENTER_Y, 0);
+    if (controls) {
+      controls.target.set(0, SCENE_CENTER_Y, 0);
+      controls.update();
+    }
     camera.updateProjectionMatrix();
-  }, [view, camera]);
+  }, [view, camera, controls]);
 
   return null;
 }
@@ -260,13 +267,14 @@ export default function StairScene({ stairConfig, calc, view, units, showDimensi
 
         <Grid
           args={[500, 500]}
-          cellSize={10}
-          cellThickness={0.35}
-          cellColor="#c8d0dc"
-          sectionSize={50}
-          sectionThickness={0.8}
-          sectionColor="#9aabbf"
-          fadeDistance={600}
+          cellSize={12}
+          cellThickness={0.15}
+          cellColor="#cdd8e4"
+          sectionSize={60}
+          sectionThickness={0.4}
+          sectionColor="#aabccc"
+          fadeDistance={400}
+          fadeStrength={2}
           infiniteGrid
         />
 
@@ -282,7 +290,13 @@ export default function StairScene({ stairConfig, calc, view, units, showDimensi
 
         {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
 
-        <OrbitControls makeDefault enableDamping dampingFactor={0.08} />
+        <OrbitControls
+          makeDefault
+          enableDamping
+          dampingFactor={0.08}
+          screenSpacePanning
+          panSpeed={1.2}
+        />
       </Canvas>
     </div>
   );

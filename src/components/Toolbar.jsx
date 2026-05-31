@@ -61,7 +61,7 @@ export default function Toolbar({ activeTool, onToolSelect, onViewChange, showDi
       <div className="tool-group">
         <ToolButton
           label="Dims"
-          icon="⊢"
+          icon="👁"
           active={showDimensions}
           onClick={onToggleDimensions}
         />
