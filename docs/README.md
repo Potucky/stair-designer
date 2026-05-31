@@ -13,3 +13,4 @@ Stair Designer is a simple focused fabrication tool for stairs, railings, handra
 ## Product
 
 - [Stair Designer MVP Requirements v0.1](product/stair-designer-mvp-requirements-v0.1.md) — Core MVP scope, feature requirements, and out-of-scope boundaries.
+- [Stair Designer Project Line Status — 2026-05-31](product/stair-designer-project-line-status-2026-05-31.md) — Current main project line, completed work, and next implementation direction.
