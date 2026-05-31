@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import { fmtUnit } from '../utils/format.js';
@@ -6,8 +6,8 @@ import { fmtUnit } from '../utils/format.js';
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
 
-function CameraController({ view }) {
-  const { camera, controls } = useThree();
+function CameraController({ view, controlsRef }) {
+  const { camera } = useThree();
 
   useEffect(() => {
     if (view === 'top') {
@@ -21,12 +21,13 @@ function CameraController({ view }) {
       camera.up.set(0, 1, 0);
     }
     camera.lookAt(0, SCENE_CENTER_Y, 0);
-    if (controls) {
-      controls.target.set(0, SCENE_CENTER_Y, 0);
-      controls.update();
+    const ctrl = controlsRef.current;
+    if (ctrl) {
+      ctrl.target.set(0, SCENE_CENTER_Y, 0);
+      ctrl.update();
     }
     camera.updateProjectionMatrix();
-  }, [view, camera, controls]);
+  }, [view, camera, controlsRef]);
 
   return null;
 }
@@ -249,6 +250,7 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
 
 export default function StairScene({ stairConfig, calc, view, units, showDimensions }) {
   const { height, run, width, steps, railingEnabled, handrailHeight } = stairConfig;
+  const orbitRef = useRef();
 
   return (
     <div className="scene-container">
@@ -258,7 +260,7 @@ export default function StairScene({ stairConfig, calc, view, units, showDimensi
       >
         <color attach="background" args={['#edf2f7']} />
 
-        <CameraController view={view} />
+        <CameraController view={view} controlsRef={orbitRef} />
 
         <ambientLight intensity={1.1} />
         <directionalLight position={[100, 200, 100]} intensity={1.5} castShadow shadow-mapSize={[1024, 1024]} />
@@ -291,6 +293,7 @@ export default function StairScene({ stairConfig, calc, view, units, showDimensi
         {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
 
         <OrbitControls
+          ref={orbitRef}
           makeDefault
           enableDamping
           dampingFactor={0.08}
