@@ -17,6 +17,7 @@ import { DEFAULT_STAIR, DEFAULT_PROJECT } from './constants/defaults.js';
 export default function App() {
   const [project, setProject] = useState(DEFAULT_PROJECT);
   const [stairConfig, setStairConfig] = useState(DEFAULT_STAIR);
+  const [units, setUnits] = useState('in');
   const [activeTool, setActiveTool] = useState('select');
   const [view, setView] = useState('3d');
 
@@ -48,16 +49,17 @@ export default function App() {
 
   const handleOpenJson = () =>
     openProjectJson(
-      ({ project: p, stairConfig: sc }) => {
+      ({ project: p, stairConfig: sc, units: u }) => {
         setProject({ ...DEFAULT_PROJECT, ...p });
         setStairConfig({ ...DEFAULT_STAIR, ...sc });
+        if (u) setUnits(u);
       },
       (msg) => alert(`Could not open file: ${msg}`),
     );
 
-  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials });
+  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units });
 
-  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials });
+  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units });
 
   const handleSaveProject = () => saveProject({ project, stairConfig, calc, warnings, materials });
 
@@ -67,7 +69,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Header onOpenJson={handleOpenJson} onSaveJson={handleSaveJson} onExportPdf={handleExportPdf} onPrint={handlePrint} />
+      <Header onOpenJson={handleOpenJson} onSaveJson={handleSaveJson} onExportPdf={handleExportPdf} onPrint={handlePrint} units={units} onUnitsChange={setUnits} />
       <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} />
       <StairScene stairConfig={stairConfig} calc={calc} view={view} />
       <RightPanel
@@ -79,8 +81,9 @@ export default function App() {
         warnings={warnings}
         materials={materials}
         onSaveProject={handleSaveProject}
+        units={units}
       />
-      <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} />
+      <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} units={units} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-export default function Header({ onOpenJson, onSaveJson, onExportPdf, onPrint }) {
+export default function Header({ onOpenJson, onSaveJson, onExportPdf, onPrint, units, onUnitsChange }) {
   const menus = ['File', 'Edit', 'View', 'Build', 'Materials', 'Export', 'Help'];
 
   return (
@@ -12,6 +12,13 @@ export default function Header({ onOpenJson, onSaveJson, onExportPdf, onPrint })
         </nav>
       </div>
       <div className="header-right">
+        <button
+          className="header-btn units-toggle"
+          title={`Switch to ${units === 'in' ? 'millimeters' : 'inches'}`}
+          onClick={() => onUnitsChange(units === 'in' ? 'mm' : 'in')}
+        >
+          {units === 'in' ? 'in' : 'mm'}
+        </button>
         <button className="header-btn" onClick={onOpenJson}>Open JSON</button>
         <button className="header-btn" onClick={onSaveJson}>Save JSON</button>
         <button className="header-btn header-btn-primary" onClick={onExportPdf}>Export PDF</button>

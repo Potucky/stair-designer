@@ -1,7 +1,7 @@
-import { fmtDeg } from '../utils/format.js';
+import { fmtDeg, fmtUnit } from '../utils/format.js';
 import supabase from '../lib/supabaseClient.js';
 
-export default function StatusBar({ activeTool, calc, warnings }) {
+export default function StatusBar({ activeTool, calc, warnings, units }) {
   const supabaseConfigured = Boolean(supabase);
   const errorCount = warnings.filter((w) => w.level === 'error').length;
   const warnCount = warnings.filter((w) => w.level === 'warning').length;
@@ -12,9 +12,9 @@ export default function StatusBar({ activeTool, calc, warnings }) {
       <span>|</span>
       <span>Angle: <strong>{fmtDeg(calc.angleDeg)}</strong></span>
       <span>|</span>
-      <span>Riser: <strong>{calc.riserHeight > 0 ? `${calc.riserHeight.toFixed(3)}"` : '—'}</strong></span>
+      <span>Riser: <strong>{calc.riserHeight > 0 ? fmtUnit(calc.riserHeight, units) : '—'}</strong></span>
       <span>|</span>
-      <span>Units: <strong>inches</strong></span>
+      <span>Units: <strong>{units === 'mm' ? 'mm' : 'in'}</strong></span>
       <span>|</span>
       {errorCount > 0 && <span className="status-error">⚠ {errorCount} error{errorCount !== 1 ? 's' : ''}</span>}
       {warnCount > 0 && <span className="status-warn"> {warnCount} warning{warnCount !== 1 ? 's' : ''}</span>}

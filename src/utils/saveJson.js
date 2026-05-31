@@ -37,7 +37,8 @@ export function openProjectJson(onLoad, onError) {
             }
           }
         }
-        onLoad({ project, stairConfig });
+        const units = data.units === 'mm' ? 'mm' : 'in';
+        onLoad({ project, stairConfig, units });
       } catch (err) {
         onError(err.message || 'Invalid file');
       }
@@ -47,11 +48,12 @@ export function openProjectJson(onLoad, onError) {
   input.click();
 }
 
-export function saveProjectJson({ project, stairConfig, calc, warnings, materials }) {
+export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in' }) {
   const payload = {
     app: 'Stair Designer',
     version: 'v0.0.1 MVP',
     exportedAt: new Date().toISOString(),
+    units,
     project,
     stairConfig,
     calculations: calc,

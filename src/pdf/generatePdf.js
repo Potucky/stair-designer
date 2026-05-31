@@ -1,7 +1,13 @@
 import { jsPDF } from 'jspdf';
 
-export function generatePdf({ project, stairConfig, calc, warnings, materials }) {
+export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in' }) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+  const INCH_TO_MM = 25.4;
+  const fmtDim = (inchVal, dec = 2) =>
+    units === 'mm' ? `${(inchVal * INCH_TO_MM).toFixed(1)} mm` : `${inchVal.toFixed(dec)}"`;
+  const fmtDimStr = (lenStr) =>
+    units === 'mm' ? `${(parseFloat(lenStr) * INCH_TO_MM).toFixed(1)} mm` : `${lenStr}"`;
+  const unitsLabel = units === 'mm' ? 'Metric Units (mm)' : 'Imperial Units (inches)';
   const PW = 612;
   const PH = 792;
   const M = 48;
@@ -128,7 +134,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
   doc.setFontSize(8);
   doc.setFont('helvetica', 'italic');
   doc.setTextColor('#3366cc');
-  doc.text(`Stringer: ${stringerLength.toFixed(2)}"`, ox + dw / 2 + 6, oy - dh / 2 - 8);
+  doc.text(`Stringer: ${fmtDim(stringerLength)}`, ox + dw / 2 + 6, oy - dh / 2 - 8);
 
   // ── Height dimension (left side) ──────────────────────────────────────────
   const hdX = ox - 42;
@@ -144,7 +150,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
   doc.setFontSize(9.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor('#1a1a2e');
-  doc.text(`H = ${height}"`, hdX - 7, oy - dh / 2 + 4, { align: 'right' });
+  doc.text(`H = ${fmtDim(height, 0)}`, hdX - 7, oy - dh / 2 + 4, { align: 'right' });
 
   // ── Run dimension (bottom) ─────────────────────────────────────────────────
   const rdY = oy + 34;
@@ -160,7 +166,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
   doc.setFontSize(9.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor('#1a1a2e');
-  doc.text(`Run = ${run}"`, ox + dw / 2, rdY + 13, { align: 'center' });
+  doc.text(`Run = ${fmtDim(run, 0)}`, ox + dw / 2, rdY + 13, { align: 'center' });
 
   // ── Angle arc at base ──────────────────────────────────────────────────────
   const arcR = 36;
@@ -194,8 +200,8 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor('#1a1a2e');
-    doc.text(`R = ${riserHeight.toFixed(3)}"`, callX, callRY + 3);
-    doc.text(`T = ${treadDepth.toFixed(3)}"`, callX, callTY + 3);
+    doc.text(`R = ${fmtDim(riserHeight, 3)}`, callX, callRY + 3);
+    doc.text(`T = ${fmtDim(treadDepth, 3)}`, callX, callTY + 3);
   }
 
   // ── Railing posts + handrail (if enabled) ─────────────────────────────────
@@ -241,7 +247,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor('#555555');
-    doc.text(`HH = ${hhIn}"`, hhDimX + 7, lp.py - hhPx / 2 + 3);
+    doc.text(`HH = ${fmtDim(hhIn, 0)}`, hhDimX + 7, lp.py - hhPx / 2 + 3);
 
     // Handrail annotation: length / post count / spacing
     const annotY = Math.max(dAreaY + 12, lp.py - hhPx - 14);
@@ -249,7 +255,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
     doc.setFont('helvetica', 'normal');
     doc.setTextColor('#6b2d0a');
     doc.text(
-      `Handrail: ${calc.handrailLength.toFixed(2)}"  |  ${numPosts} posts @ ${stairConfig.postSpacing}" o.c.`,
+      `Handrail: ${fmtDim(calc.handrailLength)}  |  ${numPosts} posts @ ${fmtDim(stairConfig.postSpacing, 0)} o.c.`,
       ox + dw / 2, annotY, { align: 'center' }
     );
   }
@@ -290,7 +296,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor('#1a1a2e');
-  doc.text(`Stair Width = ${stairConfig.width}"`, insetX + insetW / 2, tvMidY + 11, { align: 'center' });
+  doc.text(`Stair Width = ${fmtDim(stairConfig.width, 0)}`, insetX + insetW / 2, tvMidY + 11, { align: 'center' });
 
   pageFooter();
 
@@ -307,20 +313,20 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
     new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
     PW - M - 10, y + 16, { size: 9, color: '#666666', align: 'right' }
   );
-  txt('Imperial Units (inches)', PW - M - 10, y + 32, { size: 9, color: '#666666', align: 'right' });
+  txt(unitsLabel, PW - M - 10, y + 32, { size: 9, color: '#666666', align: 'right' });
   y += 56;
 
   y = sectionHead('STAIR INPUTS', y);
-  y = kv('Total Height:', `${stairConfig.height}"`, M, y);
-  y = kv('Total Run:', `${stairConfig.run}"`, M, y);
-  y = kv('Width:', `${stairConfig.width}"`, M, y);
+  y = kv('Total Height:', fmtDim(stairConfig.height, 0), M, y);
+  y = kv('Total Run:', fmtDim(stairConfig.run, 0), M, y);
+  y = kv('Width:', fmtDim(stairConfig.width, 0), M, y);
   y = kv('Number of Steps:', String(stairConfig.steps), M, y);
   y = kv('Tube Size:', stairConfig.tubeSize, M, y);
   y = kv('Railing:', stairConfig.railingEnabled ? 'Yes' : 'No', M, y);
   if (stairConfig.railingEnabled) {
-    y = kv('Handrail Height:', `${stairConfig.handrailHeight}"`, M, y);
-    y = kv('Max Pin / Guard Opening:', `${stairConfig.pinOpening}"`, M, y);
-    y = kv('Post Spacing:', `${stairConfig.postSpacing}"`, M, y);
+    y = kv('Handrail Height:', fmtDim(stairConfig.handrailHeight, 0), M, y);
+    y = kv('Max Pin / Guard Opening:', fmtDim(stairConfig.pinOpening, 3), M, y);
+    y = kv('Post Spacing:', fmtDim(stairConfig.postSpacing, 0), M, y);
   }
   y += 8;
 
@@ -334,15 +340,15 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
   const rowR = (label, value) => { yR = kv(label, value, M + halfW + 20, yR, 160); };
 
   rowL('Angle:', `${calc.angleDeg.toFixed(1)}°`);
-  rowL('Riser Height:', `${calc.riserHeight.toFixed(3)}"`);
-  rowL('Tread Depth:', `${calc.treadDepth.toFixed(3)}"`);
-  rowL('Stringer Length:', `${calc.stringerLength.toFixed(2)}"`);
+  rowL('Riser Height:', fmtDim(calc.riserHeight, 3));
+  rowL('Tread Depth:', fmtDim(calc.treadDepth, 3));
+  rowL('Stringer Length:', fmtDim(calc.stringerLength));
 
   const errCount = warnings.filter((w) => w.level === 'error').length;
   const warnCount = warnings.filter((w) => w.level === 'warning').length;
   if (stairConfig.railingEnabled) {
     rowR('Post Count:', String(calc.postCount));
-    rowR('Handrail Length:', `${calc.handrailLength.toFixed(2)}"`);
+    rowR('Handrail Length:', fmtDim(calc.handrailLength));
   }
   rowR('Code Errors:', errCount === 0 ? 'None' : String(errCount));
   rowR('Code Warnings:', warnCount === 0 ? 'None' : String(warnCount));
@@ -366,7 +372,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
   doc.setTextColor('#ffffff');
   doc.text('Part', cx[0] + 4, y + 3);
   doc.text('Qty', cx[1] + 4, y + 3);
-  doc.text('Length (in)', cx[2] + 4, y + 3);
+  doc.text(`Length (${units === 'mm' ? 'mm' : 'in'})`, cx[2] + 4, y + 3);
   doc.text('Profile', cx[3] + 4, y + 3);
   doc.text('Note', cx[4] + 4, y + 3);
   y += 14;
@@ -383,7 +389,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials })
     doc.setTextColor('#222222');
     doc.text(item.part, cx[0] + 4, y);
     doc.text(String(item.qty), cx[1] + 4, y);
-    doc.text(String(item.lengthIn), cx[2] + 4, y);
+    doc.text(fmtDimStr(item.lengthIn), cx[2] + 4, y);
     doc.text(item.profile, cx[3] + 4, y);
     doc.text(item.note || '', cx[4] + 4, y);
     y += 16;

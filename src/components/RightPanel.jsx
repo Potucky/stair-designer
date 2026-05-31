@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { TUBE_SIZES } from '../data/materialProfiles.js';
-import { fmtIn, fmtDeg, fmt2 } from '../utils/format.js';
+import { fmtIn, fmtDeg, fmt2, fmtUnit, INCH_TO_MM } from '../utils/format.js';
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, units }) {
   const [saveStatus, setSaveStatus] = useState(null);
 
   const num = (field, min, max) => (e) => {
@@ -36,7 +36,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         </label>
         <div className="field-row">
           <span className="field-label-sm">Units</span>
-          <span className="field-value-sm">Inches (Imperial)</span>
+          <span className="field-value-sm">{units === 'mm' ? 'Millimeters (Metric)' : 'Inches (Imperial)'}</span>
         </div>
         <div className="save-project-row">
           <button
@@ -114,17 +114,17 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           <span className="result-label">Angle</span>
           <span className="result-value">{fmtDeg(calc.angleDeg)}</span>
           <span className="result-label">Riser Height</span>
-          <span className="result-value">{fmtIn(calc.riserHeight)}</span>
+          <span className="result-value">{fmtUnit(calc.riserHeight, units)}</span>
           <span className="result-label">Tread Depth</span>
-          <span className="result-value">{fmtIn(calc.treadDepth)}</span>
+          <span className="result-value">{fmtUnit(calc.treadDepth, units)}</span>
           <span className="result-label">Stringer Length</span>
-          <span className="result-value">{fmtIn(calc.stringerLength)}</span>
+          <span className="result-value">{fmtUnit(calc.stringerLength, units)}</span>
           {stairConfig.railingEnabled && (
             <>
               <span className="result-label">Post Count</span>
               <span className="result-value">{calc.postCount}</span>
               <span className="result-label">Handrail Length</span>
-              <span className="result-value">{fmtIn(calc.handrailLength)}</span>
+              <span className="result-value">{fmtUnit(calc.handrailLength, units)}</span>
             </>
           )}
         </div>
@@ -153,7 +153,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             <tr>
               <th>Part</th>
               <th>Qty</th>
-              <th>Length"</th>
+              <th>Length ({units === 'mm' ? 'mm' : 'in'})</th>
               <th>Profile</th>
             </tr>
           </thead>
@@ -162,7 +162,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               <tr key={i}>
                 <td>{item.part}</td>
                 <td>{item.qty}</td>
-                <td>{item.lengthIn}</td>
+                <td>{units === 'mm' ? (parseFloat(item.lengthIn) * INCH_TO_MM).toFixed(1) : item.lengthIn}</td>
                 <td>{item.profile}</td>
               </tr>
             ))}
