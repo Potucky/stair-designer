@@ -12,23 +12,7 @@ import { validateStair } from './geometry/validation.js';
 import { saveProjectJson, openProjectJson } from './utils/saveJson.js';
 import { generatePdf } from './pdf/generatePdf.js';
 import { saveProject } from './lib/saveProject.js';
-
-const DEFAULT_STAIR = {
-  height: 108,
-  run: 144,
-  width: 48,
-  steps: 14,
-  tubeSize: '2x2',
-  railingEnabled: true,
-  handrailHeight: 36,
-  pinOpening: 3.875,
-  postSpacing: 48,
-};
-
-const DEFAULT_PROJECT = {
-  name: '',
-  client: '',
-};
+import { DEFAULT_STAIR, DEFAULT_PROJECT } from './constants/defaults.js';
 
 export default function App() {
   const [project, setProject] = useState(DEFAULT_PROJECT);
@@ -65,8 +49,8 @@ export default function App() {
   const handleOpenJson = () =>
     openProjectJson(
       ({ project: p, stairConfig: sc }) => {
-        setProject((prev) => ({ ...prev, ...p }));
-        setStairConfig((prev) => ({ ...prev, ...sc }));
+        setProject({ ...DEFAULT_PROJECT, ...p });
+        setStairConfig({ ...DEFAULT_STAIR, ...sc });
       },
       (msg) => alert(`Could not open file: ${msg}`),
     );
