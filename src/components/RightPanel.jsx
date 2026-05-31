@@ -10,6 +10,11 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
     if (!isNaN(v)) setStairConfig((s) => ({ ...s, [field]: Math.min(max, Math.max(min, v)) }));
   };
 
+  const intNum = (field, min, max) => (e) => {
+    const v = parseInt(e.target.value, 10);
+    if (!isNaN(v)) setStairConfig((s) => ({ ...s, [field]: Math.min(max, Math.max(min, v)) }));
+  };
+
   const str = (field) => (e) => setProject((p) => ({ ...p, [field]: e.target.value }));
   const toggle = (field) => (e) => setStairConfig((s) => ({ ...s, [field]: e.target.checked }));
   const sel = (field) => (e) => setStairConfig((s) => ({ ...s, [field]: e.target.value }));
@@ -71,7 +76,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         </label>
         <label className="field-label">Number of Steps
           <input className="field-input" type="number" min="1" max="60" step="1"
-            value={stairConfig.steps} onChange={num('steps', 1, 60)} />
+            value={stairConfig.steps} onChange={intNum('steps', 1, 60)} />
         </label>
         <label className="field-label">Tube Size
           <select className="field-input" value={stairConfig.tubeSize} onChange={sel('tubeSize')}>
