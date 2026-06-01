@@ -64,7 +64,6 @@ function CameraController({ view, viewResetToken, controlsRef }) {
       ctrl.update();
     }
     camera.updateProjectionMatrix();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, viewResetToken, camera, controlsRef]);
 
   return null;
@@ -104,8 +103,7 @@ const AW = S * 0.28; // arrowhead half-width
 function ArrowHead({ tip, wingA, wingB }) {
   const verts = useMemo(
     () => new Float32Array([...tip, ...wingA, ...wingB]),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [...tip, ...wingA, ...wingB]
+    [tip, wingA, wingB]
   );
   return (
     <mesh>
@@ -308,6 +306,7 @@ function MeasureTool({ active, units }) {
   const [endPt, setEndPt] = useState(null);
   const [cursorPt, setCursorPt] = useState(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!active) {
       setPhase('idle');
@@ -316,6 +315,7 @@ function MeasureTool({ active, units }) {
       setCursorPt(null);
     }
   }, [active]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     const onKey = (e) => {

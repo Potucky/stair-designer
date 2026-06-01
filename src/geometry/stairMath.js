@@ -1,4 +1,4 @@
-export function calcStair({ height, run, width, steps, railingEnabled, handrailHeight, postSpacing, pinOpening, railingRunMode = 'matchStair', manualRailingRun }) {
+export function calcStair({ height, run, width, steps, railingEnabled, handrailHeight, postSpacing, railingRunMode = 'matchStair', manualRailingRun }) {
   const riserHeight = steps > 0 ? height / steps : 0;
   const treadDepth = steps > 0 ? run / steps : 0;
   const angleRad = Math.atan2(height, run);
@@ -90,7 +90,7 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
   };
 }
 
-export function buildMaterialList({ height, run, width, steps, stringerLength, postCount, handrailLength, railingEnabled, handrailHeight, tubeSize }) {
+export function buildMaterialList({ width, steps, stringerLength, postCount, handrailLength, railingEnabled, handrailHeight, tubeSize }) {
   const items = [];
 
   items.push({ part: 'Side Stringer', qty: 2, lengthIn: stringerLength.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Each side' });
