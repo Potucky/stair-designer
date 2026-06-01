@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { TUBE_SIZES } from '../data/materialProfiles.js';
 import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
 
-function DraftInput({ value, onCommit, className, inputMode = 'decimal', integer = false }) {
+function DraftInput({ value, onCommit, onBlurCommit, className, inputMode = 'decimal', integer = false }) {
   const [draft, setDraft] = useState(null);
 
   const parse = (raw) => {
@@ -17,7 +17,13 @@ function DraftInput({ value, onCommit, className, inputMode = 'decimal', integer
     if (v !== null) onCommit(v);
   };
 
-  const handleBlur = () => setDraft(null);
+  const handleBlur = () => {
+    if (onBlurCommit && draft !== null) {
+      const v = parse(draft);
+      if (v !== null) onBlurCommit(v);
+    }
+    setDraft(null);
+  };
 
   const handleFocus = (e) => {
     const len = e.target.value.length;
@@ -45,10 +51,13 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
   const toggle = (field) => (e) => setStairConfig((s) => ({ ...s, [field]: e.target.checked }));
   const sel = (field) => (e) => setStairConfig((s) => ({ ...s, [field]: e.target.value }));
 
-  const commitDim = (field, min, max) => (v) =>
-    setStairConfig((s) => ({ ...s, [field]: Math.min(max, Math.max(min, v)) }));
+  const commitDim = (field) => (v) =>
+    setStairConfig((s) => ({ ...s, [field]: v }));
 
   const commitSteps = (v) =>
+    setStairConfig((s) => ({ ...s, steps: Math.max(1, Math.round(v)) }));
+
+  const commitStepsBlur = (v) =>
     setStairConfig((s) => ({ ...s, steps: Math.min(60, Math.max(1, Math.round(v))) }));
 
   const errorWarnings = warnings.filter((w) => w.level === 'error');
@@ -95,16 +104,16 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         <h3 className="section-title">Selected Object — Stair 1</h3>
 
         <label className="field-label">Total Height (in)
-          <DraftInput className="field-input" value={stairConfig.height} onCommit={commitDim('height', 12, 240)} />
+          <DraftInput className="field-input" value={stairConfig.height} onCommit={commitDim('height')} />
         </label>
         <label className="field-label">Total Run (in)
-          <DraftInput className="field-input" value={stairConfig.run} onCommit={commitDim('run', 12, 480)} />
+          <DraftInput className="field-input" value={stairConfig.run} onCommit={commitDim('run')} />
         </label>
         <label className="field-label">Width (in)
-          <DraftInput className="field-input" value={stairConfig.width} onCommit={commitDim('width', 12, 144)} />
+          <DraftInput className="field-input" value={stairConfig.width} onCommit={commitDim('width')} />
         </label>
         <label className="field-label">Number of Steps
-          <DraftInput className="field-input" inputMode="numeric" integer={true} value={stairConfig.steps} onCommit={commitSteps} />
+          <DraftInput className="field-input" inputMode="numeric" integer={true} value={stairConfig.steps} onCommit={commitSteps} onBlurCommit={commitStepsBlur} />
         </label>
         <label className="field-label">Tube Size
           <select className="field-input" value={stairConfig.tubeSize} onChange={sel('tubeSize')}>
@@ -120,13 +129,13 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         {stairConfig.railingEnabled && (
           <>
             <label className="field-label">Handrail Height (in)
-              <DraftInput className="field-input" value={stairConfig.handrailHeight} onCommit={commitDim('handrailHeight', 30, 48)} />
+              <DraftInput className="field-input" value={stairConfig.handrailHeight} onCommit={commitDim('handrailHeight')} />
             </label>
             <label className="field-label">Guard/Pin Opening (in)
-              <DraftInput className="field-input" value={stairConfig.pinOpening} onCommit={commitDim('pinOpening', 1, 6)} />
+              <DraftInput className="field-input" value={stairConfig.pinOpening} onCommit={commitDim('pinOpening')} />
             </label>
             <label className="field-label">Post Spacing (in)
-              <DraftInput className="field-input" value={stairConfig.postSpacing} onCommit={commitDim('postSpacing', 12, 96)} />
+              <DraftInput className="field-input" value={stairConfig.postSpacing} onCommit={commitDim('postSpacing')} />
             </label>
           </>
         )}
