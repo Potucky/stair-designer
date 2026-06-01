@@ -179,7 +179,7 @@ function DimensionLabels({ stairConfig, calc, units }) {
   const riserH = calc.riserHeight * INtoU;
   const treadD = calc.treadDepth * INtoU;
   const railH = handrailHeight * INtoU;
-  const postSpU = Math.min(postSpacing, run) * INtoU;
+  const postSpU = (calc.dimensionEndpoints?.postSp?.x2 ?? Math.min(postSpacing, run)) * INtoU;
 
   const riseX  = -r / 2 - 10;
   const runY   = -7;

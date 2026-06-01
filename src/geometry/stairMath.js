@@ -7,14 +7,17 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
 
   // Railing run: either mirrors stair or manual override. Does not affect treads.
   const railingRun = railingRunMode === 'manual' && manualRailingRun > 0 ? manualRailingRun : run;
-  const railingStringerLength = run > 0 ? (railingRun / run) * stringerLength : stringerLength;
+  // When run is < 1" the stair is pathological; use railingRun directly to avoid runaway ratios.
+  const railingStringerLength = run >= 1
+    ? (railingRun / run) * stringerLength
+    : railingRun;
 
   const effectiveSpacing = postSpacing > 0 ? postSpacing : 48;
   let postCount = 0;
   let handrailLength = 0;
 
   if (railingEnabled) {
-    postCount = Math.ceil(railingStringerLength / effectiveSpacing) + 1;
+    postCount = Math.min(100, Math.ceil(railingStringerLength / effectiveSpacing) + 1);
     handrailLength = railingStringerLength;
   }
 
@@ -24,8 +27,9 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
     treadPositions.push({ x: (i + 0.5) * treadDepth, y: (i + 1) * riserHeight, step: i });
   }
 
-  // Post positions along railingRun; y follows the same stair slope
-  const slope = run > 0 ? height / run : 0;
+  // Post positions along railingRun; y follows the same stair slope.
+  // Clamp slope to 0 when run < 1" to prevent coordinate explosion on pathological inputs.
+  const slope = run >= 1 ? height / run : 0;
   const postStations = [];
   if (railingEnabled && postCount > 0) {
     for (let i = 0; i < postCount; i++) {

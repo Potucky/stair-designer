@@ -5,6 +5,10 @@ export function validateStair({ angleDeg, riserHeight, treadDepth, width, steps,
     warnings.push({ level: 'error', msg: 'Invalid step count. Minimum 2 steps required.' });
   }
 
+  if (run > 0 && run < 1) {
+    warnings.push({ level: 'warning', msg: `Total Run ${run}" is extremely small (< 1"). Railing geometry uses a safe flat approximation.` });
+  }
+
   if (angleDeg > 40) {
     warnings.push({ level: 'warning', msg: `Stair angle ${angleDeg.toFixed(1)}° is steep. Common maximum is 40°.` });
   } else if (angleDeg < 25 && angleDeg > 0) {

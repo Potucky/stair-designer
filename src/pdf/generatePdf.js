@@ -205,15 +205,10 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   }
 
   // ── Railing posts + handrail (if enabled) ─────────────────────────────────
-  if (railEnabled) {
-    const numPosts = Math.max(2, calc.postCount || 2);
-
-    // Post positions: evenly spaced along stringer diagonal
-    const postPts = [];
-    for (let i = 0; i < numPosts; i++) {
-      const t = i / (numPosts - 1);
-      postPts.push({ px: ox + t * dw, py: oy - t * dh });
-    }
+  if (railEnabled && calc.postStations && calc.postStations.length >= 2) {
+    // Use postStations from calc so the PDF honors railingRun (manual or match-stair).
+    const postPts = calc.postStations.map(({ x, y }) => ({ px: ox + x * sc, py: oy - y * sc }));
+    const numPosts = postPts.length;
 
     // Vertical posts
     doc.setDrawColor('#444444');
@@ -232,7 +227,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       );
     }
 
-    // Handrail height dimension at last post (top-right of stair)
+    // Handrail height dimension at last post (top-right of railing)
     const lp = postPts[postPts.length - 1];
     const hhDimX = lp.px + 16;
     doc.setDrawColor('#555555');
@@ -249,14 +244,15 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     doc.setTextColor('#555555');
     doc.text(`HH = ${fmtDim(hhIn, 0)}`, hhDimX + 7, lp.py - hhPx / 2 + 3);
 
-    // Handrail annotation: length / post count / spacing
+    // Handrail annotation centered on railing run (not stair run)
     const annotY = Math.max(dAreaY + 12, lp.py - hhPx - 14);
+    const annotCenterX = ox + (calc.railingRun ?? run) * sc / 2;
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor('#6b2d0a');
     doc.text(
       `Handrail: ${fmtDim(calc.handrailLength)}  |  ${numPosts} posts @ ${fmtDim(stairConfig.postSpacing, 0)} o.c.`,
-      ox + dw / 2, annotY, { align: 'center' }
+      annotCenterX, annotY, { align: 'center' }
     );
   }
 
