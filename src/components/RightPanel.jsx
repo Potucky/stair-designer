@@ -11,7 +11,13 @@ function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', 
   const parse = (raw) => {
     const trimmed = raw.trim();
     if (trimmed === '') return null;
-    const v = integer ? parseInt(trimmed, 10) : parseFloat(trimmed);
+    if (integer) {
+      if (!/^\d+$/.test(trimmed)) return null;
+      const v = parseInt(trimmed, 10);
+      return v > 0 ? v : null;
+    }
+    if (!/^(\d+\.?\d*|\.\d+)$/.test(trimmed)) return null;
+    const v = parseFloat(trimmed);
     return Number.isFinite(v) && v > 0 ? v : null;
   };
 
