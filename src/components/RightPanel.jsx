@@ -6,6 +6,7 @@ function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', 
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState('');
   const cancelRef = useRef(false);
+  const valueAtFocusRef = useRef(null);
 
   const parse = (raw) => {
     const trimmed = raw.trim();
@@ -16,6 +17,7 @@ function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', 
 
   const handleFocus = (e) => {
     cancelRef.current = false;
+    valueAtFocusRef.current = value;
     const el = e.target;
     const str = String(value);
     setDraft(str);
@@ -36,6 +38,8 @@ function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', 
     if (!cancelRef.current) {
       const v = parse(draft);
       if (v !== null) onCommit(v);
+    } else {
+      onCommit(valueAtFocusRef.current);
     }
     cancelRef.current = false;
     setFocused(false);
