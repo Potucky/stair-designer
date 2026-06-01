@@ -13,11 +13,16 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
     : railingRun;
 
   const effectiveSpacing = postSpacing > 0 ? postSpacing : 48;
+  const MAX_POST_COUNT = 100;
   let postCount = 0;
   let handrailLength = 0;
+  let rawPostCount = 0;
+  let postCountCapped = false;
 
   if (railingEnabled) {
-    postCount = Math.min(100, Math.ceil(railingStringerLength / effectiveSpacing) + 1);
+    rawPostCount = Math.ceil(railingStringerLength / effectiveSpacing) + 1;
+    postCountCapped = rawPostCount > MAX_POST_COUNT;
+    postCount = Math.min(MAX_POST_COUNT, rawPostCount);
     handrailLength = railingStringerLength;
   }
 
@@ -75,6 +80,13 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
     dimensionEndpoints,
     railingRun,
     railingStringerLength,
+    // Safe railing geometry (slope=0 when run<1 to prevent explosion)
+    railingEndY: railingEndHeight,
+    railingSlope: slope,
+    // Post count capping info for warnings
+    rawPostCount,
+    postCountCapped,
+    maxPostCount: MAX_POST_COUNT,
   };
 }
 

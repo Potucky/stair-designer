@@ -80,27 +80,31 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   // Ground line sits 50 pts above the bottom of dArea (run-dim label below)
   const groundY = dAreaY + dAreaH - 50;          // ≈544
 
-  // Scale: include railing height so everything fits above the ground line
+  // Scale: include railing height so everything fits above the ground line.
+  // Horizontal scale uses the max of stair run and railing run so a longer manual
+  // railing does not overflow the drawing area.
+  const maxHorizIn = Math.max(run, calc.railingRun ?? run);
   const visualHeightIn = height + (railEnabled ? hhIn : 0);
   const availAbovePts = groundY - dAreaY - 8;    // ≈452 pts headroom
-  const scaleX = (dAreaW * 0.84) / (run || 1);
+  const scaleX = (dAreaW * 0.80) / (maxHorizIn || 1);
   const scaleY = availAbovePts / ((visualHeightIn || 1) * 1.08);
   const sc = Math.min(scaleX, scaleY);
 
-  const dw = run * sc;
+  const dw = run * sc;                   // stair run in pts
+  const maxW = maxHorizIn * sc;          // full horizontal extent (railing or stair, whichever is wider)
   const dh = height * sc;
   const rPx = riserHeight * sc;
   const tPx = treadDepth * sc;
   const hhPx = hhIn * sc;
 
-  // Stair origin: bottom-left corner, centred horizontally in drawing area
-  const ox = dAreaX + (dAreaW - dw) / 2;
+  // Stair origin: bottom-left corner, centred on the full horizontal extent
+  const ox = dAreaX + (dAreaW - maxW) / 2;
   const oy = groundY;
 
   // Ground line
   doc.setDrawColor('#888888');
   doc.setLineWidth(1);
-  doc.line(ox - 28, oy, ox + dw + 28, oy);
+  doc.line(ox - 28, oy, ox + maxW + 28, oy);
 
   // Wall line — dashed vertical reference at left
   doc.setDrawColor('#cccccc');

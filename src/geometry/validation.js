@@ -1,4 +1,4 @@
-export function validateStair({ angleDeg, riserHeight, treadDepth, width, steps, handrailHeight, pinOpening, railingEnabled, railingRunMode, manualRailingRun, run }) {
+export function validateStair({ angleDeg, riserHeight, treadDepth, width, steps, handrailHeight, pinOpening, railingEnabled, railingRunMode, manualRailingRun, run, rawPostCount, postCountCapped, maxPostCount = 100 }) {
   const warnings = [];
 
   if (steps < 2) {
@@ -46,6 +46,10 @@ export function validateStair({ angleDeg, riserHeight, treadDepth, width, steps,
       warnings.push({ level: 'error', msg: `Guard/pin opening ${pinOpening}" exceeds 4" sphere rule.` });
     } else if (pinOpening > 3.875) {
       warnings.push({ level: 'warning', msg: `Pin opening ${pinOpening}" exceeds shop target of 3⅞". Stay at or below 3.875" for safety margin.` });
+    }
+
+    if (postCountCapped && rawPostCount != null) {
+      warnings.push({ level: 'warning', msg: `Post count capped at ${maxPostCount} (calculated: ${rawPostCount}). Verify post spacing for very long railing runs.` });
     }
 
     if (steps >= 4) {

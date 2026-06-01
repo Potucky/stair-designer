@@ -225,7 +225,7 @@ function DimensionLabels({ stairConfig, calc, units }) {
   );
 }
 
-function StairModel({ height, run, width, steps, railingEnabled, handrailHeight, postCount, treadPositions, postStations, railingRun }) {
+function StairModel({ height, run, width, steps, railingEnabled, handrailHeight, postCount, treadPositions, postStations, railingRun, railingEndY }) {
   const INtoU = 0.5;
 
   const h = height * INtoU;
@@ -239,10 +239,11 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
   const postThick = 0.4;
   const railThick = 0.35;
 
-  // Handrail bar uses railingRun (may differ from stair run); angle stays constant (same slope)
+  // Use safe railingEndY from calc (slope clamped to 0 when run<1 to prevent explosion).
   const rr = (railingRun ?? run) * INtoU;
-  const rh = r > 0 ? (rr / r) * h : h;
-  const angleRad = Math.atan2(h, r);
+  const safeEndY = railingEndY != null ? railingEndY : (run >= 1 ? (railingRun ?? run) / run * height : 0);
+  const rh = safeEndY * INtoU;
+  const angleRad = Math.atan2(rh, rr);
   const stringerLen = Math.sqrt(rr * rr + rh * rh);
   const handrailCenterX = -r / 2 + rr / 2;
   const handrailCenterY = rh / 2 + railH;
@@ -472,6 +473,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           treadPositions={calc.treadPositions}
           postStations={calc.postStations}
           railingRun={calc.railingRun}
+          railingEndY={calc.railingEndY}
         />
 
         {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
