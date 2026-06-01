@@ -4,6 +4,15 @@ import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
 
 export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units }) {
   const [saveStatus, setSaveStatus] = useState(null);
+  const [stepsDraft, setStepsDraft] = useState(null);
+
+  const commitSteps = (raw) => {
+    setStepsDraft(null);
+    const v = parseInt(raw, 10);
+    if (Number.isFinite(v)) {
+      setStairConfig((s) => ({ ...s, steps: Math.min(60, Math.max(1, v)) }));
+    }
+  };
 
   const num = (field, min, max) => (e) => {
     const v = parseFloat(e.target.value);
@@ -76,7 +85,11 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         </label>
         <label className="field-label">Number of Steps
           <input className="field-input" type="number" min="1" max="60" step="1"
-            value={stairConfig.steps} onChange={intNum('steps', 1, 60)} />
+            value={stepsDraft !== null ? stepsDraft : stairConfig.steps}
+            onChange={(e) => setStepsDraft(e.target.value)}
+            onBlur={(e) => commitSteps(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.target.blur(); } }}
+          />
         </label>
         <label className="field-label">Tube Size
           <select className="field-input" value={stairConfig.tubeSize} onChange={sel('tubeSize')}>
