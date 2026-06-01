@@ -84,7 +84,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   // Horizontal scale uses the max of stair run and railing run so a longer manual
   // railing does not overflow the drawing area.
   const maxHorizIn = Math.max(run, calc.railingRun ?? run);
-  const visualHeightIn = height + (railEnabled ? hhIn : 0);
+  const visualHeightIn = Math.max(height, calc.railingEndY ?? height) + (railEnabled ? hhIn : 0);
   const availAbovePts = groundY - dAreaY - 8;    // ≈452 pts headroom
   const scaleX = (dAreaW * 0.80) / (maxHorizIn || 1);
   const scaleY = availAbovePts / ((visualHeightIn || 1) * 1.08);

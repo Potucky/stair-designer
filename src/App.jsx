@@ -37,6 +37,9 @@ export default function App() {
     railingRunMode: stairConfig.railingRunMode,
     manualRailingRun: stairConfig.manualRailingRun,
     run: stairConfig.run,
+    rawPostCount: calc.rawPostCount,
+    postCountCapped: calc.postCountCapped,
+    maxPostCount: calc.maxPostCount,
   }), [calc, stairConfig]);
 
   const materials = useMemo(() => buildMaterialList({
