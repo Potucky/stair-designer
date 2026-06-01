@@ -1,4 +1,4 @@
-export function validateStair({ angleDeg, riserHeight, treadDepth, width, steps, handrailHeight, pinOpening, railingEnabled }) {
+export function validateStair({ angleDeg, riserHeight, treadDepth, width, steps, handrailHeight, pinOpening, railingEnabled, railingRunMode, manualRailingRun, run }) {
   const warnings = [];
 
   if (steps < 2) {
@@ -21,6 +21,14 @@ export function validateStair({ angleDeg, riserHeight, treadDepth, width, steps,
 
   if (width < 36) {
     warnings.push({ level: 'warning', msg: `Stair width ${width}" is below typical residential minimum of 36".` });
+  }
+
+  if (railingEnabled && railingRunMode === 'manual' && manualRailingRun > 0 && run > 0) {
+    if (manualRailingRun < run) {
+      warnings.push({ level: 'warning', msg: `Manual railing run ${manualRailingRun}" is shorter than stair run ${run}". Railing will not cover the full stair.` });
+    } else if (manualRailingRun > run * 2) {
+      warnings.push({ level: 'warning', msg: `Manual railing run ${manualRailingRun}" is very large compared to stair run ${run}".` });
+    }
   }
 
   if (railingEnabled) {

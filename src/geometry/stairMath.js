@@ -1,17 +1,21 @@
-export function calcStair({ height, run, width, steps, railingEnabled, handrailHeight, postSpacing, pinOpening }) {
+export function calcStair({ height, run, width, steps, railingEnabled, handrailHeight, postSpacing, pinOpening, railingRunMode = 'matchStair', manualRailingRun }) {
   const riserHeight = steps > 0 ? height / steps : 0;
   const treadDepth = steps > 0 ? run / steps : 0;
   const angleRad = Math.atan2(height, run);
   const angleDeg = (angleRad * 180) / Math.PI;
   const stringerLength = Math.sqrt(height * height + run * run);
 
+  // Railing run: either mirrors stair or manual override. Does not affect treads.
+  const railingRun = railingRunMode === 'manual' && manualRailingRun > 0 ? manualRailingRun : run;
+  const railingStringerLength = run > 0 ? (railingRun / run) * stringerLength : stringerLength;
+
   const effectiveSpacing = postSpacing > 0 ? postSpacing : 48;
   let postCount = 0;
   let handrailLength = 0;
 
   if (railingEnabled) {
-    postCount = Math.ceil(stringerLength / effectiveSpacing) + 1;
-    handrailLength = stringerLength;
+    postCount = Math.ceil(railingStringerLength / effectiveSpacing) + 1;
+    handrailLength = railingStringerLength;
   }
 
   // Tread centers in inches — x is horizontal center, y is top surface, origin at stair bottom-start
@@ -20,17 +24,19 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
     treadPositions.push({ x: (i + 0.5) * treadDepth, y: (i + 1) * riserHeight, step: i });
   }
 
-  // Post positions in inches along the stringer, t ∈ [0, 1] from bottom to top
+  // Post positions along railingRun; y follows the same stair slope
+  const slope = run > 0 ? height / run : 0;
   const postStations = [];
   if (railingEnabled && postCount > 0) {
     for (let i = 0; i < postCount; i++) {
       const t = i / Math.max(postCount - 1, 1);
-      postStations.push({ t, x: t * run, y: t * height });
+      postStations.push({ t, x: t * railingRun, y: t * railingRun * slope });
     }
   }
 
+  const railingEndHeight = railingRun * slope;
   const railEndpoints = railingEnabled
-    ? { start: { x: 0, y: handrailHeight }, end: { x: run, y: height + handrailHeight } }
+    ? { start: { x: 0, y: handrailHeight }, end: { x: railingRun, y: railingEndHeight + handrailHeight } }
     : null;
 
   // Key geometry endpoints in inches for dimension annotations (origin at stair bottom-start)
@@ -42,7 +48,7 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
     tread: { y: height - riserHeight, x1: run - treadDepth, x2: run },
     ...(railingEnabled && {
       railH:  { x: 0, y1: height, y2: height + handrailHeight },
-      postSp: { y: 0, x1: 0,     x2: Math.min(effectiveSpacing, run) },
+      postSp: { y: 0, x1: 0,     x2: Math.min(effectiveSpacing, railingRun) },
     }),
   };
 
@@ -63,6 +69,8 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
     postStations,
     railEndpoints,
     dimensionEndpoints,
+    railingRun,
+    railingStringerLength,
   };
 }
 

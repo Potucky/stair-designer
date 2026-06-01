@@ -34,6 +34,9 @@ export default function App() {
     handrailHeight: stairConfig.handrailHeight,
     pinOpening: stairConfig.pinOpening,
     railingEnabled: stairConfig.railingEnabled,
+    railingRunMode: stairConfig.railingRunMode,
+    manualRailingRun: stairConfig.manualRailingRun,
+    run: stairConfig.run,
   }), [calc, stairConfig]);
 
   const materials = useMemo(() => buildMaterialList({

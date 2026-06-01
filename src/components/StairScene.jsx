@@ -225,7 +225,7 @@ function DimensionLabels({ stairConfig, calc, units }) {
   );
 }
 
-function StairModel({ height, run, width, steps, railingEnabled, handrailHeight, postCount, treadPositions, postStations }) {
+function StairModel({ height, run, width, steps, railingEnabled, handrailHeight, postCount, treadPositions, postStations, railingRun }) {
   const INtoU = 0.5;
 
   const h = height * INtoU;
@@ -239,8 +239,13 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
   const postThick = 0.4;
   const railThick = 0.35;
 
+  // Handrail bar uses railingRun (may differ from stair run); angle stays constant (same slope)
+  const rr = (railingRun ?? run) * INtoU;
+  const rh = r > 0 ? (rr / r) * h : h;
   const angleRad = Math.atan2(h, r);
-  const stringerLen = Math.sqrt(h * h + r * r);
+  const stringerLen = Math.sqrt(rr * rr + rh * rh);
+  const handrailCenterX = -r / 2 + rr / 2;
+  const handrailCenterY = rh / 2 + railH;
 
   const handrailMat = <meshStandardMaterial color="#1e3a5f" metalness={0.65} roughness={0.3} />;
   const treadMat = <meshStandardMaterial color="#64748b" metalness={0.4} roughness={0.5} />;
@@ -277,7 +282,7 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
       posts.push(
         <mesh
           key={`rail-${si}`}
-          position={[0, h / 2 + railH, zOff]}
+          position={[handrailCenterX, handrailCenterY, zOff]}
           rotation={[0, 0, angleRad]}
           castShadow
         >
@@ -466,6 +471,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           postCount={calc.postCount}
           treadPositions={calc.treadPositions}
           postStations={calc.postStations}
+          railingRun={calc.railingRun}
         />
 
         {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}

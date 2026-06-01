@@ -156,6 +156,17 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
 
         {stairConfig.railingEnabled && (
           <>
+            <label className="field-label">Railing Run Mode
+              <select className="field-input" value={stairConfig.railingRunMode} onChange={sel('railingRunMode')}>
+                <option value="matchStair">Match Stair</option>
+                <option value="manual">Manual</option>
+              </select>
+            </label>
+            {stairConfig.railingRunMode === 'manual' && (
+              <label className="field-label">Railing Length (in)
+                <NumericDraftInput className="field-input" value={stairConfig.manualRailingRun} onCommit={commitDim('manualRailingRun')} />
+              </label>
+            )}
             <label className="field-label">Handrail Height (in)
               <NumericDraftInput className="field-input" value={stairConfig.handrailHeight} onCommit={commitDim('handrailHeight')} />
             </label>

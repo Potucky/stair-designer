@@ -8,6 +8,8 @@ export const DEFAULT_STAIR = {
   handrailHeight: 36,
   pinOpening: 3.875,
   postSpacing: 48,
+  railingRunMode: 'matchStair',
+  manualRailingRun: 144,
 };
 
 export const DEFAULT_PROJECT = {
