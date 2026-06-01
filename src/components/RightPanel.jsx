@@ -1,19 +1,28 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { TUBE_SIZES } from '../data/materialProfiles.js';
 import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
 
-function DraftInput({ value, onCommit, className, inputMode = 'decimal', integer = false }) {
-  const [draft, setDraft] = useState(null);
+function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', integer = false }) {
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState('');
+  const cancelRef = useRef(false);
 
   const parse = (raw) => {
-    const v = integer ? parseInt(raw, 10) : parseFloat(raw);
+    const trimmed = raw.trim();
+    if (trimmed === '') return null;
+    const v = integer ? parseInt(trimmed, 10) : parseFloat(trimmed);
     return Number.isFinite(v) && v > 0 ? v : null;
   };
 
   const handleFocus = (e) => {
+    cancelRef.current = false;
+    const el = e.target;
     const str = String(value);
     setDraft(str);
-    e.target.setSelectionRange(str.length, str.length);
+    setFocused(true);
+    requestAnimationFrame(() => {
+      el.setSelectionRange(str.length, str.length);
+    });
   };
 
   const handleChange = (e) => {
@@ -24,11 +33,22 @@ function DraftInput({ value, onCommit, className, inputMode = 'decimal', integer
   };
 
   const handleBlur = () => {
-    if (draft !== null) {
+    if (!cancelRef.current) {
       const v = parse(draft);
       if (v !== null) onCommit(v);
     }
-    setDraft(null);
+    cancelRef.current = false;
+    setFocused(false);
+    setDraft('');
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.target.blur();
+    } else if (e.key === 'Escape') {
+      cancelRef.current = true;
+      e.target.blur();
+    }
   };
 
   return (
@@ -36,11 +56,11 @@ function DraftInput({ value, onCommit, className, inputMode = 'decimal', integer
       className={className}
       type="text"
       inputMode={inputMode}
-      value={draft !== null ? draft : String(value)}
+      value={focused ? draft : String(value)}
       onChange={handleChange}
       onBlur={handleBlur}
       onFocus={handleFocus}
-      onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+      onKeyDown={handleKeyDown}
     />
   );
 }
@@ -56,7 +76,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
     setStairConfig((s) => ({ ...s, [field]: v }));
 
   const commitSteps = (v) =>
-    setStairConfig((s) => ({ ...s, steps: Math.max(1, Math.round(v)) }));
+    setStairConfig((s) => ({ ...s, steps: Math.round(v) }));
 
   const errorWarnings = warnings.filter((w) => w.level === 'error');
   const warnWarnings = warnings.filter((w) => w.level === 'warning');
@@ -102,16 +122,16 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         <h3 className="section-title">Selected Object — Stair 1</h3>
 
         <label className="field-label">Total Height (in)
-          <DraftInput className="field-input" value={stairConfig.height} onCommit={commitDim('height')} />
+          <NumericDraftInput className="field-input" value={stairConfig.height} onCommit={commitDim('height')} />
         </label>
         <label className="field-label">Total Run (in)
-          <DraftInput className="field-input" value={stairConfig.run} onCommit={commitDim('run')} />
+          <NumericDraftInput className="field-input" value={stairConfig.run} onCommit={commitDim('run')} />
         </label>
         <label className="field-label">Width (in)
-          <DraftInput className="field-input" value={stairConfig.width} onCommit={commitDim('width')} />
+          <NumericDraftInput className="field-input" value={stairConfig.width} onCommit={commitDim('width')} />
         </label>
         <label className="field-label">Number of Steps
-          <DraftInput className="field-input" inputMode="numeric" integer={true} value={stairConfig.steps} onCommit={commitSteps} />
+          <NumericDraftInput className="field-input" inputMode="numeric" integer={true} value={stairConfig.steps} onCommit={commitSteps} />
         </label>
         <label className="field-label">Tube Size
           <select className="field-input" value={stairConfig.tubeSize} onChange={sel('tubeSize')}>
@@ -127,13 +147,13 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         {stairConfig.railingEnabled && (
           <>
             <label className="field-label">Handrail Height (in)
-              <DraftInput className="field-input" value={stairConfig.handrailHeight} onCommit={commitDim('handrailHeight')} />
+              <NumericDraftInput className="field-input" value={stairConfig.handrailHeight} onCommit={commitDim('handrailHeight')} />
             </label>
             <label className="field-label">Guard/Pin Opening (in)
-              <DraftInput className="field-input" value={stairConfig.pinOpening} onCommit={commitDim('pinOpening')} />
+              <NumericDraftInput className="field-input" value={stairConfig.pinOpening} onCommit={commitDim('pinOpening')} />
             </label>
             <label className="field-label">Post Spacing (in)
-              <DraftInput className="field-input" value={stairConfig.postSpacing} onCommit={commitDim('postSpacing')} />
+              <NumericDraftInput className="field-input" value={stairConfig.postSpacing} onCommit={commitDim('postSpacing')} />
             </label>
           </>
         )}
