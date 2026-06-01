@@ -225,7 +225,7 @@ function DimensionLabels({ stairConfig, calc, units }) {
   );
 }
 
-function StairModel({ height, run, width, steps, railingEnabled, handrailHeight, postCount }) {
+function StairModel({ height, run, width, steps, railingEnabled, handrailHeight, postCount, treadPositions, postStations }) {
   const INtoU = 0.5;
 
   const h = height * INtoU;
@@ -245,24 +245,22 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
   const handrailMat = <meshStandardMaterial color="#1e3a5f" metalness={0.65} roughness={0.3} />;
   const treadMat = <meshStandardMaterial color="#64748b" metalness={0.4} roughness={0.5} />;
 
-  const treads = [];
-  for (let i = 0; i < steps; i++) {
-    const tx = (i + 0.5) * treadD;
-    const ty = (i + 1) * riserH;
-    treads.push(
+  const treads = treadPositions.map(({ x, y }, i) => {
+    const tx = x * INtoU;
+    const ty = y * INtoU;
+    return (
       <mesh key={i} position={[tx - r / 2, ty - riserH / 2 + treadThick / 2, 0]} castShadow receiveShadow>
         <boxGeometry args={[treadD, treadThick, w]} />
         {treadMat}
       </mesh>
     );
-  }
+  });
 
   const posts = [];
   if (railingEnabled && postCount > 0) {
-    for (let i = 0; i < postCount; i++) {
-      const t = i / Math.max(postCount - 1, 1);
-      const px = t * r - r / 2;
-      const py = t * h;
+    postStations.forEach(({ x, y }, i) => {
+      const px = x * INtoU - r / 2;
+      const py = y * INtoU;
       const side = w / 2 + postThick / 2;
 
       [-side, side].forEach((zOff, si) => {
@@ -273,7 +271,7 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
           </mesh>
         );
       });
-    }
+    });
 
     [-w / 2 - postThick / 2, w / 2 + postThick / 2].forEach((zOff, si) => {
       posts.push(
@@ -466,6 +464,8 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           railingEnabled={railingEnabled}
           handrailHeight={handrailHeight}
           postCount={calc.postCount}
+          treadPositions={calc.treadPositions}
+          postStations={calc.postStations}
         />
 
         {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
