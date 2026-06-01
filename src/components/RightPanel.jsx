@@ -2,12 +2,18 @@ import { useState } from 'react';
 import { TUBE_SIZES } from '../data/materialProfiles.js';
 import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
 
-function DraftInput({ value, onCommit, onBlurCommit, className, inputMode = 'decimal', integer = false }) {
+function DraftInput({ value, onCommit, className, inputMode = 'decimal', integer = false }) {
   const [draft, setDraft] = useState(null);
 
   const parse = (raw) => {
     const v = integer ? parseInt(raw, 10) : parseFloat(raw);
     return Number.isFinite(v) && v > 0 ? v : null;
+  };
+
+  const handleFocus = (e) => {
+    const str = String(value);
+    setDraft(str);
+    e.target.setSelectionRange(str.length, str.length);
   };
 
   const handleChange = (e) => {
@@ -18,16 +24,11 @@ function DraftInput({ value, onCommit, onBlurCommit, className, inputMode = 'dec
   };
 
   const handleBlur = () => {
-    if (onBlurCommit && draft !== null) {
+    if (draft !== null) {
       const v = parse(draft);
-      if (v !== null) onBlurCommit(v);
+      if (v !== null) onCommit(v);
     }
     setDraft(null);
-  };
-
-  const handleFocus = (e) => {
-    const len = e.target.value.length;
-    e.target.setSelectionRange(len, len);
   };
 
   return (
@@ -56,9 +57,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
 
   const commitSteps = (v) =>
     setStairConfig((s) => ({ ...s, steps: Math.max(1, Math.round(v)) }));
-
-  const commitStepsBlur = (v) =>
-    setStairConfig((s) => ({ ...s, steps: Math.min(60, Math.max(1, Math.round(v))) }));
 
   const errorWarnings = warnings.filter((w) => w.level === 'error');
   const warnWarnings = warnings.filter((w) => w.level === 'warning');
@@ -113,7 +111,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           <DraftInput className="field-input" value={stairConfig.width} onCommit={commitDim('width')} />
         </label>
         <label className="field-label">Number of Steps
-          <DraftInput className="field-input" inputMode="numeric" integer={true} value={stairConfig.steps} onCommit={commitSteps} onBlurCommit={commitStepsBlur} />
+          <DraftInput className="field-input" inputMode="numeric" integer={true} value={stairConfig.steps} onCommit={commitSteps} />
         </label>
         <label className="field-label">Tube Size
           <select className="field-input" value={stairConfig.tubeSize} onChange={sel('tubeSize')}>
