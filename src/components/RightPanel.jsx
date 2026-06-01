@@ -5,12 +5,23 @@ import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
 function DraftInput({ value, onCommit, className, inputMode = 'decimal', integer = false }) {
   const [draft, setDraft] = useState(null);
 
-  const commit = (raw) => {
-    setDraft(null);
+  const parse = (raw) => {
     const v = integer ? parseInt(raw, 10) : parseFloat(raw);
-    if (Number.isFinite(v) && v > 0) {
-      onCommit(v);
-    }
+    return Number.isFinite(v) && v > 0 ? v : null;
+  };
+
+  const handleChange = (e) => {
+    const raw = e.target.value;
+    setDraft(raw);
+    const v = parse(raw);
+    if (v !== null) onCommit(v);
+  };
+
+  const handleBlur = () => setDraft(null);
+
+  const handleFocus = (e) => {
+    const len = e.target.value.length;
+    e.target.setSelectionRange(len, len);
   };
 
   return (
@@ -19,8 +30,9 @@ function DraftInput({ value, onCommit, className, inputMode = 'decimal', integer
       type="text"
       inputMode={inputMode}
       value={draft !== null ? draft : String(value)}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={(e) => commit(e.target.value)}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onFocus={handleFocus}
       onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
     />
   );
