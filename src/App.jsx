@@ -104,7 +104,7 @@ export default function App() {
 
   const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualPosts });
 
-  const handleSaveProject = () => saveProject({ project, stairConfig, calc, warnings, materials });
+  const handleSaveProject = () => saveProject({ project, stairConfig, calc, warnings, materials, manualPosts });
 
   const handlePrint = () => window.print();
 

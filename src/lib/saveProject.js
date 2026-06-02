@@ -1,6 +1,6 @@
 import supabase from './supabaseClient.js';
 
-export async function saveProject({ project, stairConfig, calc, warnings, materials }) {
+export async function saveProject({ project, stairConfig, calc, warnings, materials, manualPosts = [] }) {
   if (!supabase) {
     return { ok: false, error: 'Supabase is not configured.' };
   }
@@ -31,6 +31,7 @@ export async function saveProject({ project, stairConfig, calc, warnings, materi
         calculated_results: calc,
         warnings: warnings,
         materials: materials,
+        manual_posts: manualPosts,
       });
 
     if (versionError) {

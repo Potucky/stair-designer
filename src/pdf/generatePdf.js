@@ -12,6 +12,12 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   const PH = 792;
   const M = 48;
 
+  const validManualPosts = (Array.isArray(manualPosts) ? manualPosts : []).filter((p) => {
+    if (!p || p.stepIndex == null) return false;
+    if (!(calc.treadPositions || [])[p.stepIndex]) return false;
+    return isFinite(Number(p.xIn)) && isFinite(Number(p.offsetXIn)) && isFinite(Number(p.heightIn));
+  });
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   const setStyle = (size, style = 'normal', color = '#000000') => {
@@ -133,19 +139,15 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // ── Manual Posts (side view) ───────────────────────────────────────────────
   {
-    const posts = Array.isArray(manualPosts) ? manualPosts : [];
-    // visual post width in PDF pts — ~0.5" scaled, clamped so it's always visible
     const postW = Math.max(3, Math.min(8, 0.5 * sc));
 
-    posts.forEach((post, idx) => {
-      if (!post || post.stepIndex == null) return;
-      const tp = (calc.treadPositions || [])[post.stepIndex];
-      if (!tp) return;
+    validManualPosts.forEach((post, idx) => {
+      const tp = calc.treadPositions[post.stepIndex];
 
-      const pxX   = ox + (Number(post.xIn || 0) + Number(post.offsetXIn || 0)) * sc;
-      const baseY = oy - tp.y * sc;                         // tread top surface
-      const postH = Number(post.heightIn || 0) * sc;
-      if (!isFinite(pxX) || !isFinite(baseY) || !isFinite(postH) || postH <= 0) return;
+      const pxX   = ox + (Number(post.xIn) + Number(post.offsetXIn)) * sc;
+      const baseY = oy - tp.y * sc;
+      const postH = Number(post.heightIn) * sc;
+      if (postH <= 0) return;
 
       const topY = baseY - postH;
 
@@ -303,8 +305,8 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     y = kv('Max Pin / Guard Opening:', fmtDim(stairConfig.pinOpening, 3), M, y);
     y = kv('Post Spacing:', fmtDim(stairConfig.postSpacing, 0), M, y);
   }
-  if (manualPosts && manualPosts.length > 0) {
-    y = kv('Manual Posts:', String(manualPosts.length), M, y);
+  if (validManualPosts.length > 0) {
+    y = kv('Manual Posts:', String(validManualPosts.length), M, y);
   }
   y += 8;
 
@@ -328,17 +330,15 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   rowR('Code Warnings:', warnCount === 0 ? 'None' : String(warnCount));
 
   // ── Manual Post Schedule (page 2, if posts exist and space permits) ────────
-  if (manualPosts && manualPosts.length > 0) {
-    // Advance y past the two-column section
+  if (validManualPosts.length > 0) {
     y = Math.max(yL, yR) + 16;
 
-    const rowH  = 14;
-    const tableH = 30 + manualPosts.length * rowH;   // sectionHead + header row + data rows
+    const rowH   = 14;
+    const tableH = 30 + validManualPosts.length * rowH;
 
-    if (y + tableH < PH - 60) {                      // only render when it fits
+    if (y + tableH < PH - 60) {
       y = sectionHead('MANUAL POST SCHEDULE', y);
 
-      // Column layout: Post | Step | Mount | Side | Height | Run Pos
       const pcW = [36, 36, 46, 46, 62, 62];
       const cols = (() => {
         const xs = [M];
@@ -356,19 +356,18 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       y += 12;
 
       let rowAlt = false;
-      manualPosts.forEach((post, idx) => {
-        if (!post || post.stepIndex == null) return;
+      validManualPosts.forEach((post, idx) => {
         if (rowAlt) {
           doc.setFillColor('#f5f7fa');
           doc.rect(M, y - 9, PW - M * 2, rowH, 'F');
         }
         rowAlt = !rowAlt;
 
-        const stepNum  = String((post.stepIndex || 0) + 1);
-        const mount    = post.mount || 'top';
-        const side     = post.side  || 'center';
-        const ht       = fmtDim(Number(post.heightIn || 0), 2);
-        const runPos   = fmtDim(Number(post.xIn || 0) + Number(post.offsetXIn || 0), 2);
+        const stepNum = String(post.stepIndex + 1);
+        const mount   = post.mount || 'top';
+        const side    = post.side  || 'center';
+        const ht      = fmtDim(Number(post.heightIn), 2);
+        const runPos  = fmtDim(Number(post.xIn) + Number(post.offsetXIn), 2);
 
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
@@ -377,6 +376,10 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
         row.forEach((cell, i) => doc.text(cell, cols[i] + 3, y));
         y += rowH;
       });
+    } else {
+      y = Math.max(yL, yR) + 16;
+      txt('Manual Post Schedule omitted: not enough page space.', M, y, { italic: true, size: 8, color: '#888888' });
+      y += 14;
     }
   }
 
