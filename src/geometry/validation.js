@@ -1,8 +1,8 @@
 export function validateStair({ angleDeg, riserHeight, treadDepth, width, steps, handrailHeight, pinOpening, railingEnabled, railingRunMode, manualRailingRun, run, rawPostCount, postCountCapped, maxPostCount = 100 }) {
   const warnings = [];
 
-  if (steps < 2) {
-    warnings.push({ level: 'error', msg: 'Invalid step count. Minimum 2 steps required.' });
+  if (steps < 1) {
+    warnings.push({ level: 'error', msg: 'Invalid step count. Minimum 1 step required.' });
   }
 
   if (run > 0 && run < 1) {

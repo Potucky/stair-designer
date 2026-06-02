@@ -86,7 +86,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
     setStairConfig((s) => ({ ...s, [field]: v }));
 
   const commitSteps = (v) =>
-    setStairConfig((s) => ({ ...s, steps: Math.max(6, Math.round(v)) }));
+    setStairConfig((s) => ({ ...s, steps: Math.max(1, Math.round(v)) }));
 
   const errorWarnings = warnings.filter((w) => w.level === 'error');
   const warnWarnings = warnings.filter((w) => w.level === 'warning');
