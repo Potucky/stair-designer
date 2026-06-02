@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 
-// Under-handrail connector rails are temporarily hidden per fabrication view preference.
-const SHOW_UNDER_HANDRAIL_RAILS = false;
+// Top handrails are temporarily hidden so the fabrication view can focus on post layout.
+const SHOW_TOP_HANDRAILS = false;
 
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in' }) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
@@ -224,14 +224,16 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       doc.line(px, py, px, py - hhPx);
     }
 
-    // Handrail connecting post tops
-    doc.setDrawColor('#6b2d0a');
-    doc.setLineWidth(2);
-    for (let i = 1; i < postPts.length; i++) {
-      doc.line(
-        postPts[i - 1].px, postPts[i - 1].py - hhPx,
-        postPts[i].px, postPts[i].py - hhPx
-      );
+    if (SHOW_TOP_HANDRAILS) {
+      // Handrail connecting post tops
+      doc.setDrawColor('#6b2d0a');
+      doc.setLineWidth(2);
+      for (let i = 1; i < postPts.length; i++) {
+        doc.line(
+          postPts[i - 1].px, postPts[i - 1].py - hhPx,
+          postPts[i].px, postPts[i].py - hhPx
+        );
+      }
     }
 
     // Handrail height dimension at last post (top-right of railing)

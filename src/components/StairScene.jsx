@@ -7,8 +7,8 @@ import { fmtUnit } from '../utils/format.js';
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
 
-// Under-handrail connector rails are temporarily hidden per fabrication view preference.
-const SHOW_UNDER_HANDRAIL_RAILS = false;
+// Top handrails are temporarily hidden so the fabrication view can focus on post layout.
+const SHOW_TOP_HANDRAILS = false;
 
 function KeyboardNudge({ controlsRef }) {
   const { camera } = useThree();
@@ -280,19 +280,21 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
       });
     });
 
-    [-w / 2 - postThick / 2, w / 2 + postThick / 2].forEach((zOff, si) => {
-      posts.push(
-        <mesh
-          key={`rail-${si}`}
-          position={[handrailCenterX, handrailCenterY, zOff]}
-          rotation={[0, 0, angleRad]}
-          castShadow
-        >
-          <boxGeometry args={[stringerLen, railThick, railThick]} />
-          {handrailMat}
-        </mesh>
-      );
-    });
+    if (SHOW_TOP_HANDRAILS) {
+      [-w / 2 - postThick / 2, w / 2 + postThick / 2].forEach((zOff, si) => {
+        posts.push(
+          <mesh
+            key={`rail-${si}`}
+            position={[handrailCenterX, handrailCenterY, zOff]}
+            rotation={[0, 0, angleRad]}
+            castShadow
+          >
+            <boxGeometry args={[stringerLen, railThick, railThick]} />
+            {handrailMat}
+          </mesh>
+        );
+      });
+    }
   }
 
   return (
