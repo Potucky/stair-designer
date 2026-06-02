@@ -184,7 +184,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
       <section className="panel-section">
         <h3 className="section-title">Results</h3>
         <div className="results-grid">
-          <span className="result-label">Angle</span>
+          <span className="result-label">Stair Angle</span>
           <span className="result-value">{fmtDeg(calc.angleDeg)}</span>
           <span className="result-label">Riser Height</span>
           <span className="result-value">{fmtUnit(calc.riserHeight, units)}</span>
