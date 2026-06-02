@@ -86,7 +86,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
     setStairConfig((s) => ({ ...s, [field]: v }));
 
   const commitSteps = (v) =>
-    setStairConfig((s) => ({ ...s, steps: Math.round(v) }));
+    setStairConfig((s) => ({ ...s, steps: Math.max(6, Math.round(v)) }));
 
   const errorWarnings = warnings.filter((w) => w.level === 'error');
   const warnWarnings = warnings.filter((w) => w.level === 'warning');
@@ -127,9 +127,9 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         </div>
       </section>
 
-      {/* Selected Object */}
+      {/* Section 1: Stair Setup */}
       <section className="panel-section">
-        <h3 className="section-title">Selected Object — Stair 1</h3>
+        <h3 className="section-title">Stair Setup</h3>
 
         <label className="field-label">Total Height (in)
           <NumericDraftInput className="field-input" value={stairConfig.height} onCommit={commitDim('height')} />
@@ -143,11 +143,11 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         <label className="field-label">Number of Steps
           <NumericDraftInput className="field-input" inputMode="numeric" integer={true} value={stairConfig.steps} onCommit={commitSteps} />
         </label>
-        <label className="field-label">Tube Size
-          <select className="field-input" value={stairConfig.tubeSize} onChange={sel('tubeSize')}>
-            {TUBE_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </label>
+      </section>
+
+      {/* Section 2: Railing Setup */}
+      <section className="panel-section">
+        <h3 className="section-title">Railing Setup</h3>
 
         <label className="field-label field-checkbox">
           <input type="checkbox" checked={stairConfig.railingEnabled} onChange={toggle('railingEnabled')} />
@@ -156,6 +156,11 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
 
         {stairConfig.railingEnabled && (
           <>
+            <label className="field-label">Tube Size
+              <select className="field-input" value={stairConfig.tubeSize} onChange={sel('tubeSize')}>
+                {TUBE_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
             <label className="field-label">Railing Run Mode
               <select className="field-input" value={stairConfig.railingRunMode} onChange={sel('railingRunMode')}>
                 <option value="matchStair">Match Stair</option>
@@ -176,6 +181,17 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             <label className="field-label">Post Spacing (in)
               <NumericDraftInput className="field-input" value={stairConfig.postSpacing} onCommit={commitDim('postSpacing')} />
             </label>
+
+            {/* TODO: Railing assembly tools will be implemented after stair-first workflow is stable. */}
+            <div style={{ marginTop: 12 }}>
+              <div className="field-label-sm" style={{ marginBottom: 6 }}>Railing Assembly</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button className="panel-btn" disabled title="Coming soon">Posts</button>
+                <button className="panel-btn" disabled title="Coming soon">Top Rail</button>
+                <button className="panel-btn" disabled title="Coming soon">Bottom Rail</button>
+                <button className="panel-btn" disabled title="Coming soon">Bridges</button>
+              </div>
+            </div>
           </>
         )}
       </section>
