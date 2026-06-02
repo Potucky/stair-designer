@@ -75,7 +75,7 @@ function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', 
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost }) {
   const [saveStatus, setSaveStatus] = useState(null);
 
   const str = (field) => (e) => setProject((p) => ({ ...p, [field]: e.target.value }));
@@ -182,16 +182,45 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               <NumericDraftInput className="field-input" value={stairConfig.postSpacing} onCommit={commitDim('postSpacing')} />
             </label>
 
-            {/* TODO: Railing assembly tools will be implemented after stair-first workflow is stable. */}
             <div style={{ marginTop: 12 }}>
               <div className="field-label-sm" style={{ marginBottom: 6 }}>Railing Assembly</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <button className="panel-btn" disabled title="Coming soon">Posts</button>
+                <button
+                  className={`panel-btn${postPlacementMode ? ' panel-btn-active' : ''}`}
+                  onClick={onTogglePostPlacement}
+                >
+                  Posts
+                </button>
                 <button className="panel-btn" disabled title="Coming soon">Top Rail</button>
                 <button className="panel-btn" disabled title="Coming soon">Bottom Rail</button>
                 <button className="panel-btn" disabled title="Coming soon">Bridges</button>
               </div>
+              {postPlacementMode && (
+                <div className="post-tool-hint">Post tool active — click a step or side to place a post</div>
+              )}
             </div>
+
+            {/* Selected post adjustment */}
+            {(() => {
+              const sel = manualPosts && manualPosts.find(p => p.id === selectedManualPostId);
+              if (!sel) return null;
+              return (
+                <div style={{ marginTop: 10 }}>
+                  <div className="field-label-sm" style={{ marginBottom: 4 }}>
+                    Adjust Post — step {sel.stepIndex + 1} ({sel.mount})
+                  </div>
+                  <div className="post-adjust-row">
+                    <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetXIn: sel.offsetXIn - 1 })}>← Nosing</button>
+                    <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetXIn: sel.offsetXIn + 1 })}>Riser →</button>
+                  </div>
+                  <div className="post-adjust-row">
+                    <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetZIn: sel.offsetZIn - 1 })}>Left</button>
+                    <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetZIn: sel.offsetZIn + 1 })}>Right</button>
+                    <button className="panel-btn panel-btn-danger" onClick={() => onDeleteManualPost(sel.id)}>Delete</button>
+                  </div>
+                </div>
+              );
+            })()}
           </>
         )}
       </section>

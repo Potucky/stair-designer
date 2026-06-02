@@ -12,6 +12,21 @@ function isValidStairValue(key, value) {
   return false;
 }
 
+function isValidManualPost(p) {
+  return (
+    p && typeof p === 'object' &&
+    typeof p.id === 'string' &&
+    typeof p.stepIndex === 'number' && Number.isInteger(p.stepIndex) && p.stepIndex >= 0 &&
+    (p.mount === 'top' || p.mount === 'side') &&
+    (p.side === 'left' || p.side === 'right' || p.side === 'center') &&
+    typeof p.xIn === 'number' && Number.isFinite(p.xIn) &&
+    typeof p.zIn === 'number' && Number.isFinite(p.zIn) &&
+    typeof p.offsetXIn === 'number' && Number.isFinite(p.offsetXIn) &&
+    typeof p.offsetZIn === 'number' && Number.isFinite(p.offsetZIn) &&
+    typeof p.heightIn === 'number' && Number.isFinite(p.heightIn) && p.heightIn > 0
+  );
+}
+
 export function openProjectJson(onLoad, onError) {
   const input = document.createElement('input');
   input.type = 'file';
@@ -39,7 +54,11 @@ export function openProjectJson(onLoad, onError) {
           }
         }
         const units = data.units === 'mm' ? 'mm' : 'in';
-        onLoad({ project, stairConfig, units });
+        // Load manualPosts; old files without this field default to []
+        const manualPosts = Array.isArray(data.manualPosts)
+          ? data.manualPosts.filter(isValidManualPost)
+          : [];
+        onLoad({ project, stairConfig, units, manualPosts });
       } catch (err) {
         onError(err.message || 'Invalid file');
       }
@@ -49,7 +68,7 @@ export function openProjectJson(onLoad, onError) {
   input.click();
 }
 
-export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in' }) {
+export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [] }) {
   const payload = {
     app: 'Stair Designer',
     version: 'v0.0.1 MVP',
@@ -57,6 +76,7 @@ export function saveProjectJson({ project, stairConfig, calc, warnings, material
     units,
     project,
     stairConfig,
+    manualPosts,
     calculations: calc,
     warnings: warnings.map((w) => ({ level: w.level, message: w.msg })),
     materialList: materials,

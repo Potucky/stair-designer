@@ -258,6 +258,23 @@ html, body, #root {
 .panel-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .panel-btn-primary { background: var(--accent); border-color: var(--accent-dark); color: #fff; }
 .panel-btn-primary:hover:not(:disabled) { background: var(--accent-dark); color: #fff; }
+.panel-btn-active { background: rgba(37, 99, 235, 0.1); color: var(--accent); border-color: var(--accent); }
+.panel-btn-active:hover:not(:disabled) { background: rgba(37, 99, 235, 0.15); }
+.panel-btn-danger { color: var(--error); border-color: var(--error); }
+.panel-btn-danger:hover:not(:disabled) { background: rgba(220, 38, 38, 0.07); }
+
+.post-tool-hint {
+  font-size: 10px;
+  color: var(--accent);
+  background: rgba(37, 99, 235, 0.07);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 4px;
+  padding: 5px 8px;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.post-adjust-row { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
 
 .save-status-ok    { font-size: 10px; color: var(--ok); font-weight: 600; }
 .save-status-error { font-size: 10px; color: var(--error); }

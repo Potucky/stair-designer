@@ -10,6 +10,10 @@ const SCENE_CENTER_Y = 27;
 // Top handrails are temporarily hidden so the fabrication view can focus on post layout.
 const SHOW_TOP_HANDRAILS = false;
 
+// Thickness constants shared across StairModel and ManualPostsRenderer
+const TREAD_THICK = 0.3;
+const POST_THICK = 0.4;
+
 function KeyboardNudge({ controlsRef }) {
   const { camera } = useThree();
 
@@ -226,7 +230,7 @@ function DimensionLabels({ stairConfig, calc, units }) {
   );
 }
 
-function StairModel({ height, run, width, steps, railingEnabled, handrailHeight, postCount, treadPositions, postStations, railingRun, railingEndY }) {
+function StairModel({ height, run, width, steps, railingEnabled, handrailHeight, postCount, treadPositions, postStations, railingRun, railingEndY, postPlacementMode, onAddManualPost }) {
   const INtoU = 0.5;
 
   const h = height * INtoU;
@@ -236,8 +240,6 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
   const treadD = steps > 0 ? r / steps : r;
   const railH = handrailHeight * INtoU;
 
-  const treadThick = 0.3;
-  const postThick = 0.4;
   const railThick = 0.35;
 
   // Use safe railingEndY from calc (slope clamped to 0 when run<1 to prevent explosion).
@@ -255,9 +257,42 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
   const treads = treadPositions.map(({ x, y }, i) => {
     const tx = x * INtoU;
     const ty = y * INtoU;
+
+    const handleTreadClick = postPlacementMode ? (e) => {
+      e.stopPropagation();
+      const normal = e.face?.normal;
+      let mount = 'top';
+      let side = 'center';
+      let zIn = 0;
+
+      // Detect side face: normal primarily in Z direction
+      if (normal && Math.abs(normal.z) > Math.abs(normal.y) && Math.abs(normal.z) > Math.abs(normal.x)) {
+        mount = 'side';
+        side = normal.z > 0 ? 'right' : 'left';
+        zIn = normal.z > 0 ? width / 2 : -(width / 2);
+      }
+
+      onAddManualPost({
+        stepIndex: i,
+        mount,
+        side,
+        xIn: x,       // tread center X in stair inches
+        zIn,
+        offsetXIn: 0,
+        offsetZIn: 0,
+        heightIn: handrailHeight,
+      });
+    } : undefined;
+
     return (
-      <mesh key={i} position={[tx - r / 2, ty - riserH / 2 + treadThick / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[treadD, treadThick, w]} />
+      <mesh
+        key={i}
+        position={[tx - r / 2, ty - riserH / 2 + TREAD_THICK / 2, 0]}
+        onClick={handleTreadClick}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry args={[treadD, TREAD_THICK, w]} />
         {treadMat}
       </mesh>
     );
@@ -268,12 +303,12 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
     postStations.forEach(({ x, y }, i) => {
       const px = x * INtoU - r / 2;
       const py = y * INtoU;
-      const side = w / 2 + postThick / 2;
+      const side = w / 2 + POST_THICK / 2;
 
       [-side, side].forEach((zOff, si) => {
         posts.push(
           <mesh key={`${i}-${si}`} position={[px, py + railH / 2, zOff]} castShadow>
-            <boxGeometry args={[postThick, railH, postThick]} />
+            <boxGeometry args={[POST_THICK, railH, POST_THICK]} />
             {handrailMat}
           </mesh>
         );
@@ -281,7 +316,7 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
     });
 
     if (SHOW_TOP_HANDRAILS) {
-      [-w / 2 - postThick / 2, w / 2 + postThick / 2].forEach((zOff, si) => {
+      [-w / 2 - POST_THICK / 2, w / 2 + POST_THICK / 2].forEach((zOff, si) => {
         posts.push(
           <mesh
             key={`rail-${si}`}
@@ -302,6 +337,47 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
       {treads}
       {posts}
     </group>
+  );
+}
+
+// Renders manually placed posts from the manualPosts array.
+function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, selectedManualPostId, onSelectManualPost }) {
+  const INtoU = 0.5;
+  const r = run * INtoU;
+  const riserH = riserHeight * INtoU;
+
+  return (
+    <>
+      {manualPosts.map((post) => {
+        const { id, stepIndex, xIn, zIn, offsetXIn, offsetZIn, heightIn } = post;
+        const tp = treadPositions[stepIndex];
+        if (!tp) return null;
+
+        const postH = heightIn * INtoU;
+        const worldX = (xIn + offsetXIn) * INtoU - r / 2;
+        const worldZ = (zIn + offsetZIn) * INtoU;
+        // Tread top Y: center formula (ty - riserH/2 + TREAD_THICK/2) + TREAD_THICK/2
+        const treadTopY = tp.y * INtoU - riserH / 2 + TREAD_THICK;
+        const worldY = treadTopY + postH / 2;
+        const isSelected = id === selectedManualPostId;
+
+        return (
+          <mesh
+            key={id}
+            position={[worldX, worldY, worldZ]}
+            onClick={(e) => { e.stopPropagation(); onSelectManualPost(id); }}
+            castShadow
+          >
+            <boxGeometry args={[POST_THICK, postH, POST_THICK]} />
+            <meshStandardMaterial
+              color={isSelected ? '#f59e0b' : '#c47a3a'}
+              metalness={0.55}
+              roughness={0.35}
+            />
+          </mesh>
+        );
+      })}
+    </>
   );
 }
 
@@ -433,13 +509,14 @@ function MeasureTool({ active, units }) {
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool }) {
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost }) {
   const { height, run, width, steps, railingEnabled, handrailHeight } = stairConfig;
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
+  const activeCursor = isMeasure || postPlacementMode ? 'crosshair' : undefined;
 
   return (
-    <div className="scene-container" style={isMeasure ? { cursor: 'crosshair' } : undefined}>
+    <div className="scene-container" style={activeCursor ? { cursor: activeCursor } : undefined}>
       <Canvas
         camera={{ position: [80, 55, 110], fov: 45, near: 0.1, far: 5000 }}
         shadows
@@ -479,6 +556,17 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           postStations={calc.postStations}
           railingRun={calc.railingRun}
           railingEndY={calc.railingEndY}
+          postPlacementMode={postPlacementMode}
+          onAddManualPost={onAddManualPost}
+        />
+
+        <ManualPostsRenderer
+          manualPosts={manualPosts || []}
+          treadPositions={calc.treadPositions}
+          riserHeight={calc.riserHeight}
+          run={run}
+          selectedManualPostId={selectedManualPostId}
+          onSelectManualPost={onSelectManualPost}
         />
 
         {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}

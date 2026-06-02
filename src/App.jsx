@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import './styles.css';
 
 import Header from './components/Header.jsx';
@@ -22,6 +22,18 @@ export default function App() {
   const [view, setView] = useState('3d');
   const [showDimensions, setShowDimensions] = useState(true);
   const [viewResetToken, setViewResetToken] = useState(0);
+
+  const [manualPosts, setManualPosts] = useState([]);
+  const [postPlacementMode, setPostPlacementMode] = useState(false);
+  const [selectedManualPostId, setSelectedManualPostId] = useState(null);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') setPostPlacementMode(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const calc = useMemo(() => calcStair(stairConfig), [stairConfig]);
 
@@ -55,17 +67,43 @@ export default function App() {
     tubeSize: stairConfig.tubeSize,
   }), [stairConfig, calc]);
 
+  const handleAddManualPost = (postData) => {
+    const id = `post-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setManualPosts(prev => [...prev, { ...postData, id }]);
+  };
+
+  const handleUpdateManualPost = (id, changes) => {
+    setManualPosts(prev => prev.map(p => p.id === id ? { ...p, ...changes } : p));
+  };
+
+  const handleDeleteManualPost = (id) => {
+    setManualPosts(prev => prev.filter(p => p.id !== id));
+    setSelectedManualPostId(null);
+  };
+
+  const handleSelectManualPost = (id) => {
+    setSelectedManualPostId(prev => prev === id ? null : id);
+  };
+
+  const handleTogglePostPlacement = () => {
+    setPostPlacementMode(prev => !prev);
+    setSelectedManualPostId(null);
+  };
+
   const handleOpenJson = () =>
     openProjectJson(
-      ({ project: p, stairConfig: sc, units: u }) => {
+      ({ project: p, stairConfig: sc, units: u, manualPosts: mp }) => {
         setProject({ ...DEFAULT_PROJECT, ...p });
         setStairConfig({ ...DEFAULT_STAIR, ...sc });
         if (u) setUnits(u);
+        setManualPosts(Array.isArray(mp) ? mp : []);
+        setSelectedManualPostId(null);
+        setPostPlacementMode(false);
       },
       (msg) => alert(`Could not open file: ${msg}`),
     );
 
-  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units });
+  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualPosts });
 
   const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units });
 
@@ -82,7 +120,20 @@ export default function App() {
     <div className="app-shell">
       <Header onOpenJson={handleOpenJson} onSaveJson={handleSaveJson} onExportPdf={handleExportPdf} onPrint={handlePrint} units={units} onUnitsChange={setUnits} />
       <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} showDimensions={showDimensions} onToggleDimensions={() => setShowDimensions((v) => !v)} />
-      <StairScene stairConfig={stairConfig} calc={calc} view={view} viewResetToken={viewResetToken} units={units} showDimensions={showDimensions} activeTool={activeTool} />
+      <StairScene
+        stairConfig={stairConfig}
+        calc={calc}
+        view={view}
+        viewResetToken={viewResetToken}
+        units={units}
+        showDimensions={showDimensions}
+        activeTool={activeTool}
+        manualPosts={manualPosts}
+        postPlacementMode={postPlacementMode}
+        onAddManualPost={handleAddManualPost}
+        selectedManualPostId={selectedManualPostId}
+        onSelectManualPost={handleSelectManualPost}
+      />
       <RightPanel
         project={project}
         setProject={setProject}
@@ -94,6 +145,12 @@ export default function App() {
         onSaveProject={handleSaveProject}
         onExportPdf={handleExportPdf}
         units={units}
+        manualPosts={manualPosts}
+        postPlacementMode={postPlacementMode}
+        onTogglePostPlacement={handleTogglePostPlacement}
+        selectedManualPostId={selectedManualPostId}
+        onUpdateManualPost={handleUpdateManualPost}
+        onDeleteManualPost={handleDeleteManualPost}
       />
       <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} units={units} />
     </div>
