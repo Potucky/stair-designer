@@ -27,9 +27,17 @@ export default function App() {
   const [postPlacementMode, setPostPlacementMode] = useState(false);
   const [selectedManualPostId, setSelectedManualPostId] = useState(null);
 
+  const [manualTopRails, setManualTopRails] = useState([]);
+  const [topRailMode, setTopRailMode] = useState(false);
+  const [topRailFirstPostId, setTopRailFirstPostId] = useState(null);
+
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') setPostPlacementMode(false);
+      if (e.key === 'Escape') {
+        setPostPlacementMode(false);
+        setTopRailMode(false);
+        setTopRailFirstPostId(null);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -62,7 +70,11 @@ export default function App() {
     handrailHeight: stairConfig.handrailHeight,
     tubeSize: stairConfig.tubeSize,
     manualPosts,
-  }), [stairConfig, calc, manualPosts]);
+    manualTopRails,
+    treadPositions: calc.treadPositions,
+    riserHeight: calc.riserHeight,
+    run: stairConfig.run,
+  }), [stairConfig, calc, manualPosts, manualTopRails]);
 
   const handleAddManualPost = (postData) => {
     const id = `post-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -75,6 +87,7 @@ export default function App() {
 
   const handleDeleteManualPost = (id) => {
     setManualPosts(prev => prev.filter(p => p.id !== id));
+    setManualTopRails(prev => prev.filter(r => r.startPostId !== id && r.endPostId !== id));
     setSelectedManualPostId(null);
   };
 
@@ -85,26 +98,62 @@ export default function App() {
   const handleTogglePostPlacement = () => {
     setPostPlacementMode(prev => !prev);
     setSelectedManualPostId(null);
+    setTopRailMode(false);
+    setTopRailFirstPostId(null);
+  };
+
+  const handleToggleTopRailMode = () => {
+    setTopRailMode(prev => !prev);
+    setTopRailFirstPostId(null);
+    setPostPlacementMode(false);
+    setSelectedManualPostId(null);
+  };
+
+  const handleTopRailPostClick = (postId) => {
+    if (!topRailFirstPostId) {
+      setTopRailFirstPostId(postId);
+    } else if (topRailFirstPostId === postId) {
+      setTopRailFirstPostId(null);
+    } else {
+      const startId = topRailFirstPostId;
+      const endId = postId;
+      const duplicate = manualTopRails.some(
+        r => (r.startPostId === startId && r.endPostId === endId) ||
+             (r.startPostId === endId && r.endPostId === startId)
+      );
+      if (!duplicate) {
+        const id = `rail-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        setManualTopRails(prev => [...prev, { id, startPostId: startId, endPostId: endId, profile: '2x1' }]);
+      }
+      setTopRailFirstPostId(null);
+    }
+  };
+
+  const handleDeleteManualTopRail = (id) => {
+    setManualTopRails(prev => prev.filter(r => r.id !== id));
   };
 
   const handleOpenJson = () =>
     openProjectJson(
-      ({ project: p, stairConfig: sc, units: u, manualPosts: mp }) => {
+      ({ project: p, stairConfig: sc, units: u, manualPosts: mp, manualTopRails: mtr }) => {
         setProject({ ...DEFAULT_PROJECT, ...p });
         setStairConfig({ ...DEFAULT_STAIR, ...sc });
         if (u) setUnits(u);
         setManualPosts(Array.isArray(mp) ? mp : []);
+        setManualTopRails(Array.isArray(mtr) ? mtr : []);
         setSelectedManualPostId(null);
         setPostPlacementMode(false);
+        setTopRailMode(false);
+        setTopRailFirstPostId(null);
       },
       (msg) => alert(`Could not open file: ${msg}`),
     );
 
-  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualPosts });
+  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualPosts, manualTopRails });
 
-  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualPosts });
+  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualPosts, manualTopRails });
 
-  const handleSaveProject = () => saveProject({ project, stairConfig, calc, warnings, materials, manualPosts });
+  const handleSaveProject = () => saveProject({ project, stairConfig, calc, warnings, materials, manualPosts, manualTopRails });
 
   const handlePrint = () => window.print();
 
@@ -130,6 +179,10 @@ export default function App() {
         onAddManualPost={handleAddManualPost}
         selectedManualPostId={selectedManualPostId}
         onSelectManualPost={handleSelectManualPost}
+        topRailMode={topRailMode}
+        topRailFirstPostId={topRailFirstPostId}
+        onTopRailPostClick={handleTopRailPostClick}
+        manualTopRails={manualTopRails}
       />
       <RightPanel
         project={project}
@@ -148,6 +201,11 @@ export default function App() {
         selectedManualPostId={selectedManualPostId}
         onUpdateManualPost={handleUpdateManualPost}
         onDeleteManualPost={handleDeleteManualPost}
+        topRailMode={topRailMode}
+        onToggleTopRailMode={handleToggleTopRailMode}
+        topRailFirstPostId={topRailFirstPostId}
+        manualTopRails={manualTopRails}
+        onDeleteManualTopRail={handleDeleteManualTopRail}
       />
       <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} units={units} />
     </div>

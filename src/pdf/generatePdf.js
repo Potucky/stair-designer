@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 
-export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [] }) {
+export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [] }) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const INCH_TO_MM = 25.4;
   const fmtDim = (inchVal, dec = 2) =>
@@ -169,6 +169,39 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     });
   }
 
+  // ── Manual Top Rails (side view) ──────────────────────────────────────────
+  {
+    const validRails = (Array.isArray(manualTopRails) ? manualTopRails : []).filter((rail) => {
+      const sp = validManualPosts.find(p => p.id === rail.startPostId);
+      const ep = validManualPosts.find(p => p.id === rail.endPostId);
+      return sp && ep;
+    });
+
+    validRails.forEach((rail, idx) => {
+      const sp = validManualPosts.find(p => p.id === rail.startPostId);
+      const ep = validManualPosts.find(p => p.id === rail.endPostId);
+      const stp = calc.treadPositions[sp.stepIndex];
+      const etp = calc.treadPositions[ep.stepIndex];
+
+      const sx = ox + (Number(sp.xIn) + Number(sp.offsetXIn)) * sc;
+      const sy = oy - stp.y * sc - Number(sp.heightIn) * sc;
+      const ex = ox + (Number(ep.xIn) + Number(ep.offsetXIn)) * sc;
+      const ey = oy - etp.y * sc - Number(ep.heightIn) * sc;
+
+      doc.setDrawColor('#8B6914');
+      doc.setLineWidth(3);
+      doc.line(sx, sy, ex, ey);
+
+      // Label at midpoint
+      const mx = (sx + ex) / 2;
+      const my = (sy + ey) / 2 - 5;
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor('#5a4000');
+      doc.text(`TR${idx + 1}`, mx, my);
+    });
+  }
+
   // ── Height dimension (left side) ──────────────────────────────────────────
   const hdX = ox - 42;
   doc.setDrawColor('#555555');
@@ -308,6 +341,14 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   if (validManualPosts.length > 0) {
     y = kv('Manual Posts:', String(validManualPosts.length), M, y);
   }
+  const validTopRails = (Array.isArray(manualTopRails) ? manualTopRails : []).filter((rail) => {
+    const sp = validManualPosts.find(p => p.id === rail.startPostId);
+    const ep = validManualPosts.find(p => p.id === rail.endPostId);
+    return sp && ep;
+  });
+  if (validTopRails.length > 0) {
+    y = kv('Top Rails:', String(validTopRails.length), M, y);
+  }
   y += 8;
 
   y = sectionHead('CALCULATED RESULTS', y);
@@ -380,6 +421,76 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       y = Math.max(yL, yR) + 16;
       txt('Manual Post Schedule omitted: not enough page space.', M, y, { italic: true, size: 8, color: '#888888' });
       y += 14;
+    }
+  }
+
+  // ── Top Rail Schedule (page 2, if rails exist and space permits) ──────────
+  if (validTopRails.length > 0) {
+    y += 8;
+    const rowH = 14;
+    const tableH = 30 + validTopRails.length * rowH;
+
+    if (y + tableH < PH - 60) {
+      y = sectionHead('TOP RAIL SCHEDULE', y);
+
+      const rcW = [40, 80, 80, 80];
+      const rcols = (() => {
+        const xs = [M];
+        for (let i = 0; i < rcW.length - 1; i++) xs.push(xs[i] + rcW[i]);
+        return xs;
+      })();
+      const rHeaders = ['Rail', 'From', 'To', 'Length'];
+
+      doc.setFillColor('#1a1a2e');
+      doc.rect(M, y - 10, PW - M * 2, 16, 'F');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor('#ffffff');
+      rHeaders.forEach((h, i) => doc.text(h, rcols[i] + 3, y + 1));
+      y += 12;
+
+      let rAlt = false;
+      validTopRails.forEach((rail, idx) => {
+        if (rAlt) {
+          doc.setFillColor('#f5f7fa');
+          doc.rect(M, y - 9, PW - M * 2, rowH, 'F');
+        }
+        rAlt = !rAlt;
+
+        const spIdx = validManualPosts.findIndex(p => p.id === rail.startPostId);
+        const epIdx = validManualPosts.findIndex(p => p.id === rail.endPostId);
+        const sp = validManualPosts[spIdx];
+        const ep = validManualPosts[epIdx];
+        const stp = calc.treadPositions[sp.stepIndex];
+        const etp = calc.treadPositions[ep.stepIndex];
+
+        // 3D length computation matching StairScene (INtoU=0.5, TREAD_THICK=0.3)
+        const INtoU = 0.5;
+        const TREAD_THICK = 0.3;
+        const r_u = stairConfig.run * INtoU;
+        const rH_u = calc.riserHeight * INtoU;
+        const sTTY = stp.y * INtoU - rH_u / 2 + TREAD_THICK;
+        const eTTY = etp.y * INtoU - rH_u / 2 + TREAD_THICK;
+        const sx = (sp.xIn + sp.offsetXIn) * INtoU - r_u / 2;
+        const sy2 = sTTY + sp.heightIn * INtoU;
+        const sz = (sp.zIn + sp.offsetZIn) * INtoU;
+        const ex = (ep.xIn + ep.offsetXIn) * INtoU - r_u / 2;
+        const ey2 = eTTY + ep.heightIn * INtoU;
+        const ez = (ep.zIn + ep.offsetZIn) * INtoU;
+        const lenIn = Math.sqrt((ex - sx) ** 2 + (ey2 - sy2) ** 2 + (ez - sz) ** 2) / INtoU;
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor('#222222');
+        const row = [
+          `TR${idx + 1}`,
+          spIdx >= 0 ? `P${spIdx + 1}` : '?',
+          epIdx >= 0 ? `P${epIdx + 1}` : '?',
+          fmtDim(lenIn, 2),
+        ];
+        row.forEach((cell, i) => doc.text(cell, rcols[i] + 3, y));
+        y += rowH;
+      });
     }
   }
 

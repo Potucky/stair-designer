@@ -75,7 +75,7 @@ function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', 
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail }) {
   const [saveStatus, setSaveStatus] = useState(null);
 
   const str = (field) => (e) => setProject((p) => ({ ...p, [field]: e.target.value }));
@@ -188,14 +188,50 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                 >
                   Posts
                 </button>
-                <button className="panel-btn" disabled title="Coming soon">Top Rail</button>
+                <button
+                  className={`panel-btn${topRailMode ? ' panel-btn-active' : ''}`}
+                  onClick={onToggleTopRailMode}
+                >
+                  Top Rail
+                </button>
                 <button className="panel-btn" disabled title="Coming soon">Bottom Rail</button>
                 <button className="panel-btn" disabled title="Coming soon">Bridges</button>
               </div>
               {postPlacementMode && (
                 <div className="post-tool-hint">Post tool active — click a step or side to place a post</div>
               )}
+              {topRailMode && !topRailFirstPostId && (
+                <div className="post-tool-hint">Top Rail active — click first post, then second post</div>
+              )}
+              {topRailMode && topRailFirstPostId && (
+                <div className="post-tool-hint">First post selected — click second post</div>
+              )}
             </div>
+
+            {/* Top rail list */}
+            {manualTopRails && manualTopRails.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div className="field-label-sm" style={{ marginBottom: 4 }}>Top Rails</div>
+                {manualTopRails.map((rail, idx) => {
+                  const p1Idx = manualPosts ? manualPosts.findIndex(p => p.id === rail.startPostId) : -1;
+                  const p2Idx = manualPosts ? manualPosts.findIndex(p => p.id === rail.endPostId) : -1;
+                  return (
+                    <div key={rail.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                      <span style={{ fontSize: 10, color: 'var(--text-dim)', flex: 1 }}>
+                        TR{idx + 1} — {p1Idx >= 0 ? `P${p1Idx + 1}` : '?'} to {p2Idx >= 0 ? `P${p2Idx + 1}` : '?'}
+                      </span>
+                      <button
+                        className="panel-btn panel-btn-danger"
+                        style={{ padding: '2px 6px', fontSize: 10 }}
+                        onClick={() => onDeleteManualTopRail(rail.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Selected post adjustment */}
             {(() => {

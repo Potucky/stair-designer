@@ -12,6 +12,17 @@ function isValidStairValue(key, value) {
   return false;
 }
 
+function isValidManualTopRail(r) {
+  return (
+    r && typeof r === 'object' &&
+    typeof r.id === 'string' &&
+    typeof r.startPostId === 'string' &&
+    typeof r.endPostId === 'string' &&
+    r.startPostId !== r.endPostId &&
+    typeof r.profile === 'string'
+  );
+}
+
 function isValidManualPost(p) {
   return (
     p && typeof p === 'object' &&
@@ -58,7 +69,11 @@ export function openProjectJson(onLoad, onError) {
         const manualPosts = Array.isArray(data.manualPosts)
           ? data.manualPosts.filter(isValidManualPost)
           : [];
-        onLoad({ project, stairConfig, units, manualPosts });
+        // Load manualTopRails; old files without this field default to []
+        const manualTopRails = Array.isArray(data.manualTopRails)
+          ? data.manualTopRails.filter(isValidManualTopRail)
+          : [];
+        onLoad({ project, stairConfig, units, manualPosts, manualTopRails });
       } catch (err) {
         onError(err.message || 'Invalid file');
       }
@@ -68,7 +83,7 @@ export function openProjectJson(onLoad, onError) {
   input.click();
 }
 
-export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [] }) {
+export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [] }) {
   const payload = {
     app: 'Stair Designer',
     version: 'v0.0.1 MVP',
@@ -77,6 +92,7 @@ export function saveProjectJson({ project, stairConfig, calc, warnings, material
     project,
     stairConfig,
     manualPosts,
+    manualTopRails,
     calculations: calc,
     warnings: warnings.map((w) => ({ level: w.level, message: w.msg })),
     materialList: materials,

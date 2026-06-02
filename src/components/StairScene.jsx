@@ -287,7 +287,7 @@ function StairModel({ height, run, width, steps, handrailHeight, treadPositions,
 }
 
 // Renders manually placed posts from the manualPosts array.
-function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, selectedManualPostId, onSelectManualPost }) {
+function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick }) {
   const INtoU = 0.5;
   const r = run * INtoU;
   const riserH = riserHeight * INtoU;
@@ -302,24 +302,83 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, se
         const postH = heightIn * INtoU;
         const worldX = (xIn + offsetXIn) * INtoU - r / 2;
         const worldZ = (zIn + offsetZIn) * INtoU;
-        // Tread top Y: center formula (ty - riserH/2 + TREAD_THICK/2) + TREAD_THICK/2
         const treadTopY = tp.y * INtoU - riserH / 2 + TREAD_THICK;
         const worldY = treadTopY + postH / 2;
-        const isSelected = id === selectedManualPostId;
+
+        let color = '#c47a3a';
+        if (id === topRailFirstPostId) color = '#3b82f6';
+        else if (id === selectedManualPostId) color = '#f59e0b';
+
+        const handleClick = (e) => {
+          e.stopPropagation();
+          if (topRailMode) {
+            onTopRailPostClick(id);
+          } else {
+            onSelectManualPost(id);
+          }
+        };
 
         return (
           <mesh
             key={id}
             position={[worldX, worldY, worldZ]}
-            onClick={(e) => { e.stopPropagation(); onSelectManualPost(id); }}
+            onClick={handleClick}
             castShadow
           >
             <boxGeometry args={[POST_THICK, postH, POST_THICK]} />
             <meshStandardMaterial
-              color={isSelected ? '#f59e0b' : '#c47a3a'}
+              color={color}
               metalness={0.55}
               roughness={0.35}
             />
+          </mesh>
+        );
+      })}
+    </>
+  );
+}
+
+// Renders top rail beams between paired post tops.
+function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run }) {
+  const INtoU = 0.5;
+  const r = run * INtoU;
+  const riserH = riserHeight * INtoU;
+  const RAIL_W = 2 * INtoU;
+  const RAIL_H = 1 * INtoU;
+
+  const getPostTop = (post) => {
+    const tp = treadPositions[post.stepIndex];
+    if (!tp) return null;
+    const treadTopY = tp.y * INtoU - riserH / 2 + TREAD_THICK;
+    return new THREE.Vector3(
+      (post.xIn + post.offsetXIn) * INtoU - r / 2,
+      treadTopY + post.heightIn * INtoU,
+      (post.zIn + post.offsetZIn) * INtoU,
+    );
+  };
+
+  return (
+    <>
+      {manualTopRails.map((rail) => {
+        const sp = manualPosts.find(p => p.id === rail.startPostId);
+        const ep = manualPosts.find(p => p.id === rail.endPostId);
+        if (!sp || !ep) return null;
+
+        const startV = getPostTop(sp);
+        const endV = getPostTop(ep);
+        if (!startV || !endV) return null;
+
+        const length = startV.distanceTo(endV);
+        if (length < 0.01) return null;
+
+        const midV = startV.clone().lerp(endV, 0.5);
+        const direction = endV.clone().sub(startV).normalize();
+        const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
+
+        return (
+          <mesh key={rail.id} position={midV.toArray()} quaternion={quat} castShadow>
+            <boxGeometry args={[length, RAIL_H, RAIL_W]} />
+            <meshStandardMaterial color="#8B6914" metalness={0.3} roughness={0.5} />
           </mesh>
         );
       })}
@@ -455,11 +514,11 @@ function MeasureTool({ active, units }) {
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost }) {
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails }) {
   const { height, run, width, steps, handrailHeight } = stairConfig;
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
-  const activeCursor = isMeasure || postPlacementMode ? 'crosshair' : undefined;
+  const activeCursor = isMeasure || postPlacementMode || topRailMode ? 'crosshair' : undefined;
 
   return (
     <div className="scene-container" style={activeCursor ? { cursor: activeCursor } : undefined}>
@@ -508,6 +567,17 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           run={run}
           selectedManualPostId={selectedManualPostId}
           onSelectManualPost={onSelectManualPost}
+          topRailMode={topRailMode}
+          topRailFirstPostId={topRailFirstPostId}
+          onTopRailPostClick={onTopRailPostClick}
+        />
+
+        <ManualTopRailsRenderer
+          manualTopRails={manualTopRails || []}
+          manualPosts={manualPosts || []}
+          treadPositions={calc.treadPositions}
+          riserHeight={calc.riserHeight}
+          run={run}
         />
 
         {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}

@@ -90,7 +90,7 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
   };
 }
 
-export function buildMaterialList({ width, steps, stringerLength, railingEnabled, handrailHeight, tubeSize, manualPosts = [] }) {
+export function buildMaterialList({ width, steps, stringerLength, railingEnabled, handrailHeight, tubeSize, manualPosts = [], manualTopRails = [], treadPositions = [], riserHeight = 0, run = 0 }) {
   const items = [];
 
   items.push({ part: 'Side Stringer', qty: 2, lengthIn: stringerLength.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Each side' });
@@ -99,6 +99,41 @@ export function buildMaterialList({ width, steps, stringerLength, railingEnabled
   if (manualPosts.length > 0) {
     const maxH = manualPosts.reduce((m, p) => Math.max(m, Number(p.heightIn) || 0), 0);
     items.push({ part: 'Manual Post', qty: manualPosts.length, lengthIn: maxH.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Manually placed' });
+  }
+
+  if (manualTopRails.length > 0 && manualPosts.length > 0) {
+    // Compute total length of valid top rail segments (scene units use INtoU=0.5; TREAD_THICK=0.3)
+    const INtoU = 0.5;
+    const TREAD_THICK = 0.3;
+    const r_u = run * INtoU;
+    const rH_u = riserHeight * INtoU;
+    let totalLen = 0;
+    let validCount = 0;
+
+    for (const rail of manualTopRails) {
+      const sp = manualPosts.find(p => p.id === rail.startPostId);
+      const ep = manualPosts.find(p => p.id === rail.endPostId);
+      if (!sp || !ep) continue;
+      const stp = treadPositions[sp.stepIndex];
+      const etp = treadPositions[ep.stepIndex];
+      if (!stp || !etp) continue;
+
+      const sTTY = stp.y * INtoU - rH_u / 2 + TREAD_THICK;
+      const eTTY = etp.y * INtoU - rH_u / 2 + TREAD_THICK;
+      const sx = (sp.xIn + sp.offsetXIn) * INtoU - r_u / 2;
+      const sy = sTTY + sp.heightIn * INtoU;
+      const sz = (sp.zIn + sp.offsetZIn) * INtoU;
+      const ex = (ep.xIn + ep.offsetXIn) * INtoU - r_u / 2;
+      const ey = eTTY + ep.heightIn * INtoU;
+      const ez = (ep.zIn + ep.offsetZIn) * INtoU;
+      const lenScene = Math.sqrt((ex - sx) ** 2 + (ey - sy) ** 2 + (ez - sz) ** 2);
+      totalLen += lenScene / INtoU;
+      validCount++;
+    }
+
+    if (validCount > 0) {
+      items.push({ part: 'Top Rail', qty: validCount, lengthIn: totalLen.toFixed(2), profile: '2x1 Rect Tube', note: 'Total length' });
+    }
   }
 
   return items;
