@@ -96,8 +96,9 @@ export function buildMaterialList({ width, steps, stringerLength, railingEnabled
   items.push({ part: 'Side Stringer', qty: 2, lengthIn: stringerLength.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Each side' });
   items.push({ part: 'Tread', qty: steps, lengthIn: width.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Horizontal tread span' });
 
-  if (railingEnabled && manualPosts.length > 0) {
-    items.push({ part: 'Railing Post', qty: manualPosts.length, lengthIn: handrailHeight.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Vertical posts' });
+  if (manualPosts.length > 0) {
+    const maxH = manualPosts.reduce((m, p) => Math.max(m, Number(p.heightIn) || 0), 0);
+    items.push({ part: 'Manual Post', qty: manualPosts.length, lengthIn: maxH.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Manually placed' });
   }
 
   return items;

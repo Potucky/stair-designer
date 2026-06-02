@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 
-export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in' }) {
+export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [] }) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const INCH_TO_MM = 25.4;
   const fmtDim = (inchVal, dec = 2) =>
@@ -130,6 +130,42 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   doc.setFont('helvetica', 'italic');
   doc.setTextColor('#3366cc');
   doc.text(`Stringer: ${fmtDim(stringerLength)}`, ox + dw / 2 + 6, oy - dh / 2 - 8);
+
+  // ── Manual Posts (side view) ───────────────────────────────────────────────
+  {
+    const posts = Array.isArray(manualPosts) ? manualPosts : [];
+    // visual post width in PDF pts — ~0.5" scaled, clamped so it's always visible
+    const postW = Math.max(3, Math.min(8, 0.5 * sc));
+
+    posts.forEach((post, idx) => {
+      if (!post || post.stepIndex == null) return;
+      const tp = (calc.treadPositions || [])[post.stepIndex];
+      if (!tp) return;
+
+      const pxX   = ox + (Number(post.xIn || 0) + Number(post.offsetXIn || 0)) * sc;
+      const baseY = oy - tp.y * sc;                         // tread top surface
+      const postH = Number(post.heightIn || 0) * sc;
+      if (!isFinite(pxX) || !isFinite(baseY) || !isFinite(postH) || postH <= 0) return;
+
+      const topY = baseY - postH;
+
+      // Post rectangle — brown fill with dark border
+      doc.setFillColor('#c47a3a');
+      doc.setDrawColor('#7a4a1a');
+      doc.setLineWidth(0.7);
+      doc.rect(pxX - postW / 2, topY, postW, postH, 'FD');
+
+      // Compact label near top of post
+      let label = `P${idx + 1}`;
+      if (post.mount === 'side' && post.side && post.side !== 'center') {
+        label += ` s${post.side[0].toUpperCase()}`; // sL or sR
+      }
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor('#5a3a10');
+      doc.text(label, pxX + postW / 2 + 2, topY + 7);
+    });
+  }
 
   // ── Height dimension (left side) ──────────────────────────────────────────
   const hdX = ox - 42;
@@ -267,6 +303,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     y = kv('Max Pin / Guard Opening:', fmtDim(stairConfig.pinOpening, 3), M, y);
     y = kv('Post Spacing:', fmtDim(stairConfig.postSpacing, 0), M, y);
   }
+  if (manualPosts && manualPosts.length > 0) {
+    y = kv('Manual Posts:', String(manualPosts.length), M, y);
+  }
   y += 8;
 
   y = sectionHead('CALCULATED RESULTS', y);
@@ -287,6 +326,59 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   const warnCount = warnings.filter((w) => w.level === 'warning').length;
   rowR('Code Errors:', errCount === 0 ? 'None' : String(errCount));
   rowR('Code Warnings:', warnCount === 0 ? 'None' : String(warnCount));
+
+  // ── Manual Post Schedule (page 2, if posts exist and space permits) ────────
+  if (manualPosts && manualPosts.length > 0) {
+    // Advance y past the two-column section
+    y = Math.max(yL, yR) + 16;
+
+    const rowH  = 14;
+    const tableH = 30 + manualPosts.length * rowH;   // sectionHead + header row + data rows
+
+    if (y + tableH < PH - 60) {                      // only render when it fits
+      y = sectionHead('MANUAL POST SCHEDULE', y);
+
+      // Column layout: Post | Step | Mount | Side | Height | Run Pos
+      const pcW = [36, 36, 46, 46, 62, 62];
+      const cols = (() => {
+        const xs = [M];
+        for (let i = 0; i < pcW.length - 1; i++) xs.push(xs[i] + pcW[i]);
+        return xs;
+      })();
+      const headers = ['Post', 'Step', 'Mount', 'Side', 'Height', 'Run Pos'];
+
+      doc.setFillColor('#1a1a2e');
+      doc.rect(M, y - 10, PW - M * 2, 16, 'F');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor('#ffffff');
+      headers.forEach((h, i) => doc.text(h, cols[i] + 3, y + 1));
+      y += 12;
+
+      let rowAlt = false;
+      manualPosts.forEach((post, idx) => {
+        if (!post || post.stepIndex == null) return;
+        if (rowAlt) {
+          doc.setFillColor('#f5f7fa');
+          doc.rect(M, y - 9, PW - M * 2, rowH, 'F');
+        }
+        rowAlt = !rowAlt;
+
+        const stepNum  = String((post.stepIndex || 0) + 1);
+        const mount    = post.mount || 'top';
+        const side     = post.side  || 'center';
+        const ht       = fmtDim(Number(post.heightIn || 0), 2);
+        const runPos   = fmtDim(Number(post.xIn || 0) + Number(post.offsetXIn || 0), 2);
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor('#222222');
+        const row = [`P${idx + 1}`, stepNum, mount, side, ht, runPos];
+        row.forEach((cell, i) => doc.text(cell, cols[i] + 3, y));
+        y += rowH;
+      });
+    }
+  }
 
   pageFooter();
 

@@ -102,7 +102,7 @@ export default function App() {
 
   const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualPosts });
 
-  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units });
+  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualPosts });
 
   const handleSaveProject = () => saveProject({ project, stairConfig, calc, warnings, materials });
 
