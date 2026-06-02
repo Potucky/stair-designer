@@ -7,6 +7,9 @@ import { fmtUnit } from '../utils/format.js';
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
 
+// Under-handrail connector rails are temporarily hidden per fabrication view preference.
+const SHOW_UNDER_HANDRAIL_RAILS = false;
+
 function KeyboardNudge({ controlsRef }) {
   const { camera } = useThree();
 

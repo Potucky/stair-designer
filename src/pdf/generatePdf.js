@@ -1,5 +1,8 @@
 import { jsPDF } from 'jspdf';
 
+// Under-handrail connector rails are temporarily hidden per fabrication view preference.
+const SHOW_UNDER_HANDRAIL_RAILS = false;
+
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in' }) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const INCH_TO_MM = 25.4;
