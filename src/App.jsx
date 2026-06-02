@@ -55,17 +55,14 @@ export default function App() {
   }), [calc, stairConfig]);
 
   const materials = useMemo(() => buildMaterialList({
-    height: stairConfig.height,
-    run: stairConfig.run,
     width: stairConfig.width,
     steps: stairConfig.steps,
     stringerLength: calc.stringerLength,
-    postCount: calc.postCount,
-    handrailLength: calc.handrailLength,
     railingEnabled: stairConfig.railingEnabled,
     handrailHeight: stairConfig.handrailHeight,
     tubeSize: stairConfig.tubeSize,
-  }), [stairConfig, calc]);
+    manualPosts,
+  }), [stairConfig, calc, manualPosts]);
 
   const handleAddManualPost = (postData) => {
     const id = `post-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;

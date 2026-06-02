@@ -178,9 +178,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             <label className="field-label">Guard/Pin Opening (in)
               <NumericDraftInput className="field-input" value={stairConfig.pinOpening} onCommit={commitDim('pinOpening')} />
             </label>
-            <label className="field-label">Post Spacing (in)
-              <NumericDraftInput className="field-input" value={stairConfig.postSpacing} onCommit={commitDim('postSpacing')} />
-            </label>
 
             <div style={{ marginTop: 12 }}>
               <div className="field-label-sm" style={{ marginBottom: 6 }}>Railing Assembly</div>
@@ -237,14 +234,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           <span className="result-value">{fmtUnit(calc.treadDepth, units)}</span>
           <span className="result-label">Stringer Length</span>
           <span className="result-value">{fmtUnit(calc.stringerLength, units)}</span>
-          {stairConfig.railingEnabled && (
-            <>
-              <span className="result-label">Post Count</span>
-              <span className="result-value">{calc.postCount}</span>
-              <span className="result-label">Handrail Length</span>
-              <span className="result-value">{fmtUnit(calc.handrailLength, units)}</span>
-            </>
-          )}
         </div>
       </section>
 

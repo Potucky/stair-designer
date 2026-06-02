@@ -1,8 +1,5 @@
 import { jsPDF } from 'jspdf';
 
-// Top handrails are temporarily hidden so the fabrication view can focus on post layout.
-const SHOW_TOP_HANDRAILS = false;
-
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in' }) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const INCH_TO_MM = 25.4;
@@ -71,8 +68,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   const { height, run, steps } = stairConfig;
   const { riserHeight, treadDepth, angleDeg, stringerLength } = calc;
-  const railEnabled = stairConfig.railingEnabled;
-  const hhIn = stairConfig.handrailHeight || 36;
 
   // Drawing area layout
   const dAreaX = M + 62;                         // room for H-dim label on left
@@ -83,31 +78,24 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   // Ground line sits 50 pts above the bottom of dArea (run-dim label below)
   const groundY = dAreaY + dAreaH - 50;          // ≈544
 
-  // Scale: include railing height so everything fits above the ground line.
-  // Horizontal scale uses the max of stair run and railing run so a longer manual
-  // railing does not overflow the drawing area.
-  const maxHorizIn = Math.max(run, calc.railingRun ?? run);
-  const visualHeightIn = Math.max(height, calc.railingEndY ?? height) + (railEnabled ? hhIn : 0);
   const availAbovePts = groundY - dAreaY - 8;    // ≈452 pts headroom
-  const scaleX = (dAreaW * 0.80) / (maxHorizIn || 1);
-  const scaleY = availAbovePts / ((visualHeightIn || 1) * 1.08);
+  const scaleX = (dAreaW * 0.80) / (run || 1);
+  const scaleY = availAbovePts / ((height || 1) * 1.08);
   const sc = Math.min(scaleX, scaleY);
 
-  const dw = run * sc;                   // stair run in pts
-  const maxW = maxHorizIn * sc;          // full horizontal extent (railing or stair, whichever is wider)
+  const dw = run * sc;
   const dh = height * sc;
   const rPx = riserHeight * sc;
   const tPx = treadDepth * sc;
-  const hhPx = hhIn * sc;
 
-  // Stair origin: bottom-left corner, centred on the full horizontal extent
-  const ox = dAreaX + (dAreaW - maxW) / 2;
+  // Stair origin: bottom-left corner, centred on the stair run
+  const ox = dAreaX + (dAreaW - dw) / 2;
   const oy = groundY;
 
   // Ground line
   doc.setDrawColor('#888888');
   doc.setLineWidth(1);
-  doc.line(ox - 28, oy, ox + maxW + 28, oy);
+  doc.line(ox - 28, oy, ox + dw + 28, oy);
 
   // Wall line — dashed vertical reference at left
   doc.setDrawColor('#cccccc');
@@ -211,60 +199,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     doc.text(`T = ${fmtDim(treadDepth, 3)}`, callX, callTY + 3);
   }
 
-  // ── Railing posts + handrail (if enabled) ─────────────────────────────────
-  if (railEnabled && calc.postStations && calc.postStations.length >= 2) {
-    // Use postStations from calc so the PDF honors railingRun (manual or match-stair).
-    const postPts = calc.postStations.map(({ x, y }) => ({ px: ox + x * sc, py: oy - y * sc }));
-    const numPosts = postPts.length;
-
-    // Vertical posts
-    doc.setDrawColor('#444444');
-    doc.setLineWidth(1.5);
-    for (const { px, py } of postPts) {
-      doc.line(px, py, px, py - hhPx);
-    }
-
-    if (SHOW_TOP_HANDRAILS) {
-      // Handrail connecting post tops
-      doc.setDrawColor('#6b2d0a');
-      doc.setLineWidth(2);
-      for (let i = 1; i < postPts.length; i++) {
-        doc.line(
-          postPts[i - 1].px, postPts[i - 1].py - hhPx,
-          postPts[i].px, postPts[i].py - hhPx
-        );
-      }
-    }
-
-    // Handrail height dimension at last post (top-right of railing)
-    const lp = postPts[postPts.length - 1];
-    const hhDimX = lp.px + 16;
-    doc.setDrawColor('#555555');
-    doc.setLineWidth(0.5);
-    doc.line(hhDimX, lp.py, hhDimX, lp.py - hhPx);
-    doc.line(hhDimX - 4, lp.py, hhDimX + 4, lp.py);
-    doc.line(hhDimX - 4, lp.py - hhPx, hhDimX + 4, lp.py - hhPx);
-    doc.line(hhDimX - 2, lp.py - 8, hhDimX, lp.py);
-    doc.line(hhDimX + 2, lp.py - 8, hhDimX, lp.py);
-    doc.line(hhDimX - 2, lp.py - hhPx + 8, hhDimX, lp.py - hhPx);
-    doc.line(hhDimX + 2, lp.py - hhPx + 8, hhDimX, lp.py - hhPx);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor('#555555');
-    doc.text(`HH = ${fmtDim(hhIn, 0)}`, hhDimX + 7, lp.py - hhPx / 2 + 3);
-
-    // Handrail annotation centered on railing run (not stair run)
-    const annotY = Math.max(dAreaY + 12, lp.py - hhPx - 14);
-    const annotCenterX = ox + (calc.railingRun ?? run) * sc / 2;
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor('#6b2d0a');
-    doc.text(
-      `Handrail: ${fmtDim(calc.handrailLength)}  |  ${numPosts} posts @ ${fmtDim(stairConfig.postSpacing, 0)} o.c.`,
-      annotCenterX, annotY, { align: 'center' }
-    );
-  }
-
   // ── Top-view width inset ───────────────────────────────────────────────────
   const insetW = 138;
   const insetH = 56;
@@ -351,10 +285,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   const errCount = warnings.filter((w) => w.level === 'error').length;
   const warnCount = warnings.filter((w) => w.level === 'warning').length;
-  if (stairConfig.railingEnabled) {
-    rowR('Post Count:', String(calc.postCount));
-    rowR('Handrail Length:', fmtDim(calc.handrailLength));
-  }
   rowR('Code Errors:', errCount === 0 ? 'None' : String(errCount));
   rowR('Code Warnings:', warnCount === 0 ? 'None' : String(warnCount));
 

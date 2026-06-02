@@ -90,15 +90,14 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
   };
 }
 
-export function buildMaterialList({ width, steps, stringerLength, postCount, handrailLength, railingEnabled, handrailHeight, tubeSize }) {
+export function buildMaterialList({ width, steps, stringerLength, railingEnabled, handrailHeight, tubeSize, manualPosts = [] }) {
   const items = [];
 
   items.push({ part: 'Side Stringer', qty: 2, lengthIn: stringerLength.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Each side' });
   items.push({ part: 'Tread', qty: steps, lengthIn: width.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Horizontal tread span' });
 
-  if (railingEnabled && postCount > 0) {
-    items.push({ part: 'Railing Post', qty: postCount, lengthIn: handrailHeight.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Vertical posts' });
-    items.push({ part: 'Handrail', qty: 1, lengthIn: handrailLength.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Top rail, stringer length' });
+  if (railingEnabled && manualPosts.length > 0) {
+    items.push({ part: 'Railing Post', qty: manualPosts.length, lengthIn: handrailHeight.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Vertical posts' });
   }
 
   return items;

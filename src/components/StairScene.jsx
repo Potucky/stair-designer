@@ -7,9 +7,6 @@ import { fmtUnit } from '../utils/format.js';
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
 
-// Top handrails are temporarily hidden so the fabrication view can focus on post layout.
-const SHOW_TOP_HANDRAILS = false;
-
 // Thickness constants shared across StairModel and ManualPostsRenderer
 const TREAD_THICK = 0.3;
 const POST_THICK = 0.4;
@@ -176,7 +173,7 @@ function ExtLine({ p1, p2 }) {
 
 function DimensionLabels({ stairConfig, calc, units }) {
   const INtoU = 0.5;
-  const { height, run, width, railingEnabled, handrailHeight, postSpacing } = stairConfig;
+  const { height, run, width, railingEnabled, handrailHeight } = stairConfig;
 
   const h = height * INtoU;
   const r = run * INtoU;
@@ -184,7 +181,6 @@ function DimensionLabels({ stairConfig, calc, units }) {
   const riserH = calc.riserHeight * INtoU;
   const treadD = calc.treadDepth * INtoU;
   const railH = handrailHeight * INtoU;
-  const postSpU = (calc.dimensionEndpoints?.postSp?.x2 ?? Math.min(postSpacing, run)) * INtoU;
 
   const riseX  = -r / 2 - 10;
   const runY   = -7;
@@ -192,7 +188,6 @@ function DimensionLabels({ stairConfig, calc, units }) {
   const riserX = r / 2 + 5;
   const treadY = h - riserH - 3;
   const railX  = -r / 2 - 20;
-  const postSpY = h + railH + 6;
 
   return (
     <>
@@ -223,14 +218,13 @@ function DimensionLabels({ stairConfig, calc, units }) {
           <ExtLine p1={[-r / 2, h, 0]} p2={[railX, h, 0]} />
           <ExtLine p1={[-r / 2, h + railH, 0]} p2={[railX, h + railH, 0]} />
           <VDim x={railX} z={0} y1={h} y2={h + railH} label={`Rail H: ${fmtUnit(handrailHeight, units)}`} />
-          <HDimX y={postSpY} z={0} x1={-r / 2} x2={-r / 2 + postSpU} label={`Post Sp: ${fmtUnit(postSpacing, units)}`} />
         </>
       )}
     </>
   );
 }
 
-function StairModel({ height, run, width, steps, railingEnabled, handrailHeight, postCount, treadPositions, postStations, railingRun, railingEndY, postPlacementMode, onAddManualPost }) {
+function StairModel({ height, run, width, steps, handrailHeight, treadPositions, postPlacementMode, onAddManualPost }) {
   const INtoU = 0.5;
 
   const h = height * INtoU;
@@ -238,20 +232,7 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
   const w = width * INtoU;
   const riserH = steps > 0 ? h / steps : h;
   const treadD = steps > 0 ? r / steps : r;
-  const railH = handrailHeight * INtoU;
 
-  const railThick = 0.35;
-
-  // Use safe railingEndY from calc (slope clamped to 0 when run<1 to prevent explosion).
-  const rr = (railingRun ?? run) * INtoU;
-  const safeEndY = railingEndY != null ? railingEndY : (run >= 1 ? (railingRun ?? run) / run * height : 0);
-  const rh = safeEndY * INtoU;
-  const angleRad = Math.atan2(rh, rr);
-  const stringerLen = Math.sqrt(rr * rr + rh * rh);
-  const handrailCenterX = -r / 2 + rr / 2;
-  const handrailCenterY = rh / 2 + railH;
-
-  const handrailMat = <meshStandardMaterial color="#1e3a5f" metalness={0.65} roughness={0.3} />;
   const treadMat = <meshStandardMaterial color="#64748b" metalness={0.4} roughness={0.5} />;
 
   const treads = treadPositions.map(({ x, y }, i) => {
@@ -298,44 +279,9 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
     );
   });
 
-  const posts = [];
-  if (railingEnabled && postCount > 0) {
-    postStations.forEach(({ x, y }, i) => {
-      const px = x * INtoU - r / 2;
-      const py = y * INtoU;
-      const side = w / 2 + POST_THICK / 2;
-
-      [-side, side].forEach((zOff, si) => {
-        posts.push(
-          <mesh key={`${i}-${si}`} position={[px, py + railH / 2, zOff]} castShadow>
-            <boxGeometry args={[POST_THICK, railH, POST_THICK]} />
-            {handrailMat}
-          </mesh>
-        );
-      });
-    });
-
-    if (SHOW_TOP_HANDRAILS) {
-      [-w / 2 - POST_THICK / 2, w / 2 + POST_THICK / 2].forEach((zOff, si) => {
-        posts.push(
-          <mesh
-            key={`rail-${si}`}
-            position={[handrailCenterX, handrailCenterY, zOff]}
-            rotation={[0, 0, angleRad]}
-            castShadow
-          >
-            <boxGeometry args={[stringerLen, railThick, railThick]} />
-            {handrailMat}
-          </mesh>
-        );
-      });
-    }
-  }
-
   return (
     <group position={[0, 0, 0]}>
       {treads}
-      {posts}
     </group>
   );
 }
@@ -510,7 +456,7 @@ function MeasureTool({ active, units }) {
 }
 
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost }) {
-  const { height, run, width, steps, railingEnabled, handrailHeight } = stairConfig;
+  const { height, run, width, steps, handrailHeight } = stairConfig;
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
   const activeCursor = isMeasure || postPlacementMode ? 'crosshair' : undefined;
@@ -549,13 +495,8 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           run={run}
           width={width}
           steps={steps}
-          railingEnabled={railingEnabled}
           handrailHeight={handrailHeight}
-          postCount={calc.postCount}
           treadPositions={calc.treadPositions}
-          postStations={calc.postStations}
-          railingRun={calc.railingRun}
-          railingEndY={calc.railingEndY}
           postPlacementMode={postPlacementMode}
           onAddManualPost={onAddManualPost}
         />
