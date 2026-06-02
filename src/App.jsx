@@ -48,7 +48,7 @@ export default function App() {
     width: stairConfig.width,
     steps: stairConfig.steps,
     stringerLength: calc.stringerLength,
-    postCount: calc.postCount,
+    postCount: (stairConfig.manualPosts?.length ?? 0) > 0 ? stairConfig.manualPosts.length : calc.postCount,
     handrailLength: calc.handrailLength,
     railingEnabled: stairConfig.railingEnabled,
     handrailHeight: stairConfig.handrailHeight,

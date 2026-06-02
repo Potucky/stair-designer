@@ -226,7 +226,7 @@ function DimensionLabels({ stairConfig, calc, units }) {
   );
 }
 
-function StairModel({ height, run, width, steps, railingEnabled, handrailHeight, postCount, treadPositions, postStations, railingRun, railingEndY }) {
+function StairModel({ height, run, width, steps, railingEnabled, handrailHeight, postCount, treadPositions, postStations, railingRun, railingEndY, manualPosts = [] }) {
   const INtoU = 0.5;
 
   const h = height * INtoU;
@@ -297,10 +297,28 @@ function StairModel({ height, run, width, steps, railingEnabled, handrailHeight,
     }
   }
 
+  // Manual posts are the first railing assembly tool; top rail, bottom rail, and bridges will attach to these posts later.
+  const manualPostMeshes = manualPosts.map((post) => {
+    const si = Math.max(1, Math.min(post.stepIndex, steps));
+    const postH = post.heightIn * INtoU;
+    const treadTopY = (si - 0.5) * riserH + treadThick;
+    const px = si * treadD - r / 2 + post.offsetXIn * INtoU;
+    const py = treadTopY + postH / 2;
+    const pzBase = post.side === 'left' ? -w / 2 : post.side === 'right' ? w / 2 : 0;
+    const pz = pzBase + post.offsetZIn * INtoU;
+    return (
+      <mesh key={post.id} position={[px, py, pz]} castShadow>
+        <boxGeometry args={[postThick, postH, postThick]} />
+        {handrailMat}
+      </mesh>
+    );
+  });
+
   return (
     <group position={[0, 0, 0]}>
       {treads}
       {posts}
+      {manualPostMeshes}
     </group>
   );
 }
@@ -434,7 +452,7 @@ function MeasureTool({ active, units }) {
 }
 
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool }) {
-  const { height, run, width, steps, railingEnabled, handrailHeight } = stairConfig;
+  const { height, run, width, steps, railingEnabled, handrailHeight, manualPosts = [] } = stairConfig;
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
 
@@ -479,6 +497,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           postStations={calc.postStations}
           railingRun={calc.railingRun}
           railingEndY={calc.railingEndY}
+          manualPosts={manualPosts}
         />
 
         {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}

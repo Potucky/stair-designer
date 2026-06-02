@@ -12,6 +12,18 @@ function isValidStairValue(key, value) {
   return false;
 }
 
+function isValidManualPost(p) {
+  return (
+    p && typeof p === 'object' &&
+    typeof p.id === 'string' && p.id.length > 0 &&
+    typeof p.stepIndex === 'number' && Number.isInteger(p.stepIndex) && p.stepIndex >= 1 &&
+    (p.side === 'left' || p.side === 'center' || p.side === 'right') &&
+    typeof p.offsetXIn === 'number' && Number.isFinite(p.offsetXIn) &&
+    typeof p.offsetZIn === 'number' && Number.isFinite(p.offsetZIn) &&
+    typeof p.heightIn === 'number' && Number.isFinite(p.heightIn) && p.heightIn > 0
+  );
+}
+
 export function openProjectJson(onLoad, onError) {
   const input = document.createElement('input');
   input.type = 'file';
@@ -36,6 +48,9 @@ export function openProjectJson(onLoad, onError) {
             if (key in data.stairConfig && isValidStairValue(key, data.stairConfig[key])) {
               stairConfig[key] = data.stairConfig[key];
             }
+          }
+          if (Array.isArray(data.stairConfig.manualPosts)) {
+            stairConfig.manualPosts = data.stairConfig.manualPosts.filter(isValidManualPost);
           }
         }
         const units = data.units === 'mm' ? 'mm' : 'in';

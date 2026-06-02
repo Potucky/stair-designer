@@ -77,6 +77,9 @@ function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', 
 
 export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units }) {
   const [saveStatus, setSaveStatus] = useState(null);
+  const [selectedPostId, setSelectedPostId] = useState(null);
+  const [newPostStep, setNewPostStep] = useState(1);
+  const [newPostSide, setNewPostSide] = useState('left');
 
   const str = (field) => (e) => setProject((p) => ({ ...p, [field]: e.target.value }));
   const toggle = (field) => (e) => setStairConfig((s) => ({ ...s, [field]: e.target.checked }));
@@ -87,6 +90,37 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
 
   const commitSteps = (v) =>
     setStairConfig((s) => ({ ...s, steps: Math.max(1, Math.round(v)) }));
+
+  const addPost = () => {
+    const si = Math.max(1, Math.min(newPostStep, stairConfig.steps));
+    const id = crypto.randomUUID();
+    setStairConfig((s) => ({
+      ...s,
+      manualPosts: [...(s.manualPosts ?? []), {
+        id,
+        stepIndex: si,
+        side: newPostSide,
+        offsetXIn: 0,
+        offsetZIn: 0,
+        heightIn: s.handrailHeight,
+      }],
+    }));
+    setSelectedPostId(id);
+  };
+
+  const deletePost = (id) => {
+    setStairConfig((s) => ({ ...s, manualPosts: (s.manualPosts ?? []).filter((p) => p.id !== id) }));
+    setSelectedPostId((prev) => (prev === id ? null : prev));
+  };
+
+  const nudgePost = (field, delta) => {
+    setStairConfig((s) => ({
+      ...s,
+      manualPosts: (s.manualPosts ?? []).map((p) =>
+        p.id === selectedPostId ? { ...p, [field]: p[field] + delta } : p
+      ),
+    }));
+  };
 
   const errorWarnings = warnings.filter((w) => w.level === 'error');
   const warnWarnings = warnings.filter((w) => w.level === 'warning');
@@ -182,11 +216,73 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               <NumericDraftInput className="field-input" value={stairConfig.postSpacing} onCommit={commitDim('postSpacing')} />
             </label>
 
-            {/* TODO: Railing assembly tools will be implemented after stair-first workflow is stable. */}
+            {/* Posts — manual post placement, first step of railing assembly */}
             <div style={{ marginTop: 12 }}>
-              <div className="field-label-sm" style={{ marginBottom: 6 }}>Railing Assembly</div>
+              <div className="field-label-sm" style={{ marginBottom: 6 }}>Posts</div>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11 }}>Step</span>
+                <input
+                  type="number"
+                  className="field-input"
+                  style={{ width: 48 }}
+                  min={1}
+                  max={stairConfig.steps}
+                  value={newPostStep}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (!isNaN(v)) setNewPostStep(Math.max(1, Math.min(stairConfig.steps, v)));
+                  }}
+                />
+                <select
+                  className="field-input"
+                  style={{ width: 80 }}
+                  value={newPostSide}
+                  onChange={(e) => setNewPostSide(e.target.value)}
+                >
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
+                <button className="panel-btn" onClick={addPost}>+ Add</button>
+              </div>
+              {(stairConfig.manualPosts ?? []).length > 0 && (
+                <div style={{ marginBottom: 4 }}>
+                  {(stairConfig.manualPosts ?? []).map((post, idx) => (
+                    <div
+                      key={post.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '3px 5px',
+                        marginBottom: 2,
+                        background: selectedPostId === post.id ? '#1e3a5f' : '#f0f4f8',
+                        color: selectedPostId === post.id ? '#fff' : '#374151',
+                        cursor: 'pointer',
+                        borderRadius: 3,
+                        fontSize: 11,
+                      }}
+                      onClick={() => setSelectedPostId(post.id === selectedPostId ? null : post.id)}
+                    >
+                      Post {idx + 1} — Step {post.stepIndex} — {post.side.charAt(0).toUpperCase() + post.side.slice(1)}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedPostId && (
+                <div>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 4 }}>
+                    <button className="panel-btn" onClick={() => nudgePost('offsetXIn', -1)}>Run −1"</button>
+                    <button className="panel-btn" onClick={() => nudgePost('offsetXIn', 1)}>Run +1"</button>
+                    <button className="panel-btn" onClick={() => nudgePost('offsetZIn', -1)}>Width −1"</button>
+                    <button className="panel-btn" onClick={() => nudgePost('offsetZIn', 1)}>Width +1"</button>
+                  </div>
+                  <button className="panel-btn" style={{ color: '#dc2626' }} onClick={() => deletePost(selectedPostId)}>Delete</button>
+                </div>
+              )}
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <div className="field-label-sm" style={{ marginBottom: 6 }}>Coming Soon</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <button className="panel-btn" disabled title="Coming soon">Posts</button>
                 <button className="panel-btn" disabled title="Coming soon">Top Rail</button>
                 <button className="panel-btn" disabled title="Coming soon">Bottom Rail</button>
                 <button className="panel-btn" disabled title="Coming soon">Bridges</button>
