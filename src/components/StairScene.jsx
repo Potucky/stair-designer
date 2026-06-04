@@ -516,20 +516,22 @@ function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions
   );
 }
 
-function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeight }) {
+function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeights }) {
   const INtoU = 0.5;
-  const RAIL_W = 2 * INtoU;
+  const RAIL_W = 1 * INtoU;
   const RAIL_H = 1 * INtoU;
   const POST_SEAT = 1 * INtoU;
 
-  const segments = useMemo(
-    () => getManualMiddleRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeight),
-    [manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeight]
+  const allSegments = useMemo(
+    () => middleRailHeights.flatMap(h =>
+      getManualMiddleRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, h).map(seg => ({ ...seg, height: h }))
+    ),
+    [manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeights]
   );
 
   return (
     <>
-      {segments.map(({ rail, start, end }) => {
+      {allSegments.map(({ rail, start, end, height }) => {
         let visStart = { ...start };
         let visEnd = { ...end };
 
@@ -559,7 +561,7 @@ function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions
         const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
 
         return (
-          <mesh key={`mr-${rail.id}`} position={midV.toArray()} quaternion={quat} castShadow>
+          <mesh key={`mr-${rail.id}-${height}`} position={midV.toArray()} quaternion={quat} castShadow>
             <boxGeometry args={[length, RAIL_H, RAIL_W]} />
             <meshStandardMaterial color="#8B6914" metalness={0.3} roughness={0.5} />
           </mesh>
@@ -698,7 +700,8 @@ function MeasureTool({ active, units }) {
 }
 
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails }) {
-  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeight } = stairConfig;
+  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight } = stairConfig;
+  const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
   const activeCursor = isMeasure || postPlacementMode || topRailMode ? 'crosshair' : undefined;
@@ -782,14 +785,14 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           />
         )}
 
-        {middleRailEnabled && (
+        {middleRailEnabled && effectiveMiddleRailHeights.length > 0 && (
           <ManualMiddleRailsRenderer
             manualTopRails={manualTopRails || []}
             manualPosts={manualPosts || []}
             treadPositions={calc.treadPositions}
             riserHeight={calc.riserHeight}
             run={run}
-            middleRailHeight={middleRailHeight ?? 18}
+            middleRailHeights={effectiveMiddleRailHeights}
           />
         )}
 

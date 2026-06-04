@@ -261,7 +261,14 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                 </button>
                 <button
                   className={`panel-btn${stairConfig.middleRailEnabled ? ' panel-btn-active' : ''}`}
-                  onClick={() => setStairConfig(s => ({ ...s, middleRailEnabled: !s.middleRailEnabled }))}
+                  onClick={() => setStairConfig(s => {
+                    if (!s.middleRailEnabled) {
+                      const existing = s.middleRailHeights ?? (s.middleRailHeight != null ? [s.middleRailHeight] : null);
+                      const heights = existing && existing.length > 0 ? existing : [18];
+                      return { ...s, middleRailEnabled: true, middleRailHeights: heights };
+                    }
+                    return { ...s, middleRailEnabled: false };
+                  })}
                 >
                   Middle Rail
                 </button>
@@ -281,11 +288,45 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                   <NumericDraftInput className="field-input" value={stairConfig.bottomRailHeight} onCommit={commitDim('bottomRailHeight')} />
                 </label>
               )}
-              {stairConfig.middleRailEnabled && (
-                <label className="field-label" style={{ marginTop: 8 }}>Middle Rail Height (in)
-                  <NumericDraftInput className="field-input" value={stairConfig.middleRailHeight} onCommit={commitDim('middleRailHeight')} />
-                </label>
-              )}
+              {stairConfig.middleRailEnabled && (() => {
+                const heights = stairConfig.middleRailHeights ?? (stairConfig.middleRailHeight != null ? [stairConfig.middleRailHeight] : [18]);
+                return (
+                  <div style={{ marginTop: 8 }}>
+                    {heights.map((h, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                        <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Rail {i + 1} height (in)</span>
+                        <NumericDraftInput
+                          className="field-input"
+                          value={h}
+                          onCommit={v => setStairConfig(s => {
+                            const hs = s.middleRailHeights ?? (s.middleRailHeight != null ? [s.middleRailHeight] : [18]);
+                            const next = [...hs];
+                            next[i] = v;
+                            return { ...s, middleRailHeights: next };
+                          })}
+                        />
+                        <button
+                          className="panel-btn"
+                          style={{ padding: '2px 6px', fontSize: 12, lineHeight: 1 }}
+                          title="Remove this rail"
+                          onClick={() => setStairConfig(s => {
+                            const hs = s.middleRailHeights ?? (s.middleRailHeight != null ? [s.middleRailHeight] : [18]);
+                            return { ...s, middleRailHeights: hs.filter((_, j) => j !== i) };
+                          })}
+                        >×</button>
+                      </div>
+                    ))}
+                    <button
+                      className="panel-btn"
+                      style={{ marginTop: 2, width: '100%' }}
+                      onClick={() => setStairConfig(s => {
+                        const hs = s.middleRailHeights ?? (s.middleRailHeight != null ? [s.middleRailHeight] : [18]);
+                        return { ...s, middleRailHeights: [...hs, 18] };
+                      })}
+                    >+ Add Middle Rail</button>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Top rail list */}
