@@ -159,6 +159,26 @@ function resolveBottomRailEndpoint(endpoint, manualPosts, treadPositions, riserH
   return null;
 }
 
+// Middle rail segments reusing the same post-to-post connections as manualTopRails,
+// but with endpoints at middleRailHeightIn inches above the stair nosing line.
+export function getManualMiddleRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeightIn) {
+  const segments = [];
+  for (const rail of manualTopRails) {
+    const r = normalizeRailEndpoints(rail);
+    const start = resolveBottomRailEndpoint(r.startEndpoint, manualPosts, treadPositions, riserHeight, run, middleRailHeightIn);
+    const end = resolveBottomRailEndpoint(r.endEndpoint, manualPosts, treadPositions, riserHeight, run, middleRailHeightIn);
+    if (!start || !end) continue;
+
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const dz = end.z - start.z;
+    const lengthIn = Math.sqrt(dx * dx + dy * dy + dz * dz) / INtoU;
+
+    segments.push({ rail: r, start, end, lengthIn });
+  }
+  return segments;
+}
+
 // Bottom rail segments reusing the same post-to-post connections as manualTopRails,
 // but with endpoints at bottomRailHeightIn inches above each post base (tread surface).
 export function getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeightIn) {

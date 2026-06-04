@@ -259,6 +259,12 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                 >
                   Bottom Rail
                 </button>
+                <button
+                  className={`panel-btn${stairConfig.middleRailEnabled ? ' panel-btn-active' : ''}`}
+                  onClick={() => setStairConfig(s => ({ ...s, middleRailEnabled: !s.middleRailEnabled }))}
+                >
+                  Middle Rail
+                </button>
                 <button className="panel-btn" disabled title="Coming soon">Bridges</button>
               </div>
               {postPlacementMode && (
@@ -273,6 +279,11 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               {stairConfig.bottomRailEnabled && (
                 <label className="field-label" style={{ marginTop: 8 }}>Bottom Rail Height (in)
                   <NumericDraftInput className="field-input" value={stairConfig.bottomRailHeight} onCommit={commitDim('bottomRailHeight')} />
+                </label>
+              )}
+              {stairConfig.middleRailEnabled && (
+                <label className="field-label" style={{ marginTop: 8 }}>Middle Rail Height (in)
+                  <NumericDraftInput className="field-input" value={stairConfig.middleRailHeight} onCommit={commitDim('middleRailHeight')} />
                 </label>
               )}
             </div>
