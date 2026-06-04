@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getTubeProfile, getManualRailSegments, INtoU, TREAD_THICK } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualRailSegments, getManualBottomRailSegments, INtoU, TREAD_THICK } from '../geometry/railingGeometry.js';
 
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [] }) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
@@ -260,6 +260,40 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       doc.setFont('helvetica', 'bold');
       doc.setTextColor('#5a4000');
       doc.text(`TR${idx + 1}`, mx, my);
+    });
+  }
+
+  // ── Manual Bottom Rails (side view) ──────────────────────────────────────
+  if (stairConfig.bottomRailEnabled) {
+    const bottomRailHeight = stairConfig.bottomRailHeight ?? 1;
+    const brSegs = getManualBottomRailSegments(
+      Array.isArray(manualTopRails) ? manualTopRails : [],
+      validManualPosts,
+      calc.treadPositions,
+      calc.riserHeight,
+      stairConfig.run,
+      bottomRailHeight
+    );
+
+    const sxToPdf = (sx) => ox + dw / 2 + (sx / INtoU) * sc;
+    const syToPdf = (sy) => oy - (sy / INtoU) * sc - rPx / 2 + (TREAD_THICK / INtoU) * sc;
+
+    brSegs.forEach((seg, idx) => {
+      const sx = sxToPdf(seg.start.x);
+      const sy = syToPdf(seg.start.y);
+      const ex = sxToPdf(seg.end.x);
+      const ey = syToPdf(seg.end.y);
+
+      doc.setDrawColor('#2255aa');
+      doc.setLineWidth(Math.max(1.5, Math.min(sc, 6)));
+      doc.line(sx, sy, ex, ey);
+
+      const mx = (sx + ex) / 2;
+      const my = (sy + ey) / 2 + 8;
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor('#1a3a80');
+      doc.text(`BR${idx + 1}`, mx, my);
     });
   }
 
