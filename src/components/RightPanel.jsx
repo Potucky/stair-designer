@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { TUBE_SIZES } from '../data/materialProfiles.js';
 import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
+import { normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
 function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', integer = false }) {
   const [focused, setFocused] = useState(false);
@@ -75,7 +76,45 @@ function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', 
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail }) {
+const QUICK_EXT = [0, 1, 2, 3, 4, 5, 10];
+
+function ExtChips({ curLen, onSet }) {
+  const [draft, setDraft] = useState('');
+  const isQuick = QUICK_EXT.includes(curLen);
+
+  return (
+    <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'center' }}>
+      {QUICK_EXT.map(v => (
+        <button
+          key={v}
+          className={`panel-btn${curLen === v ? ' panel-btn-active' : ''}`}
+          style={{ padding: '2px 5px', fontSize: 10, minWidth: 26 }}
+          onClick={() => { onSet(v); setDraft(''); }}
+        >{v}&quot;</button>
+      ))}
+      <input
+        type="text"
+        inputMode="decimal"
+        placeholder="1–50"
+        className="field-input"
+        style={{ width: 42, fontSize: 10, padding: '2px 4px' }}
+        value={draft || (!isQuick && curLen > 0 ? String(curLen) : '')}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          const v = parseFloat(draft);
+          if (Number.isFinite(v) && v >= 1) onSet(Math.min(50, v));
+          setDraft('');
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.target.blur();
+          if (e.key === 'Escape') { setDraft(''); e.target.blur(); }
+        }}
+      />
+    </div>
+  );
+}
+
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail }) {
   const [saveStatus, setSaveStatus] = useState(null);
 
   const str = (field) => (e) => setProject((p) => ({ ...p, [field]: e.target.value }));
@@ -213,23 +252,74 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               <div style={{ marginTop: 10 }}>
                 <div className="field-label-sm" style={{ marginBottom: 4 }}>Top Rails</div>
                 {manualTopRails.map((rail, idx) => {
-                  const p1Idx = manualPosts ? manualPosts.findIndex(p => p.id === rail.startPostId) : -1;
-                  const p2Idx = manualPosts ? manualPosts.findIndex(p => p.id === rail.endPostId) : -1;
+                  const r = normalizeRailEndpoints(rail);
+                  const startFixed = r.startEndpoint.anchorType === 'fixed';
+                  const endFixed = r.endEndpoint.anchorType === 'fixed';
+                  const p1Idx = !startFixed && manualPosts ? manualPosts.findIndex(p => p.id === rail.startPostId) : -1;
+                  const p2Idx = !endFixed && manualPosts ? manualPosts.findIndex(p => p.id === rail.endPostId) : -1;
+                  const isSelected = rail.id === selectedManualTopRailId;
                   return (
-                    <div key={rail.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                      <span style={{ fontSize: 10, color: 'var(--text-dim)', flex: 1 }}>
-                        TR{idx + 1} — {p1Idx >= 0 ? `P${p1Idx + 1}` : '?'} to {p2Idx >= 0 ? `P${p2Idx + 1}` : '?'}
-                      </span>
-                      <button
-                        className="panel-btn panel-btn-danger"
-                        style={{ padding: '2px 6px', fontSize: 10 }}
-                        onClick={() => onDeleteManualTopRail(rail.id)}
+                    <div key={rail.id} style={{ marginBottom: 2 }}>
+                      <div
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', borderRadius: 3, padding: '2px 4px', background: isSelected ? 'rgba(37,99,235,0.08)' : undefined }}
+                        onClick={() => onSelectManualTopRail(rail.id)}
                       >
-                        Delete
-                      </button>
+                        <span style={{ fontSize: 10, color: isSelected ? 'var(--text)' : 'var(--text-dim)', flex: 1 }}>
+                          TR{idx + 1} — {startFixed ? 'Fixed' : (p1Idx >= 0 ? `P${p1Idx + 1}` : '?')} to {endFixed ? 'Fixed' : (p2Idx >= 0 ? `P${p2Idx + 1}` : '?')}
+                        </span>
+                        <button
+                          className="panel-btn panel-btn-danger"
+                          style={{ padding: '2px 6px', fontSize: 10 }}
+                          onClick={(e) => { e.stopPropagation(); onDeleteManualTopRail(rail.id); }}
+                        >
+                          ×
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
+
+                {/* Endpoint extension controls for selected rail */}
+                {selectedManualTopRailId && (() => {
+                  const sel = manualTopRails.find(r => r.id === selectedManualTopRailId);
+                  if (!sel) return null;
+                  const r = normalizeRailEndpoints(sel);
+
+                  const setExt = (which, lengthIn) => {
+                    const ep = r[`${which}Endpoint`];
+                    onUpdateManualTopRail(sel.id, {
+                      [`${which}Endpoint`]: {
+                        ...ep,
+                        extension: lengthIn === 0
+                          ? { type: 'none', lengthIn: 0 }
+                          : { type: 'straight', lengthIn },
+                      },
+                    });
+                  };
+
+                  return (
+                    <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                      <div className="field-label-sm" style={{ marginBottom: 6 }}>Endpoint Extensions</div>
+                      {['start', 'end'].map(which => {
+                        const ep = r[`${which}Endpoint`];
+                        const isFixed = ep.anchorType === 'fixed';
+                        const curLen = ep.extension?.type === 'none' ? 0 : (Number(ep.extension?.lengthIn) || 0);
+                        return (
+                          <div key={which} style={{ marginBottom: 8 }}>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
+                              {which === 'start' ? 'Start' : 'End'}{isFixed ? ' — Fixed/Detached' : ''}
+                            </div>
+                            <ExtChips
+                              key={`${sel.id}-${which}`}
+                              curLen={curLen}
+                              onSet={(v) => setExt(which, v)}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

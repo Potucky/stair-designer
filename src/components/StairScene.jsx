@@ -3,7 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { fmtUnit } from '../utils/format.js';
-import { getTubeProfile, getManualPostBase, getManualPostTop } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualPostBase, getManualRailSegments } from '../geometry/railingGeometry.js';
 
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
@@ -351,29 +351,22 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
   );
 }
 
-// Renders top rail beams between paired post tops.
+// Renders top rail beams. Handles post-anchored, fixed/detached endpoints, and straight extensions.
 function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run }) {
   const INtoU = 0.5;
   const RAIL_W = 2 * INtoU;
   const RAIL_H = 1 * INtoU;
 
-  const getPostTop = (post) => {
-    const pt = getManualPostTop(post, treadPositions, riserHeight, run);
-    if (!pt) return null;
-    return new THREE.Vector3(pt.x, pt.y, pt.z);
-  };
+  const segments = useMemo(
+    () => getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run),
+    [manualTopRails, manualPosts, treadPositions, riserHeight, run]
+  );
 
   return (
     <>
-      {manualTopRails.map((rail) => {
-        const sp = manualPosts.find(p => p.id === rail.startPostId);
-        const ep = manualPosts.find(p => p.id === rail.endPostId);
-        if (!sp || !ep) return null;
-
-        const startV = getPostTop(sp);
-        const endV = getPostTop(ep);
-        if (!startV || !endV) return null;
-
+      {segments.map(({ rail, start, end }) => {
+        const startV = new THREE.Vector3(start.x, start.y, start.z);
+        const endV = new THREE.Vector3(end.x, end.y, end.z);
         const length = startV.distanceTo(endV);
         if (length < 0.01) return null;
 

@@ -13,6 +13,7 @@ import { saveProjectJson, openProjectJson } from './utils/saveJson.js';
 import { generatePdf } from './pdf/generatePdf.js';
 import { saveProject } from './lib/saveProject.js';
 import { DEFAULT_STAIR, DEFAULT_PROJECT } from './constants/defaults.js';
+import { getManualPostTop, normalizeRailEndpoints, INtoU } from './geometry/railingGeometry.js';
 
 export default function App() {
   const [project, setProject] = useState(DEFAULT_PROJECT);
@@ -30,6 +31,7 @@ export default function App() {
   const [manualTopRails, setManualTopRails] = useState([]);
   const [topRailMode, setTopRailMode] = useState(false);
   const [topRailFirstPostId, setTopRailFirstPostId] = useState(null);
+  const [selectedManualTopRailId, setSelectedManualTopRailId] = useState(null);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -86,8 +88,41 @@ export default function App() {
   };
 
   const handleDeleteManualPost = (id) => {
+    const post = manualPosts.find(p => p.id === id);
+    const postTop = post
+      ? getManualPostTop(post, calc.treadPositions, calc.riserHeight, stairConfig.run)
+      : null;
+
+    setManualTopRails(prev => prev.map(rail => {
+      const r = normalizeRailEndpoints(rail);
+      let { startEndpoint, endEndpoint } = r;
+      let changed = false;
+
+      if (startEndpoint.anchorType === 'post' && startEndpoint.postId === id) {
+        startEndpoint = {
+          ...startEndpoint,
+          anchorType: 'fixed',
+          pointIn: postTop
+            ? { xIn: postTop.x / INtoU, yIn: postTop.y / INtoU, zIn: postTop.z / INtoU }
+            : startEndpoint.pointIn,
+        };
+        changed = true;
+      }
+      if (endEndpoint.anchorType === 'post' && endEndpoint.postId === id) {
+        endEndpoint = {
+          ...endEndpoint,
+          anchorType: 'fixed',
+          pointIn: postTop
+            ? { xIn: postTop.x / INtoU, yIn: postTop.y / INtoU, zIn: postTop.z / INtoU }
+            : endEndpoint.pointIn,
+        };
+        changed = true;
+      }
+
+      return changed ? { ...r, startEndpoint, endEndpoint } : r;
+    }));
+
     setManualPosts(prev => prev.filter(p => p.id !== id));
-    setManualTopRails(prev => prev.filter(r => r.startPostId !== id && r.endPostId !== id));
     setSelectedManualPostId(null);
   };
 
@@ -123,7 +158,24 @@ export default function App() {
       );
       if (!duplicate) {
         const id = `rail-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-        setManualTopRails(prev => [...prev, { id, startPostId: startId, endPostId: endId, profile: '2x1' }]);
+        setManualTopRails(prev => [...prev, {
+          id,
+          startPostId: startId,
+          endPostId: endId,
+          profile: '2x1',
+          startEndpoint: {
+            anchorType: 'post',
+            postId: startId,
+            pointIn: null,
+            extension: { type: 'none', lengthIn: 0 },
+          },
+          endEndpoint: {
+            anchorType: 'post',
+            postId: endId,
+            pointIn: null,
+            extension: { type: 'none', lengthIn: 0 },
+          },
+        }]);
       }
       setTopRailFirstPostId(null);
     }
@@ -131,6 +183,15 @@ export default function App() {
 
   const handleDeleteManualTopRail = (id) => {
     setManualTopRails(prev => prev.filter(r => r.id !== id));
+    setSelectedManualTopRailId(prev => (prev === id ? null : prev));
+  };
+
+  const handleSelectManualTopRail = (id) => {
+    setSelectedManualTopRailId(prev => (prev === id ? null : id));
+  };
+
+  const handleUpdateManualTopRail = (id, changes) => {
+    setManualTopRails(prev => prev.map(r => r.id === id ? { ...r, ...changes } : r));
   };
 
   const handleOpenJson = () =>
@@ -140,8 +201,9 @@ export default function App() {
         setStairConfig({ ...DEFAULT_STAIR, ...sc });
         if (u) setUnits(u);
         setManualPosts(Array.isArray(mp) ? mp : []);
-        setManualTopRails(Array.isArray(mtr) ? mtr : []);
+        setManualTopRails(Array.isArray(mtr) ? mtr.map(normalizeRailEndpoints) : []);
         setSelectedManualPostId(null);
+        setSelectedManualTopRailId(null);
         setPostPlacementMode(false);
         setTopRailMode(false);
         setTopRailFirstPostId(null);
@@ -206,6 +268,9 @@ export default function App() {
         topRailFirstPostId={topRailFirstPostId}
         manualTopRails={manualTopRails}
         onDeleteManualTopRail={handleDeleteManualTopRail}
+        selectedManualTopRailId={selectedManualTopRailId}
+        onSelectManualTopRail={handleSelectManualTopRail}
+        onUpdateManualTopRail={handleUpdateManualTopRail}
       />
       <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} units={units} />
     </div>
