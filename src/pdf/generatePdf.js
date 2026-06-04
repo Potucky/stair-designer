@@ -125,6 +125,20 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     }
   }
 
+  // Step numbers at inner tread corners
+  {
+    let sx = ox;
+    let sy = oy;
+    for (let i = 0; i < steps; i++) {
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor('#666666');
+      doc.text(String(i + 1), sx + 2, sy - rPx - 2);
+      sx += tPx;
+      sy -= rPx;
+    }
+  }
+
   // Stringer — diagonal dashed blue line
   doc.setDrawColor('#3366cc');
   doc.setLineWidth(1.2);
