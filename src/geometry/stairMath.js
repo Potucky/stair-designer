@@ -102,7 +102,8 @@ export function buildMaterialList({ width, steps, stringerLength, railingEnabled
     items.push({ part: 'Top Landing', qty: 1, lengthIn: topLandingLength.toFixed(2), profile: 'Flat Platform', note: `${width.toFixed(0)}" wide` });
   }
   items.push({ part: 'Side Stringer', qty: 2, lengthIn: stringerLength.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Each side' });
-  items.push({ part: 'Tread', qty: steps, lengthIn: width.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Horizontal tread span' });
+  const treadQty = topLandingEnabled && steps > 0 ? steps - 1 : steps;
+  items.push({ part: 'Tread', qty: treadQty, lengthIn: width.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Horizontal tread span' });
 
   if (manualPosts.length > 0) {
     const maxH = manualPosts.reduce((m, p) => Math.max(m, Number(p.heightIn) || 0), 0);

@@ -613,7 +613,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           width={width}
           steps={steps}
           handrailHeight={handrailHeight}
-          treadPositions={calc.treadPositions}
+          treadPositions={topLandingEnabled && calc.treadPositions.length > 0 ? calc.treadPositions.slice(0, -1) : calc.treadPositions}
           postPlacementMode={postPlacementMode}
           onAddManualPost={onAddManualPost}
         />
