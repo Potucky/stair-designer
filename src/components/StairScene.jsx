@@ -700,7 +700,7 @@ function MeasureTool({ active, units }) {
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode }) {
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0 }) {
   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'work';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
@@ -737,72 +737,74 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           infiniteGrid
         />
 
-        {bottomLandingEnabled && (
-          <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength} />
-        )}
-        {topLandingEnabled && (
-          <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} treadPositions={calc.treadPositions} />
-        )}
+        <group position={[structureOffsetXIn * 0.5, 0, structureOffsetZIn * 0.5]}>
+          {bottomLandingEnabled && (
+            <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength} />
+          )}
+          {topLandingEnabled && (
+            <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} treadPositions={calc.treadPositions} />
+          )}
 
-        <StairModel
-          height={height}
-          run={run}
-          width={width}
-          steps={steps}
-          handrailHeight={handrailHeight}
-          treadPositions={topLandingEnabled && calc.treadPositions.length > 0 ? calc.treadPositions.slice(0, -1) : calc.treadPositions}
-          postPlacementMode={postPlacementMode}
-          onAddManualPost={onAddManualPost}
-        />
+          <StairModel
+            height={height}
+            run={run}
+            width={width}
+            steps={steps}
+            handrailHeight={handrailHeight}
+            treadPositions={topLandingEnabled && calc.treadPositions.length > 0 ? calc.treadPositions.slice(0, -1) : calc.treadPositions}
+            postPlacementMode={postPlacementMode}
+            onAddManualPost={onAddManualPost}
+          />
 
-        <ManualPostsRenderer
-          manualPosts={manualPosts || []}
-          treadPositions={calc.treadPositions}
-          riserHeight={calc.riserHeight}
-          run={run}
-          tubeSize={tubeSize}
-          selectedManualPostId={selectedManualPostId}
-          onSelectManualPost={onSelectManualPost}
-          topRailMode={topRailMode}
-          topRailFirstPostId={topRailFirstPostId}
-          onTopRailPostClick={onTopRailPostClick}
-          railingColorMode={effectiveColorMode}
-        />
+          <ManualPostsRenderer
+            manualPosts={manualPosts || []}
+            treadPositions={calc.treadPositions}
+            riserHeight={calc.riserHeight}
+            run={run}
+            tubeSize={tubeSize}
+            selectedManualPostId={selectedManualPostId}
+            onSelectManualPost={onSelectManualPost}
+            topRailMode={topRailMode}
+            topRailFirstPostId={topRailFirstPostId}
+            onTopRailPostClick={onTopRailPostClick}
+            railingColorMode={effectiveColorMode}
+          />
 
-        <ManualTopRailsRenderer
-          manualTopRails={manualTopRails || []}
-          manualPosts={manualPosts || []}
-          treadPositions={calc.treadPositions}
-          riserHeight={calc.riserHeight}
-          run={run}
-          railingColorMode={effectiveColorMode}
-        />
-
-        {bottomRailEnabled && (
-          <ManualBottomRailsRenderer
+          <ManualTopRailsRenderer
             manualTopRails={manualTopRails || []}
             manualPosts={manualPosts || []}
             treadPositions={calc.treadPositions}
             riserHeight={calc.riserHeight}
             run={run}
-            bottomRailHeight={bottomRailHeight ?? 1}
             railingColorMode={effectiveColorMode}
           />
-        )}
 
-        {middleRailEnabled && effectiveMiddleRailHeights.length > 0 && (
-          <ManualMiddleRailsRenderer
-            manualTopRails={manualTopRails || []}
-            manualPosts={manualPosts || []}
-            treadPositions={calc.treadPositions}
-            riserHeight={calc.riserHeight}
-            run={run}
-            middleRailHeights={effectiveMiddleRailHeights}
-            railingColorMode={effectiveColorMode}
-          />
-        )}
+          {bottomRailEnabled && (
+            <ManualBottomRailsRenderer
+              manualTopRails={manualTopRails || []}
+              manualPosts={manualPosts || []}
+              treadPositions={calc.treadPositions}
+              riserHeight={calc.riserHeight}
+              run={run}
+              bottomRailHeight={bottomRailHeight ?? 1}
+              railingColorMode={effectiveColorMode}
+            />
+          )}
 
-        {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
+          {middleRailEnabled && effectiveMiddleRailHeights.length > 0 && (
+            <ManualMiddleRailsRenderer
+              manualTopRails={manualTopRails || []}
+              manualPosts={manualPosts || []}
+              treadPositions={calc.treadPositions}
+              riserHeight={calc.riserHeight}
+              run={run}
+              middleRailHeights={effectiveMiddleRailHeights}
+              railingColorMode={effectiveColorMode}
+            />
+          )}
+
+          {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
+        </group>
 
         <MeasureTool active={isMeasure} units={units} />
 

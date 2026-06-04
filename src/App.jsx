@@ -33,6 +33,10 @@ export default function App() {
   const [topRailFirstPostId, setTopRailFirstPostId] = useState(null);
   const [selectedManualTopRailId, setSelectedManualTopRailId] = useState(null);
 
+  const [structureOffsetXIn, setStructureOffsetXIn] = useState(0);
+  const [structureOffsetZIn, setStructureOffsetZIn] = useState(0);
+  const [structureMoveSelected, setStructureMoveSelected] = useState(false);
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
@@ -203,6 +207,13 @@ export default function App() {
     setManualTopRails(prev => prev.map(r => r.id === id ? { ...r, ...changes } : r));
   };
 
+  const handleToggleStructureMove = () => setStructureMoveSelected(prev => !prev);
+  const handleMoveForward = () => setStructureOffsetXIn(prev => prev + 6);
+  const handleMoveBack = () => setStructureOffsetXIn(prev => prev - 6);
+  const handleMoveLeft = () => setStructureOffsetZIn(prev => prev - 6);
+  const handleMoveRight = () => setStructureOffsetZIn(prev => prev + 6);
+  const handleResetStructureOffset = () => { setStructureOffsetXIn(0); setStructureOffsetZIn(0); };
+
   const handleOpenJson = () =>
     openProjectJson(
       ({ project: p, stairConfig: sc, units: u, manualPosts: mp, manualTopRails: mtr }) => {
@@ -255,6 +266,8 @@ export default function App() {
         onTopRailPostClick={handleTopRailPostClick}
         manualTopRails={manualTopRails}
         railingColorMode={stairConfig.railingColorMode}
+        structureOffsetXIn={structureOffsetXIn}
+        structureOffsetZIn={structureOffsetZIn}
       />
       <RightPanel
         project={project}
@@ -281,6 +294,15 @@ export default function App() {
         selectedManualTopRailId={selectedManualTopRailId}
         onSelectManualTopRail={handleSelectManualTopRail}
         onUpdateManualTopRail={handleUpdateManualTopRail}
+        structureMoveSelected={structureMoveSelected}
+        onToggleStructureMove={handleToggleStructureMove}
+        onMoveForward={handleMoveForward}
+        onMoveBack={handleMoveBack}
+        onMoveLeft={handleMoveLeft}
+        onMoveRight={handleMoveRight}
+        onResetStructureOffset={handleResetStructureOffset}
+        structureOffsetXIn={structureOffsetXIn}
+        structureOffsetZIn={structureOffsetZIn}
       />
       <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} units={units} />
     </div>

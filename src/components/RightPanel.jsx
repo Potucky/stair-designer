@@ -114,7 +114,7 @@ function ExtChips({ curLen, onSet }) {
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn }) {
   const [saveStatus, setSaveStatus] = useState(null);
 
   const str = (field) => (e) => setProject((p) => ({ ...p, [field]: e.target.value }));
@@ -512,6 +512,36 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             <div className="obj-item">⊟ Railing 1</div>
           )}
         </div>
+      </section>
+
+      {/* 3D Structure Move */}
+      <section className="panel-section">
+        <h3 className="section-title">3D Position</h3>
+        <button
+          className={`panel-btn${structureMoveSelected ? ' panel-btn-active' : ''}`}
+          style={{ width: '100%', marginBottom: 6 }}
+          onClick={onToggleStructureMove}
+        >
+          {structureMoveSelected ? 'Structure Selected' : 'Select Structure'}
+        </button>
+        {structureMoveSelected && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+              <button className="panel-btn" style={{ minWidth: 64 }} onClick={onMoveForward}>Forward</button>
+            </div>
+            <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginBottom: 4 }}>
+              <button className="panel-btn" style={{ minWidth: 52 }} onClick={onMoveLeft}>Left</button>
+              <button className="panel-btn" style={{ minWidth: 52 }} onClick={onResetStructureOffset}>Reset</button>
+              <button className="panel-btn" style={{ minWidth: 52 }} onClick={onMoveRight}>Right</button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
+              <button className="panel-btn" style={{ minWidth: 64 }} onClick={onMoveBack}>Back</button>
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center' }}>
+              Offset: X {structureOffsetXIn} in / Z {structureOffsetZIn} in
+            </div>
+          </div>
+        )}
       </section>
 
       {/* PDF Output */}
