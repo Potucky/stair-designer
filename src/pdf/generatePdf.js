@@ -284,7 +284,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       const ex = sxToPdf(seg.end.x);
       const ey = syToPdf(seg.end.y);
 
-      doc.setDrawColor('#2255aa');
+      doc.setDrawColor('#8B6914');
       doc.setLineWidth(Math.max(1.5, Math.min(sc, 6)));
       doc.line(sx, sy, ex, ey);
 
@@ -292,7 +292,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       const my = (sy + ey) / 2 + 8;
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor('#1a3a80');
+      doc.setTextColor('#5a4000');
       doc.text(`BR${idx + 1}`, mx, my);
     });
   }
