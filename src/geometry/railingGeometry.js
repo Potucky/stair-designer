@@ -117,14 +117,30 @@ export function getManualRailSegments(manualTopRails, manualPosts, treadPosition
   return segments;
 }
 
-// Resolve a bottom rail endpoint: post-anchored points sit at bottomRailHeightIn above post base.
+// Resolve a bottom rail endpoint: post-anchored points sit bottomRailHeightIn above the stair
+// nosing line at the post's x position, so the rail runs parallel to the stair slope and the
+// tube bottom never intersects tread plates regardless of where intermediate treads fall.
 function resolveBottomRailEndpoint(endpoint, manualPosts, treadPositions, riserHeight, run, bottomRailHeightIn) {
   if (endpoint.anchorType === 'post') {
     const post = manualPosts.find(p => p.id === endpoint.postId);
     if (!post) return null;
     const base = getManualPostBase(post, treadPositions, riserHeight, run);
     if (!base) return null;
-    return { x: base.x, y: base.y + bottomRailHeightIn * INtoU, z: base.z };
+
+    const steps = treadPositions.length;
+    const treadDepth = steps > 0 ? run / steps : run;
+    const rH_u = riserHeight * INtoU;
+    const treadD_u = treadDepth * INtoU;
+    const r_u = run * INtoU;
+
+    // Stair nosing line: passes through tread-0 front edge at (x=-r_u/2, y=0.5*rH_u+TREAD_THICK)
+    // and rises at slope rH_u/treadD_u. Evaluate at this post's x.
+    const nosingY = (rH_u / treadD_u) * (base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK;
+
+    // Endpoint y = nosing line + clearance. The renderer lifts midV by RAIL_H/2 so the box
+    // bottom face sits at approximately this height (exact for flat rails; ~0.08" high for typical
+    // stair angles, which is acceptable).
+    return { x: base.x, y: nosingY + bottomRailHeightIn * INtoU, z: base.z };
   }
   if (endpoint.anchorType === 'fixed' && endpoint.pointIn) {
     return {
