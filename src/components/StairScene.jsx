@@ -356,7 +356,7 @@ function TopLanding({ run, width, height, steps, topLandingLength, postPlacement
 }
 
 // Renders manually placed posts from the manualPosts array.
-function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tubeSize, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick }) {
+function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tubeSize, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, railingColorMode }) {
   const INtoU = 0.5;
   const profile = getTubeProfile(tubeSize);
   const postSide = profile.width * INtoU; // real profile width in scene units
@@ -373,7 +373,8 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
         const worldY = base.y + postH / 2;
         const worldZ = base.z;
 
-        let color = '#c47a3a';
+        const basePostColor = railingColorMode === 'black' ? '#111111' : '#4a4a4a';
+        let color = basePostColor;
         if (id === topRailFirstPostId) color = '#3b82f6';
         else if (id === selectedManualPostId) color = '#f59e0b';
 
@@ -407,7 +408,7 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
 }
 
 // Renders top rail beams. Handles post-anchored, fixed/detached endpoints, and straight extensions.
-function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run }) {
+function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, railingColorMode }) {
   const INtoU = 0.5;
   const RAIL_W = 2 * INtoU;
   const RAIL_H = 1 * INtoU;
@@ -455,7 +456,7 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
         return (
           <mesh key={rail.id} position={midV.toArray()} quaternion={quat} castShadow>
             <boxGeometry args={[length, RAIL_H, RAIL_W]} />
-            <meshStandardMaterial color="#8B6914" metalness={0.3} roughness={0.5} />
+            <meshStandardMaterial color={railingColorMode === 'black' ? '#111111' : '#8B6914'} metalness={0.3} roughness={0.5} />
           </mesh>
         );
       })}
@@ -463,7 +464,7 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
   );
 }
 
-function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight }) {
+function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight, railingColorMode }) {
   const INtoU = 0.5;
   const RAIL_W = 2 * INtoU;
   const RAIL_H = 1 * INtoU;
@@ -508,7 +509,7 @@ function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions
         return (
           <mesh key={`br-${rail.id}`} position={midV.toArray()} quaternion={quat} castShadow>
             <boxGeometry args={[length, RAIL_H, RAIL_W]} />
-            <meshStandardMaterial color="#8B6914" metalness={0.3} roughness={0.5} />
+            <meshStandardMaterial color={railingColorMode === 'black' ? '#111111' : '#8B6914'} metalness={0.3} roughness={0.5} />
           </mesh>
         );
       })}
@@ -516,7 +517,7 @@ function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions
   );
 }
 
-function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeights }) {
+function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeights, railingColorMode }) {
   const INtoU = 0.5;
   const RAIL_W = 1 * INtoU;
   const RAIL_H = 1 * INtoU;
@@ -563,7 +564,7 @@ function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions
         return (
           <mesh key={`mr-${rail.id}-${height}`} position={midV.toArray()} quaternion={quat} castShadow>
             <boxGeometry args={[length, RAIL_H, RAIL_W]} />
-            <meshStandardMaterial color="#2F7D7A" metalness={0.3} roughness={0.5} />
+            <meshStandardMaterial color={railingColorMode === 'black' ? '#111111' : '#2F7D7A'} metalness={0.3} roughness={0.5} />
           </mesh>
         );
       })}
@@ -699,8 +700,9 @@ function MeasureTool({ active, units }) {
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails }) {
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode }) {
   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight } = stairConfig;
+  const effectiveColorMode = railingColorMode ?? 'work';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
@@ -764,6 +766,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           topRailMode={topRailMode}
           topRailFirstPostId={topRailFirstPostId}
           onTopRailPostClick={onTopRailPostClick}
+          railingColorMode={effectiveColorMode}
         />
 
         <ManualTopRailsRenderer
@@ -772,6 +775,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           treadPositions={calc.treadPositions}
           riserHeight={calc.riserHeight}
           run={run}
+          railingColorMode={effectiveColorMode}
         />
 
         {bottomRailEnabled && (
@@ -782,6 +786,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             riserHeight={calc.riserHeight}
             run={run}
             bottomRailHeight={bottomRailHeight ?? 1}
+            railingColorMode={effectiveColorMode}
           />
         )}
 
@@ -793,6 +798,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             riserHeight={calc.riserHeight}
             run={run}
             middleRailHeights={effectiveMiddleRailHeights}
+            railingColorMode={effectiveColorMode}
           />
         )}
 

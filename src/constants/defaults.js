@@ -18,6 +18,7 @@ export const DEFAULT_STAIR = {
   bottomRailHeight: 1,
   middleRailEnabled: false,
   middleRailHeights: [18],
+  railingColorMode: 'work',
 };
 
 export const DEFAULT_PROJECT = {

@@ -251,6 +251,7 @@ export default function App() {
         topRailFirstPostId={topRailFirstPostId}
         onTopRailPostClick={handleTopRailPostClick}
         manualTopRails={manualTopRails}
+        railingColorMode={stairConfig.railingColorMode}
       />
       <RightPanel
         project={project}

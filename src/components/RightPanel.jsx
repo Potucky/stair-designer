@@ -238,6 +238,24 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               <NumericDraftInput className="field-input" value={stairConfig.pinOpening} onCommit={commitDim('pinOpening')} />
             </label>
 
+            <div style={{ marginTop: 8 }}>
+              <div className="field-label-sm" style={{ marginBottom: 6 }}>3D Color Mode</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  className={`panel-btn${stairConfig.railingColorMode !== 'black' ? ' panel-btn-active' : ''}`}
+                  onClick={() => setStairConfig(s => ({ ...s, railingColorMode: 'work' }))}
+                >
+                  Work Colors
+                </button>
+                <button
+                  className={`panel-btn${stairConfig.railingColorMode === 'black' ? ' panel-btn-active' : ''}`}
+                  onClick={() => setStairConfig(s => ({ ...s, railingColorMode: 'black' }))}
+                >
+                  Black
+                </button>
+              </div>
+            </div>
+
             <div style={{ marginTop: 12 }}>
               <div className="field-label-sm" style={{ marginBottom: 6 }}>Railing Assembly</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
