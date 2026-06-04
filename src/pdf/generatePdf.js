@@ -122,14 +122,27 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   if (stairConfig.topLandingEnabled && (stairConfig.topLandingLength || 0) > 0) {
     const landPx = stairConfig.topLandingLength * sc;
     const slabH = Math.max(4, 3.5 * sc);
+    const lx = ox + dw;
+    const ly = oy - dh; // top surface flush with last tread walking surface
     doc.setFillColor('#dce3ea');
     doc.setDrawColor('#1a1a2e');
     doc.setLineWidth(1.2);
-    doc.rect(ox + dw, oy - dh - slabH, landPx, slabH, 'FD');
+    doc.rect(lx, ly, landPx, slabH, 'FD');
+    // Light diagonal hatch inside landing rectangle
+    doc.setDrawColor('#9aabb8');
+    doc.setLineWidth(0.35);
+    const hSpacing = 5;
+    for (let d = 0; d <= landPx + slabH; d += hSpacing) {
+      const x1 = lx + Math.max(0, d - slabH);
+      const y1 = ly + Math.min(slabH, d);
+      const x2 = lx + Math.min(landPx, d);
+      const y2 = ly + Math.max(0, d - landPx);
+      if (x1 !== x2 || y1 !== y2) doc.line(x1, y1, x2, y2);
+    }
     doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor('#1a1a2e');
-    doc.text(`Landing: ${fmtDim(stairConfig.topLandingLength, 0)}`, ox + dw + landPx / 2, oy - dh - slabH - 3, { align: 'center' });
+    doc.text(`Landing: ${fmtDim(stairConfig.topLandingLength, 0)}`, lx + landPx / 2, ly - 3, { align: 'center' });
   }
 
   // Wall line — dashed vertical reference at left
