@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getTubeProfile, getManualRailSegments, getManualBottomRailSegments, INtoU, TREAD_THICK } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK } from '../geometry/railingGeometry.js';
 
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [] }) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
@@ -295,6 +295,50 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       doc.setTextColor('#5a4000');
       doc.text(`BR${idx + 1}`, mx, my);
     });
+  }
+
+  // ── Manual Middle Rails (side view) ──────────────────────────────────────
+  if (stairConfig.middleRailEnabled) {
+    const { middleRailHeights = [], middleRailHeight } = stairConfig;
+    const effectiveMiddleRailHeights = (Array.isArray(middleRailHeights) && middleRailHeights.length > 0)
+      ? middleRailHeights
+      : (middleRailHeight != null ? [middleRailHeight] : []);
+
+    if (effectiveMiddleRailHeights.length > 0) {
+      const sxToPdf = (sx) => ox + dw / 2 + (sx / INtoU) * sc;
+      const syToPdf = (sy) => oy - (sy / INtoU) * sc - rPx / 2 + (TREAD_THICK / INtoU) * sc;
+
+      let mrIdx = 0;
+      effectiveMiddleRailHeights.forEach((height) => {
+        const mrSegs = getManualMiddleRailSegments(
+          Array.isArray(manualTopRails) ? manualTopRails : [],
+          validManualPosts,
+          calc.treadPositions,
+          calc.riserHeight,
+          stairConfig.run,
+          height
+        );
+
+        mrSegs.forEach((seg) => {
+          const sx = sxToPdf(seg.start.x);
+          const sy = syToPdf(seg.start.y);
+          const ex = sxToPdf(seg.end.x);
+          const ey = syToPdf(seg.end.y);
+
+          doc.setDrawColor('#2F7D7A');
+          doc.setLineWidth(Math.max(1.5, Math.min(sc, 6)));
+          doc.line(sx, sy, ex, ey);
+
+          const mx = (sx + ex) / 2;
+          const my = (sy + ey) / 2 + 4;
+          doc.setFontSize(6.5);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor('#1A5553');
+          doc.text(`MR${mrIdx + 1}`, mx, my);
+          mrIdx++;
+        });
+      });
+    }
   }
 
   // ── Height dimension (left side) ──────────────────────────────────────────

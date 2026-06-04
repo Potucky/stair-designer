@@ -1,7 +1,7 @@
 const NUMERIC_KEYS = new Set([
   'height', 'run', 'width', 'handrailHeight', 'pinOpening', 'postSpacing', 'manualRailingRun', 'bottomLandingLength', 'topLandingLength', 'bottomRailHeight',
 ]);
-const ALL_STAIR_KEYS = [...NUMERIC_KEYS, 'steps', 'railingEnabled', 'tubeSize', 'railingRunMode', 'bottomLandingEnabled', 'topLandingEnabled', 'bottomRailEnabled', 'railingColorMode'];
+const ALL_STAIR_KEYS = [...NUMERIC_KEYS, 'steps', 'railingEnabled', 'tubeSize', 'railingRunMode', 'bottomLandingEnabled', 'topLandingEnabled', 'bottomRailEnabled', 'railingColorMode', 'middleRailEnabled'];
 
 function isValidStairValue(key, value) {
   if (key === 'steps') return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value > 0;
@@ -12,6 +12,7 @@ function isValidStairValue(key, value) {
   if (key === 'tubeSize') return typeof value === 'string' && value.length > 0;
   if (key === 'railingRunMode') return value === 'matchStair' || value === 'manual';
   if (key === 'railingColorMode') return value === 'work' || value === 'black';
+  if (key === 'middleRailEnabled') return typeof value === 'boolean';
   if (key === 'bottomLandingLength' || key === 'topLandingLength')
     return typeof value === 'number' && Number.isFinite(value) && value > 0;
   if (NUMERIC_KEYS.has(key)) return typeof value === 'number' && Number.isFinite(value);
@@ -88,6 +89,20 @@ export function openProjectJson(onLoad, onError) {
         if (!('bottomRailEnabled' in stairConfig)) stairConfig.bottomRailEnabled = false;
         if (!('bottomRailHeight' in stairConfig)) stairConfig.bottomRailHeight = 1;
         if (!('railingColorMode' in stairConfig)) stairConfig.railingColorMode = 'work';
+        if (!('middleRailEnabled' in stairConfig)) stairConfig.middleRailEnabled = false;
+        // middleRailHeights is an array — handle separately with safe validation
+        if (Array.isArray(data.stairConfig?.middleRailHeights)) {
+          const valid = data.stairConfig.middleRailHeights.filter(
+            h => typeof h === 'number' && Number.isFinite(h) && h > 0
+          );
+          stairConfig.middleRailHeights = valid.length > 0 ? valid : [18];
+        } else {
+          // legacy scalar fallback
+          const legacy = data.stairConfig?.middleRailHeight;
+          stairConfig.middleRailHeights = (typeof legacy === 'number' && Number.isFinite(legacy) && legacy > 0)
+            ? [legacy]
+            : [18];
+        }
         onLoad({ project, stairConfig, units, manualPosts, manualTopRails });
       } catch (err) {
         onError(err.message || 'Invalid file');

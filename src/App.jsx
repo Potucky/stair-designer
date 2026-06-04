@@ -82,6 +82,9 @@ export default function App() {
     topLandingLength: stairConfig.topLandingLength,
     bottomRailEnabled: stairConfig.bottomRailEnabled,
     bottomRailHeight: stairConfig.bottomRailHeight,
+    middleRailEnabled: stairConfig.middleRailEnabled,
+    middleRailHeights: stairConfig.middleRailHeights,
+    middleRailHeight: stairConfig.middleRailHeight,
   }), [stairConfig, calc, manualPosts, manualTopRails]);
 
   const handleAddManualPost = (postData) => {
