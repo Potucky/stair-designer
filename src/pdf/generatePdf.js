@@ -118,6 +118,20 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     doc.text(`Landing: ${fmtDim(stairConfig.bottomLandingLength, 0)}`, ox - landPx / 2, oy - slabH - 3, { align: 'center' });
   }
 
+  // ── Top Landing (side view) ───────────────────────────────────────────────
+  if (stairConfig.topLandingEnabled && (stairConfig.topLandingLength || 0) > 0) {
+    const landPx = stairConfig.topLandingLength * sc;
+    const slabH = Math.max(4, 3.5 * sc);
+    doc.setFillColor('#dce3ea');
+    doc.setDrawColor('#1a1a2e');
+    doc.setLineWidth(1.2);
+    doc.rect(ox + dw, oy - dh - slabH, landPx, slabH, 'FD');
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor('#1a1a2e');
+    doc.text(`Landing: ${fmtDim(stairConfig.topLandingLength, 0)}`, ox + dw + landPx / 2, oy - dh - slabH - 3, { align: 'center' });
+  }
+
   // Wall line — dashed vertical reference at left
   doc.setDrawColor('#cccccc');
   doc.setLineWidth(0.5);
@@ -367,6 +381,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   y = kv('Railing:', stairConfig.railingEnabled ? 'Yes' : 'No', M, y);
   if (stairConfig.bottomLandingEnabled) {
     y = kv('Bottom Landing:', fmtDim(stairConfig.bottomLandingLength || 36, 0), M, y);
+  }
+  if (stairConfig.topLandingEnabled) {
+    y = kv('Top Landing:', fmtDim(stairConfig.topLandingLength || 36, 0), M, y);
   }
   if (stairConfig.railingEnabled) {
     y = kv('Handrail Height:', fmtDim(stairConfig.handrailHeight, 0), M, y);

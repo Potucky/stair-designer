@@ -313,6 +313,21 @@ function BottomLanding({ run, width, bottomLandingLength }) {
   );
 }
 
+function TopLanding({ run, width, height, steps, topLandingLength }) {
+  const INtoU = 0.5;
+  const r = run * INtoU;
+  const w = width * INtoU;
+  const h = height * INtoU;
+  const riserH = steps > 0 ? h / steps : h;
+  const landLen = topLandingLength * INtoU;
+  return (
+    <mesh position={[r / 2 + landLen / 2, h - riserH / 2 + TREAD_THICK / 2, 0]} castShadow receiveShadow>
+      <boxGeometry args={[landLen, TREAD_THICK, w]} />
+      <meshStandardMaterial color="#7c8da0" metalness={0.3} roughness={0.6} />
+    </mesh>
+  );
+}
+
 // Renders manually placed posts from the manualPosts array.
 function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tubeSize, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick }) {
   const INtoU = 0.5;
@@ -550,7 +565,7 @@ function MeasureTool({ active, units }) {
 }
 
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails }) {
-  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength } = stairConfig;
+  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength } = stairConfig;
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
   const activeCursor = isMeasure || postPlacementMode || topRailMode ? 'crosshair' : undefined;
@@ -586,6 +601,9 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
 
         {bottomLandingEnabled && (
           <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength || 36} />
+        )}
+        {topLandingEnabled && (
+          <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength || 36} />
         )}
 
         <StairModel

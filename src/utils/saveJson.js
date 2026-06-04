@@ -1,12 +1,13 @@
 const NUMERIC_KEYS = new Set([
-  'height', 'run', 'width', 'handrailHeight', 'pinOpening', 'postSpacing', 'manualRailingRun', 'bottomLandingLength',
+  'height', 'run', 'width', 'handrailHeight', 'pinOpening', 'postSpacing', 'manualRailingRun', 'bottomLandingLength', 'topLandingLength',
 ]);
-const ALL_STAIR_KEYS = [...NUMERIC_KEYS, 'steps', 'railingEnabled', 'tubeSize', 'railingRunMode', 'bottomLandingEnabled'];
+const ALL_STAIR_KEYS = [...NUMERIC_KEYS, 'steps', 'railingEnabled', 'tubeSize', 'railingRunMode', 'bottomLandingEnabled', 'topLandingEnabled'];
 
 function isValidStairValue(key, value) {
   if (key === 'steps') return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value > 0;
   if (key === 'railingEnabled') return typeof value === 'boolean';
   if (key === 'bottomLandingEnabled') return typeof value === 'boolean';
+  if (key === 'topLandingEnabled') return typeof value === 'boolean';
   if (key === 'tubeSize') return typeof value === 'string' && value.length > 0;
   if (key === 'railingRunMode') return value === 'matchStair' || value === 'manual';
   if (NUMERIC_KEYS.has(key)) return typeof value === 'number' && Number.isFinite(value);
