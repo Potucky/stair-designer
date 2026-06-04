@@ -50,6 +50,8 @@ create table if not exists stair_config_versions (
   calculated_results jsonb,
   warnings           jsonb,
   materials          jsonb,
+  manual_posts       jsonb,       -- array of manual post objects; null = none saved
+  manual_top_rails   jsonb,       -- array of manual top rail objects; null = none saved
   created_at         timestamptz not null default now()
 );
 

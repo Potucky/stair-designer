@@ -103,7 +103,7 @@ export function buildMaterialList({ width, steps, stringerLength, railingEnabled
     items.push({ part: 'Manual Post', qty: manualPosts.length, lengthIn: maxH.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Manually placed' });
   }
 
-  if (manualTopRails.length > 0 && manualPosts.length > 0) {
+  if (manualTopRails.length > 0) {
     const segments = getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run);
     if (segments.length > 0) {
       const totalLen = segments.reduce((s, seg) => s + seg.lengthIn, 0);

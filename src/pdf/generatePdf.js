@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getTubeProfile, getManualRailSegments } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualRailSegments, INtoU, TREAD_THICK } from '../geometry/railingGeometry.js';
 
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [] }) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
@@ -172,29 +172,31 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   }
 
   // ── Manual Top Rails (side view) ──────────────────────────────────────────
+  // Uses getManualRailSegments so fixed-endpoint rails (post deleted) still render.
+  // Scene coords → PDF: x = ox + dw/2 + sceneX/INtoU*sc
+  //                     y = oy - sceneY/INtoU*sc - rPx/2 + (TREAD_THICK/INtoU)*sc
   {
-    const validRails = (Array.isArray(manualTopRails) ? manualTopRails : []).filter((rail) => {
-      const sp = validManualPosts.find(p => p.id === rail.startPostId);
-      const ep = validManualPosts.find(p => p.id === rail.endPostId);
-      return sp && ep;
-    });
+    const railSegs = getManualRailSegments(
+      Array.isArray(manualTopRails) ? manualTopRails : [],
+      validManualPosts,
+      calc.treadPositions,
+      calc.riserHeight,
+      stairConfig.run
+    );
 
-    validRails.forEach((rail, idx) => {
-      const sp = validManualPosts.find(p => p.id === rail.startPostId);
-      const ep = validManualPosts.find(p => p.id === rail.endPostId);
-      const stp = calc.treadPositions[sp.stepIndex];
-      const etp = calc.treadPositions[ep.stepIndex];
+    const sxToPdf = (sx) => ox + dw / 2 + (sx / INtoU) * sc;
+    const syToPdf = (sy) => oy - (sy / INtoU) * sc - rPx / 2 + (TREAD_THICK / INtoU) * sc;
 
-      const sx = ox + (Number(sp.xIn) + Number(sp.offsetXIn)) * sc;
-      const sy = oy - stp.y * sc - Number(sp.heightIn) * sc;
-      const ex = ox + (Number(ep.xIn) + Number(ep.offsetXIn)) * sc;
-      const ey = oy - etp.y * sc - Number(ep.heightIn) * sc;
+    railSegs.forEach((seg, idx) => {
+      const sx = sxToPdf(seg.start.x);
+      const sy = syToPdf(seg.start.y);
+      const ex = sxToPdf(seg.end.x);
+      const ey = syToPdf(seg.end.y);
 
       doc.setDrawColor('#8B6914');
       doc.setLineWidth(3);
       doc.line(sx, sy, ex, ey);
 
-      // Label at midpoint
       const mx = (sx + ex) / 2;
       const my = (sy + ey) / 2 - 5;
       doc.setFontSize(6.5);
@@ -343,13 +345,15 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   if (validManualPosts.length > 0) {
     y = kv('Manual Posts:', String(validManualPosts.length), M, y);
   }
-  const validTopRails = (Array.isArray(manualTopRails) ? manualTopRails : []).filter((rail) => {
-    const sp = validManualPosts.find(p => p.id === rail.startPostId);
-    const ep = validManualPosts.find(p => p.id === rail.endPostId);
-    return sp && ep;
-  });
-  if (validTopRails.length > 0) {
-    y = kv('Top Rails:', String(validTopRails.length), M, y);
+  const resolvedRailSegs = getManualRailSegments(
+    Array.isArray(manualTopRails) ? manualTopRails : [],
+    validManualPosts,
+    calc.treadPositions,
+    calc.riserHeight,
+    stairConfig.run
+  );
+  if (resolvedRailSegs.length > 0) {
+    y = kv('Top Rails:', String(resolvedRailSegs.length), M, y);
   }
   y += 8;
 
@@ -426,11 +430,13 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     }
   }
 
-  // ── Top Rail Schedule (page 2, if rails exist and space permits) ──────────
-  if (validTopRails.length > 0) {
+  // ── Top Rail Schedule (page 2) ────────────────────────────────────────────
+  // Includes rails with fixed endpoints (post deleted). Endpoint labels:
+  //   live post → P1, P2, …   |   fixed/detached → Fixed
+  if (resolvedRailSegs.length > 0) {
     y += 8;
     const rowH = 14;
-    const tableH = 30 + validTopRails.length * rowH;
+    const tableH = 30 + resolvedRailSegs.length * rowH;
 
     if (y + tableH < PH - 60) {
       y = sectionHead('TOP RAIL SCHEDULE', y);
@@ -451,28 +457,30 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       rHeaders.forEach((h, i) => doc.text(h, rcols[i] + 3, y + 1));
       y += 12;
 
-      const topRailSegments = getManualRailSegments(validTopRails, validManualPosts, calc.treadPositions, calc.riserHeight, stairConfig.run);
+      const endpointLabel = (endpoint) => {
+        if (endpoint.anchorType === 'post') {
+          const pi = validManualPosts.findIndex(p => p.id === endpoint.postId);
+          return pi >= 0 ? `P${pi + 1}` : 'Fixed';
+        }
+        return 'Fixed';
+      };
 
       let rAlt = false;
-      validTopRails.forEach((rail, idx) => {
+      resolvedRailSegs.forEach((seg, idx) => {
         if (rAlt) {
           doc.setFillColor('#f5f7fa');
           doc.rect(M, y - 9, PW - M * 2, rowH, 'F');
         }
         rAlt = !rAlt;
 
-        const spIdx = validManualPosts.findIndex(p => p.id === rail.startPostId);
-        const epIdx = validManualPosts.findIndex(p => p.id === rail.endPostId);
-        const lenIn = topRailSegments[idx]?.lengthIn ?? 0;
-
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor('#222222');
         const row = [
           `TR${idx + 1}`,
-          spIdx >= 0 ? `P${spIdx + 1}` : '?',
-          epIdx >= 0 ? `P${epIdx + 1}` : '?',
-          fmtDim(lenIn, 2),
+          endpointLabel(seg.rail.startEndpoint),
+          endpointLabel(seg.rail.endEndpoint),
+          fmtDim(seg.lengthIn, 2),
         ];
         row.forEach((cell, i) => doc.text(cell, rcols[i] + 3, y));
         y += rowH;

@@ -13,13 +13,16 @@ function isValidStairValue(key, value) {
 }
 
 function isValidManualTopRail(r) {
+  if (!r || typeof r !== 'object' || typeof r.id !== 'string') return false;
+  // New endpoint-based format (post-endpoint-foundation)
+  if (r.startEndpoint || r.endEndpoint) {
+    return typeof r.startEndpoint === 'object' && typeof r.endEndpoint === 'object';
+  }
+  // Old format: bare { id, startPostId, endPostId } — profile not required
   return (
-    r && typeof r === 'object' &&
-    typeof r.id === 'string' &&
     typeof r.startPostId === 'string' &&
     typeof r.endPostId === 'string' &&
-    r.startPostId !== r.endPostId &&
-    typeof r.profile === 'string'
+    r.startPostId !== r.endPostId
   );
 }
 
@@ -69,9 +72,12 @@ export function openProjectJson(onLoad, onError) {
         const manualPosts = Array.isArray(data.manualPosts)
           ? data.manualPosts.filter(isValidManualPost)
           : [];
-        // Load manualTopRails; old files without this field default to []
+        // Load manualTopRails; old files without this field default to [].
+        // Old rails without profile default to '2x1'.
         const manualTopRails = Array.isArray(data.manualTopRails)
-          ? data.manualTopRails.filter(isValidManualTopRail)
+          ? data.manualTopRails
+              .filter(isValidManualTopRail)
+              .map(r => (r.profile ? r : { ...r, profile: '2x1' }))
           : [];
         onLoad({ project, stairConfig, units, manualPosts, manualTopRails });
       } catch (err) {

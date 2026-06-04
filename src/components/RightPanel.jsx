@@ -102,7 +102,7 @@ function ExtChips({ curLen, onSet }) {
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => {
           const v = parseFloat(draft);
-          if (Number.isFinite(v) && v >= 1) onSet(Math.min(50, v));
+          if (Number.isFinite(v)) onSet(Math.max(1, Math.min(50, v)));
           setDraft('');
         }}
         onKeyDown={(e) => {
