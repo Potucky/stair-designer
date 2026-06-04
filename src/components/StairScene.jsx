@@ -563,7 +563,7 @@ function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions
         return (
           <mesh key={`mr-${rail.id}-${height}`} position={midV.toArray()} quaternion={quat} castShadow>
             <boxGeometry args={[length, RAIL_H, RAIL_W]} />
-            <meshStandardMaterial color="#8B6914" metalness={0.3} roughness={0.5} />
+            <meshStandardMaterial color="#2F7D7A" metalness={0.3} roughness={0.5} />
           </mesh>
         );
       })}
