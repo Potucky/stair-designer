@@ -725,7 +725,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             treadPositions={calc.treadPositions}
             riserHeight={calc.riserHeight}
             run={run}
-            bottomRailHeight={bottomRailHeight ?? 6}
+            bottomRailHeight={bottomRailHeight ?? 1}
           />
         )}
 

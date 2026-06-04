@@ -15,7 +15,7 @@ export const DEFAULT_STAIR = {
   topLandingEnabled: false,
   topLandingLength: 36,
   bottomRailEnabled: false,
-  bottomRailHeight: 6,
+  bottomRailHeight: 1,
 };
 
 export const DEFAULT_PROJECT = {
