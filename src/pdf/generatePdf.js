@@ -133,7 +133,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor('#666666');
-      doc.text(String(i + 1), sx + 2, sy - rPx - 2);
+      doc.text(String(i + 1), sx + 3, sy - rPx + 7);
       sx += tPx;
       sy -= rPx;
     }
