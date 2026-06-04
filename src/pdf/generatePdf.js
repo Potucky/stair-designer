@@ -122,7 +122,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   if (stairConfig.topLandingEnabled && (stairConfig.topLandingLength || 0) > 0) {
     const landPx = stairConfig.topLandingLength * sc;
     const slabH = Math.max(4, 3.5 * sc);
-    const lx = ox + dw;
+    const lx = ox + dw - tPx;
     const ly = oy - dh; // top surface flush with last tread walking surface
     doc.setFillColor('#dce3ea');
     doc.setDrawColor('#1a1a2e');

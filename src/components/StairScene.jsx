@@ -319,9 +319,10 @@ function TopLanding({ run, width, height, steps, topLandingLength }) {
   const w = width * INtoU;
   const h = height * INtoU;
   const riserH = steps > 0 ? h / steps : h;
+  const treadD = steps > 0 ? r / steps : 0;
   const landLen = topLandingLength * INtoU;
   return (
-    <mesh position={[r / 2 + landLen / 2, h - riserH / 2 + TREAD_THICK / 2, 0]} castShadow receiveShadow>
+    <mesh position={[r / 2 - treadD + landLen / 2, h - riserH / 2 + TREAD_THICK / 2, 0]} castShadow receiveShadow>
       <boxGeometry args={[landLen, TREAD_THICK, w]} />
       <meshStandardMaterial color="#7c8da0" metalness={0.3} roughness={0.6} />
     </mesh>
