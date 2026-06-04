@@ -47,10 +47,19 @@ function KeyboardNudge({ controlsRef }) {
   return null;
 }
 
-function CameraController({ view, viewResetToken, controlsRef }) {
+function CameraController({ view, viewResetToken, controlsRef, height, run, width }) {
   const { camera } = useThree();
+  // Refs so dims are read at reset time without triggering extra resets on every config edit
+  const heightRef = useRef(height);
+  const runRef = useRef(run);
+  const widthRef = useRef(width);
+  heightRef.current = height;
+  runRef.current = run;
+  widthRef.current = width;
 
   useEffect(() => {
+    const INtoU = 0.5;
+    let targetY = SCENE_CENTER_Y;
     if (view === 'top') {
       camera.position.set(0, 150, 0.01);
       camera.up.set(0, 0, -1);
@@ -58,13 +67,18 @@ function CameraController({ view, viewResetToken, controlsRef }) {
       camera.position.set(160, SCENE_CENTER_Y, 0);
       camera.up.set(0, 1, 0);
     } else {
-      camera.position.set(80, 55, 110);
+      // Construction isometric: above and offset front/side, scaled to stair size
+      const h = heightRef.current * INtoU;
+      const r = runRef.current * INtoU;
+      const ext = Math.max(r, h, 40);
+      targetY = h / 2;
+      camera.position.set(r * 1.1, h, ext * 1.5);
       camera.up.set(0, 1, 0);
     }
-    camera.lookAt(0, SCENE_CENTER_Y, 0);
+    camera.lookAt(0, targetY, 0);
     const ctrl = controlsRef.current;
     if (ctrl) {
-      ctrl.target.set(0, SCENE_CENTER_Y, 0);
+      ctrl.target.set(0, targetY, 0);
       ctrl.update();
     }
     camera.updateProjectionMatrix();
@@ -520,7 +534,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
       >
         <color attach="background" args={['#edf2f7']} />
 
-        <CameraController view={view} viewResetToken={viewResetToken} controlsRef={orbitRef} />
+        <CameraController view={view} viewResetToken={viewResetToken} controlsRef={orbitRef} height={height} run={run} width={width} />
         <KeyboardNudge controlsRef={orbitRef} />
 
         <ambientLight intensity={1.1} />
