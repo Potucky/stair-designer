@@ -160,7 +160,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     let sy = oy;
     for (let i = 0; i < steps; i++) {
       doc.line(sx, sy, sx, sy - rPx);
-      doc.line(sx, sy - rPx, sx + tPx, sy - rPx);
+      if (!(stairConfig.topLandingEnabled && i === steps - 1)) {
+        doc.line(sx, sy - rPx, sx + tPx, sy - rPx);
+      }
       sx += tPx;
       sy -= rPx;
     }

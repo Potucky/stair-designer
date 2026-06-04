@@ -313,7 +313,7 @@ function BottomLanding({ run, width, bottomLandingLength }) {
   );
 }
 
-function TopLanding({ run, width, height, steps, topLandingLength }) {
+function TopLanding({ run, width, height, steps, topLandingLength, postPlacementMode, onAddManualPost, handrailHeight, treadPositions }) {
   const INtoU = 0.5;
   const r = run * INtoU;
   const w = width * INtoU;
@@ -321,8 +321,34 @@ function TopLanding({ run, width, height, steps, topLandingLength }) {
   const riserH = steps > 0 ? h / steps : h;
   const treadD = steps > 0 ? r / steps : 0;
   const landLen = topLandingLength * INtoU;
+
+  const finalIndex = treadPositions && treadPositions.length > 0 ? treadPositions.length - 1 : -1;
+  const handleClick = (postPlacementMode && finalIndex >= 0) ? (e) => {
+    e.stopPropagation();
+    const finalTread = treadPositions[finalIndex];
+    const normal = e.face?.normal;
+    let mount = 'top';
+    let side = 'center';
+    let zIn = 0;
+    if (normal && Math.abs(normal.z) > Math.abs(normal.y) && Math.abs(normal.z) > Math.abs(normal.x)) {
+      mount = 'side';
+      side = normal.z > 0 ? 'right' : 'left';
+      zIn = normal.z > 0 ? width / 2 : -(width / 2);
+    }
+    onAddManualPost({
+      stepIndex: finalIndex,
+      mount,
+      side,
+      xIn: finalTread.x,
+      zIn,
+      offsetXIn: 0,
+      offsetZIn: 0,
+      heightIn: handrailHeight,
+    });
+  } : undefined;
+
   return (
-    <mesh position={[r / 2 - treadD + landLen / 2, h - riserH / 2 + TREAD_THICK / 2, 0]} castShadow receiveShadow>
+    <mesh position={[r / 2 - treadD + landLen / 2, h - riserH / 2 + TREAD_THICK / 2, 0]} onClick={handleClick} castShadow receiveShadow>
       <boxGeometry args={[landLen, TREAD_THICK, w]} />
       <meshStandardMaterial color="#7c8da0" metalness={0.3} roughness={0.6} />
     </mesh>
@@ -604,7 +630,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength} />
         )}
         {topLandingEnabled && (
-          <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength} />
+          <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} treadPositions={calc.treadPositions} />
         )}
 
         <StairModel
