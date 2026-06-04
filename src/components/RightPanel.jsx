@@ -514,15 +514,15 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         </div>
       </section>
 
-      {/* 3D Structure Move */}
+      {/* Railing Position Move */}
       <section className="panel-section">
-        <h3 className="section-title">3D Position</h3>
+        <h3 className="section-title">Railing Position</h3>
         <button
           className={`panel-btn${structureMoveSelected ? ' panel-btn-active' : ''}`}
           style={{ width: '100%', marginBottom: 6 }}
           onClick={onToggleStructureMove}
         >
-          {structureMoveSelected ? 'Structure Selected' : 'Select Structure'}
+          {structureMoveSelected ? 'Railing Selected' : 'Select Railing'}
         </button>
         {structureMoveSelected && (
           <div>

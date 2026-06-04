@@ -737,25 +737,27 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           infiniteGrid
         />
 
+        {bottomLandingEnabled && (
+          <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength} />
+        )}
+        {topLandingEnabled && (
+          <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} treadPositions={calc.treadPositions} />
+        )}
+
+        <StairModel
+          height={height}
+          run={run}
+          width={width}
+          steps={steps}
+          handrailHeight={handrailHeight}
+          treadPositions={topLandingEnabled && calc.treadPositions.length > 0 ? calc.treadPositions.slice(0, -1) : calc.treadPositions}
+          postPlacementMode={postPlacementMode}
+          onAddManualPost={onAddManualPost}
+        />
+
+        {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
+
         <group position={[structureOffsetXIn * 0.5, 0, structureOffsetZIn * 0.5]}>
-          {bottomLandingEnabled && (
-            <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength} />
-          )}
-          {topLandingEnabled && (
-            <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} treadPositions={calc.treadPositions} />
-          )}
-
-          <StairModel
-            height={height}
-            run={run}
-            width={width}
-            steps={steps}
-            handrailHeight={handrailHeight}
-            treadPositions={topLandingEnabled && calc.treadPositions.length > 0 ? calc.treadPositions.slice(0, -1) : calc.treadPositions}
-            postPlacementMode={postPlacementMode}
-            onAddManualPost={onAddManualPost}
-          />
-
           <ManualPostsRenderer
             manualPosts={manualPosts || []}
             treadPositions={calc.treadPositions}
@@ -802,8 +804,6 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
               railingColorMode={effectiveColorMode}
             />
           )}
-
-          {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
         </group>
 
         <MeasureTool active={isMeasure} units={units} />
