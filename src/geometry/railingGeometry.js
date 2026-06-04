@@ -143,9 +143,16 @@ function resolveBottomRailEndpoint(endpoint, manualPosts, treadPositions, riserH
     return { x: base.x, y: nosingY + bottomRailHeightIn * INtoU, z: base.z };
   }
   if (endpoint.anchorType === 'fixed' && endpoint.pointIn) {
+    const steps = treadPositions.length;
+    const treadDepth = steps > 0 ? run / steps : run;
+    const rH_u = riserHeight * INtoU;
+    const treadD_u = treadDepth * INtoU;
+    const r_u = run * INtoU;
+    const x_u = endpoint.pointIn.xIn * INtoU;
+    const nosingY = (rH_u / treadD_u) * (x_u + r_u / 2) + 0.5 * rH_u + TREAD_THICK;
     return {
-      x: endpoint.pointIn.xIn * INtoU,
-      y: endpoint.pointIn.yIn * INtoU,
+      x: x_u,
+      y: nosingY + bottomRailHeightIn * INtoU,
       z: endpoint.pointIn.zIn * INtoU,
     };
   }

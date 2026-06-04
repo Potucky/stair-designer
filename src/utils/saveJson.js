@@ -1,13 +1,14 @@
 const NUMERIC_KEYS = new Set([
-  'height', 'run', 'width', 'handrailHeight', 'pinOpening', 'postSpacing', 'manualRailingRun', 'bottomLandingLength', 'topLandingLength',
+  'height', 'run', 'width', 'handrailHeight', 'pinOpening', 'postSpacing', 'manualRailingRun', 'bottomLandingLength', 'topLandingLength', 'bottomRailHeight',
 ]);
-const ALL_STAIR_KEYS = [...NUMERIC_KEYS, 'steps', 'railingEnabled', 'tubeSize', 'railingRunMode', 'bottomLandingEnabled', 'topLandingEnabled'];
+const ALL_STAIR_KEYS = [...NUMERIC_KEYS, 'steps', 'railingEnabled', 'tubeSize', 'railingRunMode', 'bottomLandingEnabled', 'topLandingEnabled', 'bottomRailEnabled'];
 
 function isValidStairValue(key, value) {
   if (key === 'steps') return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value > 0;
   if (key === 'railingEnabled') return typeof value === 'boolean';
   if (key === 'bottomLandingEnabled') return typeof value === 'boolean';
   if (key === 'topLandingEnabled') return typeof value === 'boolean';
+  if (key === 'bottomRailEnabled') return typeof value === 'boolean';
   if (key === 'tubeSize') return typeof value === 'string' && value.length > 0;
   if (key === 'railingRunMode') return value === 'matchStair' || value === 'manual';
   if (key === 'bottomLandingLength' || key === 'topLandingLength')
@@ -83,6 +84,8 @@ export function openProjectJson(onLoad, onError) {
               .filter(isValidManualTopRail)
               .map(r => (r.profile ? r : { ...r, profile: '2x1' }))
           : [];
+        if (!('bottomRailEnabled' in stairConfig)) stairConfig.bottomRailEnabled = false;
+        if (!('bottomRailHeight' in stairConfig)) stairConfig.bottomRailHeight = 1;
         onLoad({ project, stairConfig, units, manualPosts, manualTopRails });
       } catch (err) {
         onError(err.message || 'Invalid file');
