@@ -182,6 +182,16 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         <label className="field-label">Number of Steps
           <NumericDraftInput className="field-input" inputMode="numeric" integer={true} value={stairConfig.steps} onCommit={commitSteps} />
         </label>
+
+        <label className="field-label field-checkbox">
+          <input type="checkbox" checked={!!stairConfig.bottomLandingEnabled} onChange={toggle('bottomLandingEnabled')} />
+          <span>Bottom Landing</span>
+        </label>
+        {stairConfig.bottomLandingEnabled && (
+          <label className="field-label">Landing Length (in)
+            <NumericDraftInput className="field-input" value={stairConfig.bottomLandingLength || 36} onCommit={commitDim('bottomLandingLength')} />
+          </label>
+        )}
       </section>
 
       {/* Section 2: Railing Setup */}

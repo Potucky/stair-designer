@@ -300,6 +300,19 @@ function StairModel({ height, run, width, steps, handrailHeight, treadPositions,
   );
 }
 
+function BottomLanding({ run, width, bottomLandingLength }) {
+  const INtoU = 0.5;
+  const r = run * INtoU;
+  const w = width * INtoU;
+  const landLen = bottomLandingLength * INtoU;
+  return (
+    <mesh position={[-r / 2 - landLen / 2, TREAD_THICK / 2, 0]} castShadow receiveShadow>
+      <boxGeometry args={[landLen, TREAD_THICK, w]} />
+      <meshStandardMaterial color="#7c8da0" metalness={0.3} roughness={0.6} />
+    </mesh>
+  );
+}
+
 // Renders manually placed posts from the manualPosts array.
 function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tubeSize, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick }) {
   const INtoU = 0.5;
@@ -537,7 +550,7 @@ function MeasureTool({ active, units }) {
 }
 
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails }) {
-  const { height, run, width, steps, handrailHeight, tubeSize } = stairConfig;
+  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength } = stairConfig;
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
   const activeCursor = isMeasure || postPlacementMode || topRailMode ? 'crosshair' : undefined;
@@ -570,6 +583,10 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           fadeStrength={2}
           infiniteGrid
         />
+
+        {bottomLandingEnabled && (
+          <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength || 36} />
+        )}
 
         <StairModel
           height={height}

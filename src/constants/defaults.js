@@ -10,6 +10,8 @@ export const DEFAULT_STAIR = {
   postSpacing: 48,
   railingRunMode: 'matchStair',
   manualRailingRun: 144,
+  bottomLandingEnabled: false,
+  bottomLandingLength: 36,
 };
 
 export const DEFAULT_PROJECT = {

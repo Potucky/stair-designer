@@ -76,6 +76,8 @@ export default function App() {
     treadPositions: calc.treadPositions,
     riserHeight: calc.riserHeight,
     run: stairConfig.run,
+    bottomLandingEnabled: stairConfig.bottomLandingEnabled,
+    bottomLandingLength: stairConfig.bottomLandingLength,
   }), [stairConfig, calc, manualPosts, manualTopRails]);
 
   const handleAddManualPost = (postData) => {

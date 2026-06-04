@@ -104,6 +104,20 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   doc.setLineWidth(1);
   doc.line(ox - 28, oy, ox + dw + 28, oy);
 
+  // ── Bottom Landing (side view) ─────────────────────────────────────────────
+  if (stairConfig.bottomLandingEnabled && (stairConfig.bottomLandingLength || 0) > 0) {
+    const landPx = stairConfig.bottomLandingLength * sc;
+    const slabH = Math.max(4, 3.5 * sc);
+    doc.setFillColor('#dce3ea');
+    doc.setDrawColor('#1a1a2e');
+    doc.setLineWidth(1.2);
+    doc.rect(ox - landPx, oy - slabH, landPx, slabH, 'FD');
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor('#1a1a2e');
+    doc.text(`Landing: ${fmtDim(stairConfig.bottomLandingLength, 0)}`, ox - landPx / 2, oy - slabH - 3, { align: 'center' });
+  }
+
   // Wall line — dashed vertical reference at left
   doc.setDrawColor('#cccccc');
   doc.setLineWidth(0.5);
@@ -351,6 +365,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   y = kv('Number of Steps:', String(stairConfig.steps), M, y);
   y = kv('Tube Size:', stairConfig.tubeSize, M, y);
   y = kv('Railing:', stairConfig.railingEnabled ? 'Yes' : 'No', M, y);
+  if (stairConfig.bottomLandingEnabled) {
+    y = kv('Bottom Landing:', fmtDim(stairConfig.bottomLandingLength || 36, 0), M, y);
+  }
   if (stairConfig.railingEnabled) {
     y = kv('Handrail Height:', fmtDim(stairConfig.handrailHeight, 0), M, y);
     y = kv('Max Pin / Guard Opening:', fmtDim(stairConfig.pinOpening, 3), M, y);
