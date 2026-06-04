@@ -3,7 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { fmtUnit } from '../utils/format.js';
-import { getTubeProfile, getManualPostBase, getManualRailSegments } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualPostBase, getManualRailSegments, getManualBottomRailSegments } from '../geometry/railingGeometry.js';
 
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
@@ -463,6 +463,59 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
   );
 }
 
+function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight }) {
+  const INtoU = 0.5;
+  const RAIL_W = 2 * INtoU;
+  const RAIL_H = 1 * INtoU;
+  const POST_SEAT = 1 * INtoU;
+
+  const segments = useMemo(
+    () => getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight),
+    [manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight]
+  );
+
+  return (
+    <>
+      {segments.map(({ rail, start, end }) => {
+        let visStart = { ...start };
+        let visEnd = { ...end };
+
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const dz = end.z - start.z;
+        const coreLen = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        if (coreLen > 0.01) {
+          const ux = dx / coreLen, uy = dy / coreLen, uz = dz / coreLen;
+          if (rail.startEndpoint?.anchorType === 'post') {
+            visStart = { x: start.x - ux * POST_SEAT, y: start.y - uy * POST_SEAT, z: start.z - uz * POST_SEAT };
+          }
+          if (rail.endEndpoint?.anchorType === 'post') {
+            visEnd = { x: end.x + ux * POST_SEAT, y: end.y + uy * POST_SEAT, z: end.z + uz * POST_SEAT };
+          }
+        }
+
+        const startV = new THREE.Vector3(visStart.x, visStart.y, visStart.z);
+        const endV = new THREE.Vector3(visEnd.x, visEnd.y, visEnd.z);
+        const length = startV.distanceTo(endV);
+        if (length < 0.01) return null;
+
+        const midV = startV.clone().lerp(endV, 0.5);
+        midV.y += RAIL_H / 2;
+        const direction = endV.clone().sub(startV).normalize();
+        const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
+
+        return (
+          <mesh key={`br-${rail.id}`} position={midV.toArray()} quaternion={quat} castShadow>
+            <boxGeometry args={[length, RAIL_H, RAIL_W]} />
+            <meshStandardMaterial color="#8B6914" metalness={0.3} roughness={0.5} />
+          </mesh>
+        );
+      })}
+    </>
+  );
+}
+
 function MeasureTool({ active, units }) {
   const [phase, setPhase] = useState('idle'); // 'idle' | 'placing'
   const [startPt, setStartPt] = useState(null);
@@ -592,7 +645,7 @@ function MeasureTool({ active, units }) {
 }
 
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails }) {
-  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength } = stairConfig;
+  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight } = stairConfig;
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
   const activeCursor = isMeasure || postPlacementMode || topRailMode ? 'crosshair' : undefined;
@@ -664,6 +717,17 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           riserHeight={calc.riserHeight}
           run={run}
         />
+
+        {bottomRailEnabled && (
+          <ManualBottomRailsRenderer
+            manualTopRails={manualTopRails || []}
+            manualPosts={manualPosts || []}
+            treadPositions={calc.treadPositions}
+            riserHeight={calc.riserHeight}
+            run={run}
+            bottomRailHeight={bottomRailHeight ?? 6}
+          />
+        )}
 
         {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
 

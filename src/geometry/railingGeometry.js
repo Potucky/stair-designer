@@ -116,3 +116,42 @@ export function getManualRailSegments(manualTopRails, manualPosts, treadPosition
   }
   return segments;
 }
+
+// Resolve a bottom rail endpoint: post-anchored points sit at bottomRailHeightIn above post base.
+function resolveBottomRailEndpoint(endpoint, manualPosts, treadPositions, riserHeight, run, bottomRailHeightIn) {
+  if (endpoint.anchorType === 'post') {
+    const post = manualPosts.find(p => p.id === endpoint.postId);
+    if (!post) return null;
+    const base = getManualPostBase(post, treadPositions, riserHeight, run);
+    if (!base) return null;
+    return { x: base.x, y: base.y + bottomRailHeightIn * INtoU, z: base.z };
+  }
+  if (endpoint.anchorType === 'fixed' && endpoint.pointIn) {
+    return {
+      x: endpoint.pointIn.xIn * INtoU,
+      y: endpoint.pointIn.yIn * INtoU,
+      z: endpoint.pointIn.zIn * INtoU,
+    };
+  }
+  return null;
+}
+
+// Bottom rail segments reusing the same post-to-post connections as manualTopRails,
+// but with endpoints at bottomRailHeightIn inches above each post base (tread surface).
+export function getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeightIn) {
+  const segments = [];
+  for (const rail of manualTopRails) {
+    const r = normalizeRailEndpoints(rail);
+    const start = resolveBottomRailEndpoint(r.startEndpoint, manualPosts, treadPositions, riserHeight, run, bottomRailHeightIn);
+    const end = resolveBottomRailEndpoint(r.endEndpoint, manualPosts, treadPositions, riserHeight, run, bottomRailHeightIn);
+    if (!start || !end) continue;
+
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const dz = end.z - start.z;
+    const lengthIn = Math.sqrt(dx * dx + dy * dy + dz * dz) / INtoU;
+
+    segments.push({ rail: r, start, end, lengthIn });
+  }
+  return segments;
+}

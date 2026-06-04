@@ -253,7 +253,12 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                 >
                   Top Rail
                 </button>
-                <button className="panel-btn" disabled title="Coming soon">Bottom Rail</button>
+                <button
+                  className={`panel-btn${stairConfig.bottomRailEnabled ? ' panel-btn-active' : ''}`}
+                  onClick={() => setStairConfig(s => ({ ...s, bottomRailEnabled: !s.bottomRailEnabled }))}
+                >
+                  Bottom Rail
+                </button>
                 <button className="panel-btn" disabled title="Coming soon">Bridges</button>
               </div>
               {postPlacementMode && (
@@ -264,6 +269,11 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               )}
               {topRailMode && topRailFirstPostId && (
                 <div className="post-tool-hint">First post selected — click second post</div>
+              )}
+              {stairConfig.bottomRailEnabled && (
+                <label className="field-label" style={{ marginTop: 8 }}>Bottom Rail Height (in)
+                  <NumericDraftInput className="field-input" value={stairConfig.bottomRailHeight} onCommit={commitDim('bottomRailHeight')} />
+                </label>
               )}
             </div>
 
