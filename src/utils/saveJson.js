@@ -10,6 +10,8 @@ function isValidStairValue(key, value) {
   if (key === 'topLandingEnabled') return typeof value === 'boolean';
   if (key === 'tubeSize') return typeof value === 'string' && value.length > 0;
   if (key === 'railingRunMode') return value === 'matchStair' || value === 'manual';
+  if (key === 'bottomLandingLength' || key === 'topLandingLength')
+    return typeof value === 'number' && Number.isFinite(value) && value > 0;
   if (NUMERIC_KEYS.has(key)) return typeof value === 'number' && Number.isFinite(value);
   return false;
 }

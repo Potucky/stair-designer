@@ -189,7 +189,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         </label>
         {stairConfig.bottomLandingEnabled && (
           <label className="field-label">Landing Length (in)
-            <NumericDraftInput className="field-input" value={stairConfig.bottomLandingLength || 36} onCommit={commitDim('bottomLandingLength')} />
+            <NumericDraftInput className="field-input" value={stairConfig.bottomLandingLength} onCommit={commitDim('bottomLandingLength')} />
           </label>
         )}
 
@@ -199,7 +199,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         </label>
         {stairConfig.topLandingEnabled && (
           <label className="field-label">Landing Length (in)
-            <NumericDraftInput className="field-input" value={stairConfig.topLandingLength || 36} onCommit={commitDim('topLandingLength')} />
+            <NumericDraftInput className="field-input" value={stairConfig.topLandingLength} onCommit={commitDim('topLandingLength')} />
           </label>
         )}
       </section>

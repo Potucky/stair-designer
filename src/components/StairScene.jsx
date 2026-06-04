@@ -601,10 +601,10 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
         />
 
         {bottomLandingEnabled && (
-          <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength || 36} />
+          <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength} />
         )}
         {topLandingEnabled && (
-          <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength || 36} />
+          <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength} />
         )}
 
         <StairModel
