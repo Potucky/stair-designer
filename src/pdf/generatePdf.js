@@ -194,7 +194,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       const ey = syToPdf(seg.end.y);
 
       doc.setDrawColor('#8B6914');
-      doc.setLineWidth(3);
+      doc.setLineWidth(Math.max(1.5, Math.min(sc, 6)));
       doc.line(sx, sy, ex, ey);
 
       const mx = (sx + ex) / 2;

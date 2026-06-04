@@ -67,12 +67,12 @@ function CameraController({ view, viewResetToken, controlsRef, height, run, widt
       camera.position.set(160, SCENE_CENTER_Y, 0);
       camera.up.set(0, 1, 0);
     } else {
-      // Construction isometric: above and offset front/side, scaled to stair size
+      // Construction isometric: ~35° elevation above stair, front-left angle
       const h = heightRef.current * INtoU;
       const r = runRef.current * INtoU;
-      const ext = Math.max(r, h, 40);
+      const dist = Math.max(r, h, 50);
       targetY = h / 2;
-      camera.position.set(r * 1.1, h, ext * 1.5);
+      camera.position.set(r * 0.5, h / 2 + dist * 1.4, dist * 2.0);
       camera.up.set(0, 1, 0);
     }
     camera.lookAt(0, targetY, 0);
@@ -356,6 +356,8 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
   const INtoU = 0.5;
   const RAIL_W = 2 * INtoU;
   const RAIL_H = 1 * INtoU;
+  // Visual-only: extend past post center by half the 2x2 post width so rail covers post top
+  const POST_SEAT = 1 * INtoU;
 
   const segments = useMemo(
     () => getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run),
@@ -365,12 +367,33 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
   return (
     <>
       {segments.map(({ rail, start, end }) => {
-        const startV = new THREE.Vector3(start.x, start.y, start.z);
-        const endV = new THREE.Vector3(end.x, end.y, end.z);
+        // Extend visual endpoints at post anchors so rail sits over post tops
+        let visStart = { ...start };
+        let visEnd = { ...end };
+
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const dz = end.z - start.z;
+        const coreLen = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        if (coreLen > 0.01) {
+          const ux = dx / coreLen, uy = dy / coreLen, uz = dz / coreLen;
+          if (rail.startEndpoint?.anchorType === 'post') {
+            visStart = { x: start.x - ux * POST_SEAT, y: start.y - uy * POST_SEAT, z: start.z - uz * POST_SEAT };
+          }
+          if (rail.endEndpoint?.anchorType === 'post') {
+            visEnd = { x: end.x + ux * POST_SEAT, y: end.y + uy * POST_SEAT, z: end.z + uz * POST_SEAT };
+          }
+        }
+
+        const startV = new THREE.Vector3(visStart.x, visStart.y, visStart.z);
+        const endV = new THREE.Vector3(visEnd.x, visEnd.y, visEnd.z);
         const length = startV.distanceTo(endV);
         if (length < 0.01) return null;
 
         const midV = startV.clone().lerp(endV, 0.5);
+        // Lift center so bottom face of the rail sits at post top, not bisected by it
+        midV.y += RAIL_H / 2;
         const direction = endV.clone().sub(startV).normalize();
         const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
 
