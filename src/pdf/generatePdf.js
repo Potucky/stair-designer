@@ -76,6 +76,11 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   const { height, run, steps } = stairConfig;
   const { riserHeight, treadDepth, angleDeg, stringerLength } = calc;
 
+  const isBlackRailing = stairConfig.railingColorMode === 'black';
+  const railColors = isBlackRailing
+    ? { postFill: '#000000', postBorder: '#000000', postLabel: '#000000', railLine: '#000000', railLabel: '#000000', mrLine: '#000000', mrLabel: '#000000' }
+    : { postFill: '#c47a3a', postBorder: '#7a4a1a', postLabel: '#5a3a10', railLine: '#8B6914', railLabel: '#5a4000', mrLine: '#2F7D7A', mrLabel: '#1A5553' };
+
   // Drawing area layout
   const dAreaX = M + 62;                         // room for H-dim label on left
   const dAreaY = y + 8;                          // just below header  (≈84)
@@ -210,9 +215,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
       const topY = baseY - postH;
 
-      // Post rectangle — brown fill with dark border
-      doc.setFillColor('#c47a3a');
-      doc.setDrawColor('#7a4a1a');
+      // Post rectangle
+      doc.setFillColor(railColors.postFill);
+      doc.setDrawColor(railColors.postBorder);
       doc.setLineWidth(0.7);
       doc.rect(pxX - postW / 2, topY, postW, postH, 'FD');
 
@@ -223,7 +228,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       }
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor('#5a3a10');
+      doc.setTextColor(railColors.postLabel);
       doc.text(label, pxX + postW / 2 + 2, topY + 7);
     });
   }
@@ -250,7 +255,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       const ex = sxToPdf(seg.end.x);
       const ey = syToPdf(seg.end.y);
 
-      doc.setDrawColor('#8B6914');
+      doc.setDrawColor(railColors.railLine);
       doc.setLineWidth(Math.max(1.5, Math.min(sc, 6)));
       doc.line(sx, sy, ex, ey);
 
@@ -258,7 +263,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       const my = (sy + ey) / 2 - 5;
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor('#5a4000');
+      doc.setTextColor(railColors.railLabel);
       doc.text(`TR${idx + 1}`, mx, my);
     });
   }
@@ -284,7 +289,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       const ex = sxToPdf(seg.end.x);
       const ey = syToPdf(seg.end.y);
 
-      doc.setDrawColor('#8B6914');
+      doc.setDrawColor(railColors.railLine);
       doc.setLineWidth(Math.max(1.5, Math.min(sc, 6)));
       doc.line(sx, sy, ex, ey);
 
@@ -292,7 +297,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       const my = (sy + ey) / 2 + 8;
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor('#5a4000');
+      doc.setTextColor(railColors.railLabel);
       doc.text(`BR${idx + 1}`, mx, my);
     });
   }
@@ -325,7 +330,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
           const ex = sxToPdf(seg.end.x);
           const ey = syToPdf(seg.end.y);
 
-          doc.setDrawColor('#2F7D7A');
+          doc.setDrawColor(railColors.mrLine);
           doc.setLineWidth(Math.max(1.5, Math.min(sc, 6)));
           doc.line(sx, sy, ex, ey);
 
@@ -333,7 +338,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
           const my = (sy + ey) / 2 + 4;
           doc.setFontSize(6.5);
           doc.setFont('helvetica', 'bold');
-          doc.setTextColor('#1A5553');
+          doc.setTextColor(railColors.mrLabel);
           doc.text(`MR${mrIdx + 1}`, mx, my);
           mrIdx++;
         });
