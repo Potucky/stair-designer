@@ -3,13 +3,13 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { fmtUnit } from '../utils/format.js';
+import { getTubeProfile, getManualPostBase, getManualPostTop } from '../geometry/railingGeometry.js';
 
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
 
-// Thickness constants shared across StairModel and ManualPostsRenderer
+// Visual tread thickness in scene units (shared by StairModel and ManualPostsRenderer)
 const TREAD_THICK = 0.3;
-const POST_THICK = 0.4;
 
 function KeyboardNudge({ controlsRef }) {
   const { camera } = useThree();
@@ -287,23 +287,22 @@ function StairModel({ height, run, width, steps, handrailHeight, treadPositions,
 }
 
 // Renders manually placed posts from the manualPosts array.
-function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick }) {
+function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tubeSize, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick }) {
   const INtoU = 0.5;
-  const r = run * INtoU;
-  const riserH = riserHeight * INtoU;
+  const profile = getTubeProfile(tubeSize);
+  const postSide = profile.width * INtoU; // real profile width in scene units
 
   return (
     <>
       {manualPosts.map((post) => {
-        const { id, stepIndex, xIn, zIn, offsetXIn, offsetZIn, heightIn } = post;
-        const tp = treadPositions[stepIndex];
-        if (!tp) return null;
+        const { id, heightIn } = post;
+        const base = getManualPostBase(post, treadPositions, riserHeight, run);
+        if (!base) return null;
 
         const postH = heightIn * INtoU;
-        const worldX = (xIn + offsetXIn) * INtoU - r / 2;
-        const worldZ = (zIn + offsetZIn) * INtoU;
-        const treadTopY = tp.y * INtoU - riserH / 2 + TREAD_THICK;
-        const worldY = treadTopY + postH / 2;
+        const worldX = base.x;
+        const worldY = base.y + postH / 2;
+        const worldZ = base.z;
 
         let color = '#c47a3a';
         if (id === topRailFirstPostId) color = '#3b82f6';
@@ -325,7 +324,7 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, se
             onClick={handleClick}
             castShadow
           >
-            <boxGeometry args={[POST_THICK, postH, POST_THICK]} />
+            <boxGeometry args={[postSide, postH, postSide]} />
             <meshStandardMaterial
               color={color}
               metalness={0.55}
@@ -341,20 +340,13 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, se
 // Renders top rail beams between paired post tops.
 function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run }) {
   const INtoU = 0.5;
-  const r = run * INtoU;
-  const riserH = riserHeight * INtoU;
   const RAIL_W = 2 * INtoU;
   const RAIL_H = 1 * INtoU;
 
   const getPostTop = (post) => {
-    const tp = treadPositions[post.stepIndex];
-    if (!tp) return null;
-    const treadTopY = tp.y * INtoU - riserH / 2 + TREAD_THICK;
-    return new THREE.Vector3(
-      (post.xIn + post.offsetXIn) * INtoU - r / 2,
-      treadTopY + post.heightIn * INtoU,
-      (post.zIn + post.offsetZIn) * INtoU,
-    );
+    const pt = getManualPostTop(post, treadPositions, riserHeight, run);
+    if (!pt) return null;
+    return new THREE.Vector3(pt.x, pt.y, pt.z);
   };
 
   return (
@@ -515,7 +507,7 @@ function MeasureTool({ active, units }) {
 }
 
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails }) {
-  const { height, run, width, steps, handrailHeight } = stairConfig;
+  const { height, run, width, steps, handrailHeight, tubeSize } = stairConfig;
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
   const activeCursor = isMeasure || postPlacementMode || topRailMode ? 'crosshair' : undefined;
@@ -565,6 +557,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           treadPositions={calc.treadPositions}
           riserHeight={calc.riserHeight}
           run={run}
+          tubeSize={tubeSize}
           selectedManualPostId={selectedManualPostId}
           onSelectManualPost={onSelectManualPost}
           topRailMode={topRailMode}

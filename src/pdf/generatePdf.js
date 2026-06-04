@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { getTubeProfile, getManualRailSegments } from '../geometry/railingGeometry.js';
 
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [] }) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
@@ -139,7 +140,8 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // ── Manual Posts (side view) ───────────────────────────────────────────────
   {
-    const postW = Math.max(3, Math.min(8, 0.5 * sc));
+    const postProfile = getTubeProfile(stairConfig.tubeSize);
+    const postW = Math.max(3, postProfile.width * sc);
 
     validManualPosts.forEach((post, idx) => {
       const tp = calc.treadPositions[post.stepIndex];
@@ -449,6 +451,8 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       rHeaders.forEach((h, i) => doc.text(h, rcols[i] + 3, y + 1));
       y += 12;
 
+      const topRailSegments = getManualRailSegments(validTopRails, validManualPosts, calc.treadPositions, calc.riserHeight, stairConfig.run);
+
       let rAlt = false;
       validTopRails.forEach((rail, idx) => {
         if (rAlt) {
@@ -459,25 +463,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
         const spIdx = validManualPosts.findIndex(p => p.id === rail.startPostId);
         const epIdx = validManualPosts.findIndex(p => p.id === rail.endPostId);
-        const sp = validManualPosts[spIdx];
-        const ep = validManualPosts[epIdx];
-        const stp = calc.treadPositions[sp.stepIndex];
-        const etp = calc.treadPositions[ep.stepIndex];
-
-        // 3D length computation matching StairScene (INtoU=0.5, TREAD_THICK=0.3)
-        const INtoU = 0.5;
-        const TREAD_THICK = 0.3;
-        const r_u = stairConfig.run * INtoU;
-        const rH_u = calc.riserHeight * INtoU;
-        const sTTY = stp.y * INtoU - rH_u / 2 + TREAD_THICK;
-        const eTTY = etp.y * INtoU - rH_u / 2 + TREAD_THICK;
-        const sx = (sp.xIn + sp.offsetXIn) * INtoU - r_u / 2;
-        const sy2 = sTTY + sp.heightIn * INtoU;
-        const sz = (sp.zIn + sp.offsetZIn) * INtoU;
-        const ex = (ep.xIn + ep.offsetXIn) * INtoU - r_u / 2;
-        const ey2 = eTTY + ep.heightIn * INtoU;
-        const ez = (ep.zIn + ep.offsetZIn) * INtoU;
-        const lenIn = Math.sqrt((ex - sx) ** 2 + (ey2 - sy2) ** 2 + (ez - sz) ** 2) / INtoU;
+        const lenIn = topRailSegments[idx]?.lengthIn ?? 0;
 
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');

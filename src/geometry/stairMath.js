@@ -1,3 +1,5 @@
+import { getManualRailSegments } from './railingGeometry.js';
+
 export function calcStair({ height, run, width, steps, railingEnabled, handrailHeight, postSpacing, railingRunMode = 'matchStair', manualRailingRun }) {
   const riserHeight = steps > 0 ? height / steps : 0;
   const treadDepth = steps > 0 ? run / steps : 0;
@@ -102,37 +104,10 @@ export function buildMaterialList({ width, steps, stringerLength, railingEnabled
   }
 
   if (manualTopRails.length > 0 && manualPosts.length > 0) {
-    // Compute total length of valid top rail segments (scene units use INtoU=0.5; TREAD_THICK=0.3)
-    const INtoU = 0.5;
-    const TREAD_THICK = 0.3;
-    const r_u = run * INtoU;
-    const rH_u = riserHeight * INtoU;
-    let totalLen = 0;
-    let validCount = 0;
-
-    for (const rail of manualTopRails) {
-      const sp = manualPosts.find(p => p.id === rail.startPostId);
-      const ep = manualPosts.find(p => p.id === rail.endPostId);
-      if (!sp || !ep) continue;
-      const stp = treadPositions[sp.stepIndex];
-      const etp = treadPositions[ep.stepIndex];
-      if (!stp || !etp) continue;
-
-      const sTTY = stp.y * INtoU - rH_u / 2 + TREAD_THICK;
-      const eTTY = etp.y * INtoU - rH_u / 2 + TREAD_THICK;
-      const sx = (sp.xIn + sp.offsetXIn) * INtoU - r_u / 2;
-      const sy = sTTY + sp.heightIn * INtoU;
-      const sz = (sp.zIn + sp.offsetZIn) * INtoU;
-      const ex = (ep.xIn + ep.offsetXIn) * INtoU - r_u / 2;
-      const ey = eTTY + ep.heightIn * INtoU;
-      const ez = (ep.zIn + ep.offsetZIn) * INtoU;
-      const lenScene = Math.sqrt((ex - sx) ** 2 + (ey - sy) ** 2 + (ez - sz) ** 2);
-      totalLen += lenScene / INtoU;
-      validCount++;
-    }
-
-    if (validCount > 0) {
-      items.push({ part: 'Top Rail', qty: validCount, lengthIn: totalLen.toFixed(2), profile: '2x1 Rect Tube', note: 'Total length' });
+    const segments = getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run);
+    if (segments.length > 0) {
+      const totalLen = segments.reduce((s, seg) => s + seg.lengthIn, 0);
+      items.push({ part: 'Top Rail', qty: segments.length, lengthIn: totalLen.toFixed(2), profile: '2x1 Rect Tube', note: 'Total length' });
     }
   }
 
