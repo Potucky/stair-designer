@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf';
 import { getTubeProfile, getManualRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [], structureOffsetZIn = 0 }) {
-  const doc = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'landscape' });
+  const doc = new jsPDF({ unit: 'pt', format: [792, 612] });
   const INCH_TO_MM = 25.4;
   const fmtDim = (inchVal, dec = 2) =>
     units === 'mm' ? `${(inchVal * INCH_TO_MM).toFixed(1)} mm` : `${inchVal.toFixed(dec)}"`;
@@ -430,7 +430,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // ── PAGE 2 — Project Summary ───────────────────────────────────────────────
 
-  doc.addPage('letter', 'portrait');
+  doc.addPage([612, 792]);
   y = pageHeader(2, 'Project Summary');
 
   doc.setFillColor('#f0f4ff');
@@ -614,7 +614,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // ── PAGE 3 — Material / Cut List ──────────────────────────────────────────
 
-  doc.addPage('letter', 'portrait');
+  doc.addPage([612, 792]);
   y = pageHeader(3, 'Material / Cut List');
 
   y = sectionHead('BILL OF MATERIALS', y);
@@ -683,7 +683,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // ── PAGE 4 — Warnings / Code Notes / Disclaimer ───────────────────────────
 
-  doc.addPage('letter', 'portrait');
+  doc.addPage([612, 792]);
   y = pageHeader(4, 'Warnings, Code Notes & Disclaimer');
 
   y = sectionHead('MVP VALIDATION NOTES', y);
