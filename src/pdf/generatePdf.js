@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { getTubeProfile, getManualRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
-export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [] }) {
+export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [], structureOffsetZIn = 0 }) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const INCH_TO_MM = 25.4;
   const fmtDim = (inchVal, dec = 2) =>
@@ -106,10 +106,13 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   const ox = dAreaX + (dAreaW - dw) / 2;
   const oy = groundY;
 
+  const mirrored = structureOffsetZIn > 0;
+  const mx = mirrored ? (x) => 2 * ox + dw - x : (x) => x;
+
   // Ground line
   doc.setDrawColor('#888888');
   doc.setLineWidth(1);
-  doc.line(ox - 28, oy, ox + dw + 28, oy);
+  doc.line(mx(ox - 28), oy, mx(ox + dw + 28), oy);
 
   // ── Bottom Landing (side view) ─────────────────────────────────────────────
   if (stairConfig.bottomLandingEnabled && stairConfig.bottomLandingLength > 0) {
@@ -118,11 +121,11 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     doc.setFillColor('#dce3ea');
     doc.setDrawColor('#1a1a2e');
     doc.setLineWidth(1.2);
-    doc.rect(ox - landPx, oy - slabH, landPx, slabH, 'FD');
+    doc.rect(mirrored ? mx(ox) : ox - landPx, oy - slabH, landPx, slabH, 'FD');
     doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor('#1a1a2e');
-    doc.text(`Landing: ${fmtDim(stairConfig.bottomLandingLength, 0)}`, ox - landPx / 2, oy - slabH - 3, { align: 'center' });
+    doc.text(`Landing: ${fmtDim(stairConfig.bottomLandingLength, 0)}`, mirrored ? mx(ox - landPx / 2) : ox - landPx / 2, oy - slabH - 3, { align: 'center' });
   }
 
   // ── Top Landing (side view) ───────────────────────────────────────────────
@@ -131,32 +134,33 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     const slabH = Math.max(4, 3.5 * sc);
     const lx = ox + dw - tPx;
     const ly = oy - dh; // top surface flush with last tread walking surface
+    const tlx = mirrored ? mx(lx + landPx) : lx;
     doc.setFillColor('#dce3ea');
     doc.setDrawColor('#1a1a2e');
     doc.setLineWidth(1.2);
-    doc.rect(lx, ly, landPx, slabH, 'FD');
+    doc.rect(tlx, ly, landPx, slabH, 'FD');
     // Light diagonal hatch inside landing rectangle
     doc.setDrawColor('#9aabb8');
     doc.setLineWidth(0.35);
     const hSpacing = 5;
     for (let d = 0; d <= landPx + slabH; d += hSpacing) {
-      const x1 = lx + Math.max(0, d - slabH);
+      const x1 = tlx + Math.max(0, d - slabH);
       const y1 = ly + Math.min(slabH, d);
-      const x2 = lx + Math.min(landPx, d);
+      const x2 = tlx + Math.min(landPx, d);
       const y2 = ly + Math.max(0, d - landPx);
       if (x1 !== x2 || y1 !== y2) doc.line(x1, y1, x2, y2);
     }
     doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor('#1a1a2e');
-    doc.text(`Landing: ${fmtDim(stairConfig.topLandingLength, 0)}`, lx + landPx / 2, ly - 3, { align: 'center' });
+    doc.text(`Landing: ${fmtDim(stairConfig.topLandingLength, 0)}`, tlx + landPx / 2, ly - 3, { align: 'center' });
   }
 
-  // Wall line — dashed vertical reference at left
+  // Wall line — dashed vertical reference at left (or right when mirrored)
   doc.setDrawColor('#cccccc');
   doc.setLineWidth(0.5);
   doc.setLineDashPattern([4, 3], 0);
-  doc.line(ox, oy + 8, ox, oy - dh - 14);
+  doc.line(mx(ox), oy + 8, mx(ox), oy - dh - 14);
   doc.setLineDashPattern([], 0);
 
   // Stair step profile
@@ -166,9 +170,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     let sx = ox;
     let sy = oy;
     for (let i = 0; i < steps; i++) {
-      doc.line(sx, sy, sx, sy - rPx);
+      doc.line(mx(sx), sy, mx(sx), sy - rPx);
       if (!(stairConfig.topLandingEnabled && i === steps - 1)) {
-        doc.line(sx, sy - rPx, sx + tPx, sy - rPx);
+        doc.line(mx(sx), sy - rPx, mx(sx + tPx), sy - rPx);
       }
       sx += tPx;
       sy -= rPx;
@@ -183,7 +187,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor('#666666');
-      doc.text(String(i + 1), sx + 3, sy - rPx + 7);
+      doc.text(String(i + 1), mirrored ? mx(sx + tPx) + 3 : sx + 3, sy - rPx + 7);
       sx += tPx;
       sy -= rPx;
     }
@@ -193,7 +197,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   doc.setDrawColor('#3366cc');
   doc.setLineWidth(1.2);
   doc.setLineDashPattern([7, 3], 0);
-  doc.line(ox, oy, ox + dw, oy - dh);
+  doc.line(mx(ox), oy, mx(ox + dw), oy - dh);
   doc.setLineDashPattern([], 0);
 
   // ── Manual Bottom Rails (side view) ──────────────────────────────────────
@@ -210,7 +214,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       0
     );
 
-    const sxToPdf = (sx) => ox + dw / 2 + (sx / INtoU) * sc;
+    const sxToPdf = mirrored
+      ? (sx) => ox + dw / 2 - (sx / INtoU) * sc
+      : (sx) => ox + dw / 2 + (sx / INtoU) * sc;
     const syToPdf = (sy) => oy - (sy / INtoU) * sc - rPx / 2 + (TREAD_THICK / INtoU) * sc;
 
     brSegs.forEach((seg, idx) => {
@@ -233,7 +239,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       : (middleRailHeight != null ? [middleRailHeight] : []);
 
     if (effectiveMiddleRailHeights.length > 0) {
-      const sxToPdf = (sx) => ox + dw / 2 + (sx / INtoU) * sc;
+      const sxToPdf = mirrored
+        ? (sx) => ox + dw / 2 - (sx / INtoU) * sc
+        : (sx) => ox + dw / 2 + (sx / INtoU) * sc;
       const syToPdf = (sy) => oy - (sy / INtoU) * sc - rPx / 2 + (TREAD_THICK / INtoU) * sc;
 
       effectiveMiddleRailHeights.forEach((height) => {
@@ -270,7 +278,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     validManualPosts.forEach((post) => {
       const tp = calc.treadPositions[post.stepIndex];
 
-      const pxX   = ox + (Number(post.xIn) + Number(post.offsetXIn)) * sc;
+      const pxX   = mx(ox + (Number(post.xIn) + Number(post.offsetXIn)) * sc);
       const baseY = oy - tp.y * sc;
       const postH = Number(post.heightIn) * sc;
       if (postH <= 0) return;
@@ -300,7 +308,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       railUpperExtensionIn
     );
 
-    const sxToPdf = (sx) => ox + dw / 2 + (sx / INtoU) * sc;
+    const sxToPdf = mirrored
+      ? (sx) => ox + dw / 2 - (sx / INtoU) * sc
+      : (sx) => ox + dw / 2 + (sx / INtoU) * sc;
     const syToPdf = (sy) => oy - (sy / INtoU) * sc - rPx / 2 + (TREAD_THICK / INtoU) * sc;
 
     const lw = Math.max(1.5, Math.min(sc, 6));
@@ -352,7 +362,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     validManualPosts.forEach((post, idx) => {
       const tp = calc.treadPositions[post.stepIndex];
 
-      const pxX   = ox + (Number(post.xIn) + Number(post.offsetXIn)) * sc;
+      const pxX   = mx(ox + (Number(post.xIn) + Number(post.offsetXIn)) * sc);
       const baseY = oy - tp.y * sc;
       const postH = Number(post.heightIn) * sc;
       if (postH <= 0) return;
@@ -366,7 +376,11 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(railColors.postLabel);
-      doc.text(label, pxX + postW / 2 + 2, topY + 7);
+      if (mirrored) {
+        doc.text(label, pxX - postW / 2 - 2, topY + 7, { align: 'right' });
+      } else {
+        doc.text(label, pxX + postW / 2 + 2, topY + 7);
+      }
     });
   }
 

@@ -235,7 +235,7 @@ export default function App() {
 
   const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualPosts, manualTopRails });
 
-  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualPosts, manualTopRails });
+  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualPosts, manualTopRails, structureOffsetZIn });
 
   const handleSaveProject = () => saveProject({ project, stairConfig, calc, warnings, materials, manualPosts, manualTopRails });
 
