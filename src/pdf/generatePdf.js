@@ -2,13 +2,17 @@ import { jsPDF } from 'jspdf';
 import { getTubeProfile, getManualRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [], structureOffsetZIn = 0 }) {
-  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+  const doc = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'landscape' });
   const INCH_TO_MM = 25.4;
   const fmtDim = (inchVal, dec = 2) =>
     units === 'mm' ? `${(inchVal * INCH_TO_MM).toFixed(1)} mm` : `${inchVal.toFixed(dec)}"`;
   const fmtDimStr = (lenStr) =>
     units === 'mm' ? `${(parseFloat(lenStr) * INCH_TO_MM).toFixed(1)} mm` : `${lenStr}"`;
   const unitsLabel = units === 'mm' ? 'Metric Units (mm)' : 'Imperial Units (inches)';
+  // Page 1 — landscape letter (792 × 612 pt)
+  const LW = doc.internal.pageSize.getWidth();
+  const LH = doc.internal.pageSize.getHeight();
+  // Pages 2–4 — portrait letter (612 × 792 pt)
   const PW = 612;
   const PH = 792;
   const M = 48;
@@ -52,26 +56,26 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     return y + 13;
   };
 
-  const pageHeader = (num, title) => {
+  const pageHeader = (num, title, pw = PW, ph = PH) => {
     txt('STAIR DESIGNER', M, 40, { bold: true, size: 14, color: '#1a1a2e' });
-    txt('v0.0.2', PW - M, 40, { size: 9, color: '#888888', align: 'right' });
+    txt('v0.0.2', pw - M, 40, { size: 9, color: '#888888', align: 'right' });
     txt(title, M, 54, { size: 9, color: '#666666' });
-    txt(`Page ${num} of 4`, PW - M, 54, { size: 9, color: '#888888', align: 'right' });
-    hline(M, PW - M, 60, '#1a1a2e', 1);
+    txt(`Page ${num} of 4`, pw - M, 54, { size: 9, color: '#888888', align: 'right' });
+    hline(M, pw - M, 60, '#1a1a2e', 1);
     return 76;
   };
 
-  const pageFooter = () => {
-    hline(M, PW - M, PH - 36, '#cccccc');
+  const pageFooter = (pw = PW, ph = PH) => {
+    hline(M, pw - M, ph - 36, '#cccccc');
     txt(
       `${project.name || 'Untitled Project'} — Generated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
-      PW / 2, PH - 22, { size: 8, color: '#888888', align: 'center' }
+      pw / 2, ph - 22, { size: 8, color: '#888888', align: 'center' }
     );
   };
 
   // ── PAGE 1 — Side View Dimensioned Drawing ─────────────────────────────────
 
-  let y = pageHeader(1, 'Side View — Dimensioned Drawing');
+  let y = pageHeader(1, 'Side View — Dimensioned Drawing', LW, LH);
 
   const { height, run, steps } = stairConfig;
   const railLowerExtensionIn = stairConfig.railLowerExtensionIn ?? 0;
@@ -83,11 +87,11 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     ? { postFill: '#000000', postBorder: '#000000', postLabel: '#000000', railLine: '#000000', railLabel: '#000000', mrLine: '#000000', mrLabel: '#000000' }
     : { postFill: '#c47a3a', postBorder: '#7a4a1a', postLabel: '#5a3a10', railLine: '#8B6914', railLabel: '#5a4000', mrLine: '#2F7D7A', mrLabel: '#1A5553' };
 
-  // Drawing area layout
+  // Drawing area layout — landscape page (LW=792, LH=612)
   const dAreaX = M + 62;                         // room for H-dim label on left
   const dAreaY = y + 8;                          // just below header  (≈84)
-  const dAreaW = PW - dAreaX - M - 12;           // ≈442 pts wide
-  const dAreaH = 510;                            // drawing area height
+  const dAreaW = LW - dAreaX - M - 12;           // ≈622 pts wide (landscape)
+  const dAreaH = 420;                            // fits landscape page height
 
   // Ground line sits 50 pts above the bottom of dArea (run-dim label below)
   const groundY = dAreaY + dAreaH - 50;          // ≈544
@@ -387,7 +391,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   // ── Top-view width inset ───────────────────────────────────────────────────
   const insetW = 138;
   const insetH = 56;
-  const insetX = PW - M - insetW;   // right-aligned to page margin
+  const insetX = LW - M - insetW;   // right-aligned to landscape page margin
   const insetY = oy + 55;            // below run-dimension label
 
   doc.setFillColor('#f0f4ff');
@@ -422,11 +426,11 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   doc.setTextColor('#1a1a2e');
   doc.text(`Stair Width = ${fmtDim(stairConfig.width, 0)}`, insetX + insetW / 2, tvMidY + 11, { align: 'center' });
 
-  pageFooter();
+  pageFooter(LW, LH);
 
   // ── PAGE 2 — Project Summary ───────────────────────────────────────────────
 
-  doc.addPage();
+  doc.addPage('letter', 'portrait');
   y = pageHeader(2, 'Project Summary');
 
   doc.setFillColor('#f0f4ff');
@@ -610,7 +614,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // ── PAGE 3 — Material / Cut List ──────────────────────────────────────────
 
-  doc.addPage();
+  doc.addPage('letter', 'portrait');
   y = pageHeader(3, 'Material / Cut List');
 
   y = sectionHead('BILL OF MATERIALS', y);
@@ -679,7 +683,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // ── PAGE 4 — Warnings / Code Notes / Disclaimer ───────────────────────────
 
-  doc.addPage();
+  doc.addPage('letter', 'portrait');
   y = pageHeader(4, 'Warnings, Code Notes & Disclaimer');
 
   y = sectionHead('MVP VALIDATION NOTES', y);
