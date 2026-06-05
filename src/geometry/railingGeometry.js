@@ -282,6 +282,8 @@ export function getManualTopRailDoglegSegments(manualTopRails, manualPosts, trea
       const doglegStartIn = Math.max(0, Number(r.doglegStartIn) || 0);
       const doglegOffsetIn = Math.max(0, Number(r.doglegOffsetIn) || 0);
       const doglegAfterIn = Math.max(0, Number(r.doglegAfterIn) || 0);
+      const coreLengthIn = coreScene / INtoU;
+      const doglegStartClampedIn = Math.min(doglegStartIn, coreLengthIn);
 
       // Horizontal perpendicular (90° in XZ plane, no Y component)
       const horizLen = Math.sqrt(ux * ux + uz * uz);
@@ -295,9 +297,9 @@ export function getManualTopRailDoglegSegments(manualTopRails, manualPosts, trea
 
       // pointA: first turn — end of Segment A / start of Segment B
       const pointA = {
-        x: start.x + ux * doglegStartIn * INtoU,
-        y: start.y + uy * doglegStartIn * INtoU,
-        z: start.z + uz * doglegStartIn * INtoU,
+        x: start.x + ux * doglegStartClampedIn * INtoU,
+        y: start.y + uy * doglegStartClampedIn * INtoU,
+        z: start.z + uz * doglegStartClampedIn * INtoU,
       };
 
       // pointB: second turn — end of Segment B / start of Segment C
@@ -307,24 +309,33 @@ export function getManualTopRailDoglegSegments(manualTopRails, manualPosts, trea
         z: pointA.z + pz * doglegOffsetIn * INtoU,
       };
 
-      // extEndC: end of Segment C (includes end extension)
-      const extEndC = {
-        x: pointB.x + ux * (doglegAfterIn + endExt) * INtoU,
-        y: pointB.y + uy * (doglegAfterIn + endExt) * INtoU,
-        z: pointB.z + uz * (doglegAfterIn + endExt) * INtoU,
+      // shiftedEnd: original rail end shifted sideways by dogleg offset
+      const shiftedEnd = {
+        x: end.x + px * doglegOffsetIn * INtoU,
+        y: end.y,
+        z: end.z + pz * doglegOffsetIn * INtoU,
       };
+
+      // extEndC: end of Segment C (includes end extension along original rail direction)
+      const extEndC = {
+        x: shiftedEnd.x + ux * endExt * INtoU,
+        y: shiftedEnd.y + uy * endExt * INtoU,
+        z: shiftedEnd.z + uz * endExt * INtoU,
+      };
+
+      const segmentCLengthIn = Math.max(0, coreLengthIn - doglegStartClampedIn) + endExt;
 
       const lenA_scene = Math.sqrt(
         (pointA.x - extStart.x) ** 2 + (pointA.y - extStart.y) ** 2 + (pointA.z - extStart.z) ** 2
       );
       if (lenA_scene > 0.001) {
-        segments.push({ rail: r, segKey: r.id + '-A', start: extStart, end: pointA, lengthIn: doglegStartIn + startExt });
+        segments.push({ rail: r, segKey: r.id + '-A', start: extStart, end: pointA, lengthIn: doglegStartClampedIn + startExt });
       }
       if (doglegOffsetIn > 0) {
         segments.push({ rail: r, segKey: r.id + '-B', start: pointA, end: pointB, lengthIn: doglegOffsetIn });
       }
-      if (doglegAfterIn + endExt > 0) {
-        segments.push({ rail: r, segKey: r.id + '-C', start: pointB, end: extEndC, lengthIn: doglegAfterIn + endExt });
+      if (segmentCLengthIn > 0) {
+        segments.push({ rail: r, segKey: r.id + '-C', start: pointB, end: extEndC, lengthIn: segmentCLengthIn });
       }
     }
   }
