@@ -445,6 +445,78 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                     </div>
                   );
                 })()}
+
+                {/* Dogleg controls for selected Top Rail */}
+                {selectedManualTopRailId && (() => {
+                  const sel = manualTopRails.find(r => r.id === selectedManualTopRailId);
+                  if (!sel) return null;
+                  const doglegEnabled = !!sel.doglegEnabled;
+                  return (
+                    <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginBottom: doglegEnabled ? 8 : 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={doglegEnabled}
+                          onChange={e => onUpdateManualTopRail(sel.id, {
+                            doglegEnabled: e.target.checked,
+                            doglegStartIn: sel.doglegStartIn ?? 12,
+                            doglegSide: sel.doglegSide ?? 'left',
+                            doglegOffsetIn: sel.doglegOffsetIn ?? 6,
+                            doglegAfterIn: sel.doglegAfterIn ?? 12,
+                          })}
+                        />
+                        <span className="field-label-sm" style={{ marginBottom: 0 }}>Enable 90° Dogleg</span>
+                      </label>
+                      {doglegEnabled && (
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Start dist (in)</span>
+                            <NumericDraftInput
+                              className="field-input"
+                              style={{ width: 64 }}
+                              value={sel.doglegStartIn ?? 12}
+                              allowZero
+                              onCommit={v => onUpdateManualTopRail(sel.id, { doglegStartIn: Math.max(0, v) })}
+                            />
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                            <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Side</span>
+                            <button
+                              className={`panel-btn${(sel.doglegSide ?? 'left') === 'left' ? ' panel-btn-active' : ''}`}
+                              style={{ padding: '2px 8px', fontSize: 10 }}
+                              onClick={() => onUpdateManualTopRail(sel.id, { doglegSide: 'left' })}
+                            >Left</button>
+                            <button
+                              className={`panel-btn${sel.doglegSide === 'right' ? ' panel-btn-active' : ''}`}
+                              style={{ padding: '2px 8px', fontSize: 10 }}
+                              onClick={() => onUpdateManualTopRail(sel.id, { doglegSide: 'right' })}
+                            >Right</button>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Sideways offset (in)</span>
+                            <NumericDraftInput
+                              className="field-input"
+                              style={{ width: 64 }}
+                              value={sel.doglegOffsetIn ?? 6}
+                              allowZero
+                              onCommit={v => onUpdateManualTopRail(sel.id, { doglegOffsetIn: Math.max(0, v) })}
+                            />
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>After turn (in)</span>
+                            <NumericDraftInput
+                              className="field-input"
+                              style={{ width: 64 }}
+                              value={sel.doglegAfterIn ?? 12}
+                              allowZero
+                              onCommit={v => onUpdateManualTopRail(sel.id, { doglegAfterIn: Math.max(0, v) })}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

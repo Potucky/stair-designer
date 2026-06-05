@@ -3,7 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { fmtUnit } from '../utils/format.js';
-import { getTubeProfile, getManualPostBase, getManualRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualPostBase, getManualTopRailDoglegSegments, getManualBottomRailSegments, getManualMiddleRailSegments } from '../geometry/railingGeometry.js';
 
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
@@ -414,13 +414,13 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
   const RAIL_H = 1 * INtoU;
 
   const segments = useMemo(
-    () => getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn),
+    () => getManualTopRailDoglegSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn),
     [manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn]
   );
 
   return (
     <>
-      {segments.map(({ rail, start, end }) => {
+      {segments.map(({ rail, segKey, start, end }) => {
         const startV = new THREE.Vector3(start.x, start.y, start.z);
         const endV = new THREE.Vector3(end.x, end.y, end.z);
         const length = startV.distanceTo(endV);
@@ -436,7 +436,7 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
         const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
 
         return (
-          <mesh key={rail.id} position={midV.toArray()} quaternion={quat} castShadow>
+          <mesh key={segKey} position={midV.toArray()} quaternion={quat} castShadow>
             <boxGeometry args={[length, RAIL_H, RAIL_W]} />
             <meshStandardMaterial color={railingColorMode === 'black' ? '#111111' : '#8B6914'} metalness={0.3} roughness={0.5} />
           </mesh>

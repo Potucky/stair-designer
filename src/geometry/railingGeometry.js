@@ -233,6 +233,104 @@ export function getManualMiddleRailSegments(manualTopRails, manualPosts, treadPo
   return segments;
 }
 
+// Top rail segments with dogleg support. Returns multiple sub-segments per rail when
+// doglegEnabled is true. For straight rails returns the identical result as getManualRailSegments
+// but with an added segKey field (equals rail.id) for React keying.
+// Segment A: start (+ start extension) → first 90° turn point
+// Segment B: perpendicular sideways for doglegOffsetIn
+// Segment C: resumes original direction (+ end extension) on the parallel shifted line
+// Callers of getManualRailSegments (PDF, material calc, bottom/middle rail) are unaffected.
+export function getManualTopRailDoglegSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn = 0, railUpperExtensionIn = 0) {
+  const segments = [];
+  const normalizedRails = manualTopRails.map(normalizeRailEndpoints);
+  const flags = getOpenEndFlags(normalizedRails);
+
+  for (const r of normalizedRails) {
+    const start = resolveRailEndpoint(r.startEndpoint, manualPosts, treadPositions, riserHeight, run);
+    const end = resolveRailEndpoint(r.endEndpoint, manualPosts, treadPositions, riserHeight, run);
+    if (!start || !end) continue;
+
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const dz = end.z - start.z;
+    const coreScene = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (coreScene < 0.001) continue;
+
+    const ux = dx / coreScene;
+    const uy = dy / coreScene;
+    const uz = dz / coreScene;
+
+    const perRailStartExt = r.startEndpoint.extension?.type === 'straight'
+      ? Math.max(0, Number(r.startEndpoint.extension.lengthIn) || 0) : 0;
+    const perRailEndExt = r.endEndpoint.extension?.type === 'straight'
+      ? Math.max(0, Number(r.endEndpoint.extension.lengthIn) || 0) : 0;
+    const globalStartExt = flags.isOpenStart(r.startEndpoint) ? Math.max(0, railLowerExtensionIn) : 0;
+    const globalEndExt = flags.isOpenEnd(r.endEndpoint) ? Math.max(0, railUpperExtensionIn) : 0;
+    const startExt = perRailStartExt + globalStartExt;
+    const endExt = perRailEndExt + globalEndExt;
+
+    const extStart = startExt > 0
+      ? { x: start.x - ux * startExt * INtoU, y: start.y - uy * startExt * INtoU, z: start.z - uz * startExt * INtoU }
+      : start;
+
+    if (!r.doglegEnabled) {
+      const extEnd = endExt > 0
+        ? { x: end.x + ux * endExt * INtoU, y: end.y + uy * endExt * INtoU, z: end.z + uz * endExt * INtoU }
+        : end;
+      segments.push({ rail: r, segKey: r.id, start: extStart, end: extEnd, lengthIn: coreScene / INtoU + startExt + endExt });
+    } else {
+      const doglegStartIn = Math.max(0, Number(r.doglegStartIn) || 0);
+      const doglegOffsetIn = Math.max(0, Number(r.doglegOffsetIn) || 0);
+      const doglegAfterIn = Math.max(0, Number(r.doglegAfterIn) || 0);
+
+      // Horizontal perpendicular (90° in XZ plane, no Y component)
+      const horizLen = Math.sqrt(ux * ux + uz * uz);
+      let px = 1, pz = 0;
+      if (horizLen > 0.001) {
+        const hx = ux / horizLen;
+        const hz = uz / horizLen;
+        if (r.doglegSide === 'right') { px = hz; pz = -hx; }
+        else { px = -hz; pz = hx; } // left (default)
+      }
+
+      // pointA: first turn — end of Segment A / start of Segment B
+      const pointA = {
+        x: start.x + ux * doglegStartIn * INtoU,
+        y: start.y + uy * doglegStartIn * INtoU,
+        z: start.z + uz * doglegStartIn * INtoU,
+      };
+
+      // pointB: second turn — end of Segment B / start of Segment C
+      const pointB = {
+        x: pointA.x + px * doglegOffsetIn * INtoU,
+        y: pointA.y,
+        z: pointA.z + pz * doglegOffsetIn * INtoU,
+      };
+
+      // extEndC: end of Segment C (includes end extension)
+      const extEndC = {
+        x: pointB.x + ux * (doglegAfterIn + endExt) * INtoU,
+        y: pointB.y + uy * (doglegAfterIn + endExt) * INtoU,
+        z: pointB.z + uz * (doglegAfterIn + endExt) * INtoU,
+      };
+
+      const lenA_scene = Math.sqrt(
+        (pointA.x - extStart.x) ** 2 + (pointA.y - extStart.y) ** 2 + (pointA.z - extStart.z) ** 2
+      );
+      if (lenA_scene > 0.001) {
+        segments.push({ rail: r, segKey: r.id + '-A', start: extStart, end: pointA, lengthIn: doglegStartIn + startExt });
+      }
+      if (doglegOffsetIn > 0) {
+        segments.push({ rail: r, segKey: r.id + '-B', start: pointA, end: pointB, lengthIn: doglegOffsetIn });
+      }
+      if (doglegAfterIn + endExt > 0) {
+        segments.push({ rail: r, segKey: r.id + '-C', start: pointB, end: extEndC, lengthIn: doglegAfterIn + endExt });
+      }
+    }
+  }
+  return segments;
+}
+
 // Bottom rail segments reusing the same post-to-post connections as manualTopRails,
 // but with endpoints at bottomRailHeightIn inches above each post base (tread surface).
 // Extensions are accepted for API compatibility but callers pass 0 — only Top Rail extends.
