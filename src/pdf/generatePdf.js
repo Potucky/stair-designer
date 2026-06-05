@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf';
 import { getTubeProfile, getManualRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [], structureOffsetZIn = 0 }) {
-  const doc = new jsPDF({ unit: 'pt', format: [792, 612] });
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [792, 612] });
   const INCH_TO_MM = 25.4;
   const fmtDim = (inchVal, dec = 2) =>
     units === 'mm' ? `${(inchVal * INCH_TO_MM).toFixed(1)} mm` : `${inchVal.toFixed(dec)}"`;
