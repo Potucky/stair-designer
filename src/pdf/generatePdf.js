@@ -202,43 +202,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   doc.setTextColor('#3366cc');
   doc.text(`Stringer: ${fmtDim(stringerLength)}`, ox + dw / 2 + 6, oy - dh / 2 - 8);
 
-  // ── Manual Top Rails (side view) ──────────────────────────────────────────
-  // Uses getManualRailSegments so fixed-endpoint rails (post deleted) still render.
-  // Scene coords → PDF: x = ox + dw/2 + sceneX/INtoU*sc
-  //                     y = oy - sceneY/INtoU*sc - rPx/2 + (TREAD_THICK/INtoU)*sc
-  {
-    const railSegs = getManualRailSegments(
-      Array.isArray(manualTopRails) ? manualTopRails : [],
-      validManualPosts,
-      calc.treadPositions,
-      calc.riserHeight,
-      stairConfig.run,
-      railLowerExtensionIn,
-      railUpperExtensionIn
-    );
-
-    const sxToPdf = (sx) => ox + dw / 2 + (sx / INtoU) * sc;
-    const syToPdf = (sy) => oy - (sy / INtoU) * sc - rPx / 2 + (TREAD_THICK / INtoU) * sc;
-
-    railSegs.forEach((seg, idx) => {
-      const sx = sxToPdf(seg.start.x);
-      const sy = syToPdf(seg.start.y);
-      const ex = sxToPdf(seg.end.x);
-      const ey = syToPdf(seg.end.y);
-
-      doc.setDrawColor(railColors.railLine);
-      doc.setLineWidth(Math.max(1.5, Math.min(sc, 6)));
-      doc.line(sx, sy, ex, ey);
-
-      const mx = (sx + ex) / 2;
-      const my = (sy + ey) / 2 - 5;
-      doc.setFontSize(6.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(railColors.railLabel);
-      doc.text(`TR${idx + 1}`, mx, my);
-    });
-  }
-
   // ── Manual Bottom Rails (side view) ──────────────────────────────────────
   if (stairConfig.bottomRailEnabled) {
     const bottomRailHeight = stairConfig.bottomRailHeight ?? 1;
@@ -321,7 +284,66 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     }
   }
 
-  // ── Manual Posts (side view) — drawn last so post bodies mask rail endpoints
+  // ── Manual Posts (side view) — rectangles drawn before Top Rail
+  {
+    const postProfile = getTubeProfile(stairConfig.tubeSize);
+    const postW = Math.max(3, postProfile.width * sc);
+
+    validManualPosts.forEach((post) => {
+      const tp = calc.treadPositions[post.stepIndex];
+
+      const pxX   = ox + (Number(post.xIn) + Number(post.offsetXIn)) * sc;
+      const baseY = oy - tp.y * sc;
+      const postH = Number(post.heightIn) * sc;
+      if (postH <= 0) return;
+
+      const topY = baseY - postH;
+
+      doc.setFillColor(railColors.postFill);
+      doc.setDrawColor(railColors.postBorder);
+      doc.setLineWidth(0.7);
+      doc.rect(pxX - postW / 2, topY, postW, postH, 'FD');
+    });
+  }
+
+  // ── Manual Top Rails (side view) — drawn after posts so Top Rail sits on top
+  // Uses getManualRailSegments so fixed-endpoint rails (post deleted) still render.
+  // Scene coords → PDF: x = ox + dw/2 + sceneX/INtoU*sc
+  //                     y = oy - sceneY/INtoU*sc - rPx/2 + (TREAD_THICK/INtoU)*sc
+  {
+    const railSegs = getManualRailSegments(
+      Array.isArray(manualTopRails) ? manualTopRails : [],
+      validManualPosts,
+      calc.treadPositions,
+      calc.riserHeight,
+      stairConfig.run,
+      railLowerExtensionIn,
+      railUpperExtensionIn
+    );
+
+    const sxToPdf = (sx) => ox + dw / 2 + (sx / INtoU) * sc;
+    const syToPdf = (sy) => oy - (sy / INtoU) * sc - rPx / 2 + (TREAD_THICK / INtoU) * sc;
+
+    railSegs.forEach((seg, idx) => {
+      const sx = sxToPdf(seg.start.x);
+      const sy = syToPdf(seg.start.y);
+      const ex = sxToPdf(seg.end.x);
+      const ey = syToPdf(seg.end.y);
+
+      doc.setDrawColor(railColors.railLine);
+      doc.setLineWidth(Math.max(1.5, Math.min(sc, 6)));
+      doc.line(sx, sy, ex, ey);
+
+      const mx = (sx + ex) / 2;
+      const my = (sy + ey) / 2 - 5;
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(railColors.railLabel);
+      doc.text(`TR${idx + 1}`, mx, my);
+    });
+  }
+
+  // ── Manual Post Labels (side view) — drawn last for readability
   {
     const postProfile = getTubeProfile(stairConfig.tubeSize);
     const postW = Math.max(3, postProfile.width * sc);
@@ -336,16 +358,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
       const topY = baseY - postH;
 
-      // Post rectangle
-      doc.setFillColor(railColors.postFill);
-      doc.setDrawColor(railColors.postBorder);
-      doc.setLineWidth(0.7);
-      doc.rect(pxX - postW / 2, topY, postW, postH, 'FD');
-
-      // Compact label near top of post
       let label = `P${idx + 1}`;
       if (post.mount === 'side' && post.side && post.side !== 'center') {
-        label += ` s${post.side[0].toUpperCase()}`; // sL or sR
+        label += ` s${post.side[0].toUpperCase()}`;
       }
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');

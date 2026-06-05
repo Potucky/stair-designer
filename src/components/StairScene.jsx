@@ -412,8 +412,6 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
   const INtoU = 0.5;
   const RAIL_W = 2 * INtoU;
   const RAIL_H = 1 * INtoU;
-  // Visual-only: extend past post center by half the 2x2 post width so rail covers post top
-  const POST_SEAT = 1 * INtoU;
 
   const segments = useMemo(
     () => getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn),
@@ -423,27 +421,8 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
   return (
     <>
       {segments.map(({ rail, start, end }) => {
-        // Extend visual endpoints at post anchors so rail sits over post tops
-        let visStart = { ...start };
-        let visEnd = { ...end };
-
-        const dx = end.x - start.x;
-        const dy = end.y - start.y;
-        const dz = end.z - start.z;
-        const coreLen = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-        if (coreLen > 0.01) {
-          const ux = dx / coreLen, uy = dy / coreLen, uz = dz / coreLen;
-          if (rail.startEndpoint?.anchorType === 'post') {
-            visStart = { x: start.x + ux * POST_SEAT, y: start.y + uy * POST_SEAT, z: start.z + uz * POST_SEAT };
-          }
-          if (rail.endEndpoint?.anchorType === 'post') {
-            visEnd = { x: end.x - ux * POST_SEAT, y: end.y - uy * POST_SEAT, z: end.z - uz * POST_SEAT };
-          }
-        }
-
-        const startV = new THREE.Vector3(visStart.x, visStart.y, visStart.z);
-        const endV = new THREE.Vector3(visEnd.x, visEnd.y, visEnd.z);
+        const startV = new THREE.Vector3(start.x, start.y, start.z);
+        const endV = new THREE.Vector3(end.x, end.y, end.z);
         const length = startV.distanceTo(endV);
         if (length < 0.01) return null;
 
@@ -468,7 +447,6 @@ function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions
   const INtoU = 0.5;
   const RAIL_W = 2 * INtoU;
   const RAIL_H = 1 * INtoU;
-  const POST_SEAT = 1 * INtoU;
 
   const segments = useMemo(
     () => getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight, 0, 0),
@@ -478,26 +456,8 @@ function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions
   return (
     <>
       {segments.map(({ rail, start, end }) => {
-        let visStart = { ...start };
-        let visEnd = { ...end };
-
-        const dx = end.x - start.x;
-        const dy = end.y - start.y;
-        const dz = end.z - start.z;
-        const coreLen = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-        if (coreLen > 0.01) {
-          const ux = dx / coreLen, uy = dy / coreLen, uz = dz / coreLen;
-          if (rail.startEndpoint?.anchorType === 'post') {
-            visStart = { x: start.x + ux * POST_SEAT, y: start.y + uy * POST_SEAT, z: start.z + uz * POST_SEAT };
-          }
-          if (rail.endEndpoint?.anchorType === 'post') {
-            visEnd = { x: end.x - ux * POST_SEAT, y: end.y - uy * POST_SEAT, z: end.z - uz * POST_SEAT };
-          }
-        }
-
-        const startV = new THREE.Vector3(visStart.x, visStart.y, visStart.z);
-        const endV = new THREE.Vector3(visEnd.x, visEnd.y, visEnd.z);
+        const startV = new THREE.Vector3(start.x, start.y, start.z);
+        const endV = new THREE.Vector3(end.x, end.y, end.z);
         const length = startV.distanceTo(endV);
         if (length < 0.01) return null;
 
@@ -521,7 +481,6 @@ function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions
   const INtoU = 0.5;
   const RAIL_W = 1 * INtoU;
   const RAIL_H = 1 * INtoU;
-  const POST_SEAT = 1 * INtoU;
 
   const allSegments = useMemo(
     () => middleRailHeights.flatMap(h =>
@@ -533,26 +492,8 @@ function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions
   return (
     <>
       {allSegments.map(({ rail, start, end, height }) => {
-        let visStart = { ...start };
-        let visEnd = { ...end };
-
-        const dx = end.x - start.x;
-        const dy = end.y - start.y;
-        const dz = end.z - start.z;
-        const coreLen = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-        if (coreLen > 0.01) {
-          const ux = dx / coreLen, uy = dy / coreLen, uz = dz / coreLen;
-          if (rail.startEndpoint?.anchorType === 'post') {
-            visStart = { x: start.x + ux * POST_SEAT, y: start.y + uy * POST_SEAT, z: start.z + uz * POST_SEAT };
-          }
-          if (rail.endEndpoint?.anchorType === 'post') {
-            visEnd = { x: end.x - ux * POST_SEAT, y: end.y - uy * POST_SEAT, z: end.z - uz * POST_SEAT };
-          }
-        }
-
-        const startV = new THREE.Vector3(visStart.x, visStart.y, visStart.z);
-        const endV = new THREE.Vector3(visEnd.x, visEnd.y, visEnd.z);
+        const startV = new THREE.Vector3(start.x, start.y, start.z);
+        const endV = new THREE.Vector3(end.x, end.y, end.z);
         const length = startV.distanceTo(endV);
         if (length < 0.01) return null;
 
