@@ -194,7 +194,7 @@ function resolveBottomRailEndpoint(endpoint, manualPosts, treadPositions, riserH
 
 // Middle rail segments reusing the same post-to-post connections as manualTopRails,
 // but with endpoints at middleRailHeightIn inches above the stair nosing line.
-// railLowerExtensionIn / railUpperExtensionIn extend terminal segments past their outer posts.
+// Extensions are accepted for API compatibility but callers pass 0 — only Top Rail extends.
 export function getManualMiddleRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeightIn, railLowerExtensionIn = 0, railUpperExtensionIn = 0) {
   const segments = [];
   const normalizedRails = manualTopRails.map(normalizeRailEndpoints);
@@ -235,7 +235,7 @@ export function getManualMiddleRailSegments(manualTopRails, manualPosts, treadPo
 
 // Bottom rail segments reusing the same post-to-post connections as manualTopRails,
 // but with endpoints at bottomRailHeightIn inches above each post base (tread surface).
-// railLowerExtensionIn / railUpperExtensionIn extend terminal segments past their outer posts.
+// Extensions are accepted for API compatibility but callers pass 0 — only Top Rail extends.
 export function getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeightIn, railLowerExtensionIn = 0, railUpperExtensionIn = 0) {
   const segments = [];
   const normalizedRails = manualTopRails.map(normalizeRailEndpoints);

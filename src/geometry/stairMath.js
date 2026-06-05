@@ -119,7 +119,7 @@ export function buildMaterialList({ width, steps, stringerLength, railingEnabled
   }
 
   if (bottomRailEnabled && manualTopRails.length > 0) {
-    const segments = getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight, railLowerExtensionIn, railUpperExtensionIn);
+    const segments = getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight, 0, 0);
     if (segments.length > 0) {
       const totalLen = segments.reduce((s, seg) => s + seg.lengthIn, 0);
       items.push({ part: 'Bottom Rail', qty: segments.length, lengthIn: totalLen.toFixed(2), profile: '2x1 Rect Tube', note: 'Total length' });
@@ -132,7 +132,7 @@ export function buildMaterialList({ width, steps, stringerLength, railingEnabled
       : (middleRailHeight != null ? [middleRailHeight] : []);
     if (effectiveMiddleRailHeights.length > 0) {
       const allSegments = effectiveMiddleRailHeights.flatMap(h =>
-        getManualMiddleRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, h, railLowerExtensionIn, railUpperExtensionIn)
+        getManualMiddleRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, h, 0, 0)
       );
       if (allSegments.length > 0) {
         const totalLen = allSegments.reduce((s, seg) => s + seg.lengthIn, 0);

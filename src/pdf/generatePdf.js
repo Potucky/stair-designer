@@ -282,8 +282,8 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       calc.riserHeight,
       stairConfig.run,
       bottomRailHeight,
-      railLowerExtensionIn,
-      railUpperExtensionIn
+      0,
+      0
     );
 
     const sxToPdf = (sx) => ox + dw / 2 + (sx / INtoU) * sc;
@@ -328,8 +328,8 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
           calc.riserHeight,
           stairConfig.run,
           height,
-          railLowerExtensionIn,
-          railUpperExtensionIn
+          0,
+          0
         );
 
         mrSegs.forEach((seg) => {

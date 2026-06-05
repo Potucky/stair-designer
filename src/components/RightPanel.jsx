@@ -349,7 +349,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
 
             {/* Rail End Extensions */}
             <div style={{ marginTop: 12 }}>
-              <div className="field-label-sm" style={{ marginBottom: 6 }}>Rail End Extensions</div>
+              <div className="field-label-sm" style={{ marginBottom: 6 }}>Top Rail End Extensions</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Lower End Ext (in)</span>
                 <NumericDraftInput
