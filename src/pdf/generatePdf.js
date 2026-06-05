@@ -89,17 +89,23 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // Drawing area layout — landscape page (LW=792, LH=612)
   const dAreaX = M + 62;                         // room for H-dim label on left
-  const dAreaY = y + 54;                         // shifted down 30 pts to clear header (was y + 24)
   const dAreaW = LW - dAreaX - M - 12;           // ≈622 pts wide (landscape)
-  const dAreaH = 450;                            // unchanged — keeps same scale
 
-  // Ground line sits 50 pts above the bottom of dArea (run-dim label below)
-  const groundY = dAreaY + dAreaH - 50;          // ≈530
-
-  const availAbovePts = groundY - dAreaY - 8;    // ≈452 pts headroom
+  // Fit full visual height (stair + handrail) between header line (y=60) and footer line (y=LH-36).
+  // Using only stair height in the scale caused the top rail to collide with the header.
+  const handrailH = stairConfig.handrailHeight ?? 36;
+  const totalVisualH = height + handrailH;
+  const availV = (LH - 36) - 60 - 70;           // 446 pt between header/footer minus top+bottom margins
   const scaleX = (dAreaW * 0.80) / (run || 1);
-  const scaleY = availAbovePts / ((height || 1) * 1.08);
+  const scaleY = availV / ((totalVisualH || 1) * 1.08);
   const sc = Math.min(scaleX, scaleY);
+
+  // Center ground line vertically between header and footer; keep ≥46 pt above footer for run-dim label
+  const drawingPts = totalVisualH * sc;
+  const groundY = Math.min(
+    Math.round(((LH - 36) + 60 + drawingPts) / 2),
+    (LH - 36) - 46
+  );
 
   const dw = run * sc;
   const dh = height * sc;
