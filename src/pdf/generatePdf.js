@@ -89,12 +89,12 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // Drawing area layout — landscape page (LW=792, LH=612)
   const dAreaX = M + 62;                         // room for H-dim label on left
-  const dAreaY = y + 24;                         // below header with breathing room (≈100)
+  const dAreaY = y + 54;                         // shifted down 30 pts to clear header (was y + 24)
   const dAreaW = LW - dAreaX - M - 12;           // ≈622 pts wide (landscape)
-  const dAreaH = 450;                            // taller area centers stair on landscape page
+  const dAreaH = 450;                            // unchanged — keeps same scale
 
   // Ground line sits 50 pts above the bottom of dArea (run-dim label below)
-  const groundY = dAreaY + dAreaH - 50;          // ≈544
+  const groundY = dAreaY + dAreaH - 50;          // ≈530
 
   const availAbovePts = groundY - dAreaY - 8;    // ≈452 pts headroom
   const scaleX = (dAreaW * 0.80) / (run || 1);
