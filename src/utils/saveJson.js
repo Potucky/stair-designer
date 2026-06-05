@@ -1,5 +1,5 @@
 const NUMERIC_KEYS = new Set([
-  'height', 'run', 'width', 'handrailHeight', 'pinOpening', 'postSpacing', 'manualRailingRun', 'bottomLandingLength', 'topLandingLength', 'bottomRailHeight',
+  'height', 'run', 'width', 'handrailHeight', 'pinOpening', 'postSpacing', 'manualRailingRun', 'bottomLandingLength', 'topLandingLength', 'bottomRailHeight', 'railLowerExtensionIn', 'railUpperExtensionIn',
 ]);
 const ALL_STAIR_KEYS = [...NUMERIC_KEYS, 'steps', 'railingEnabled', 'tubeSize', 'railingRunMode', 'bottomLandingEnabled', 'topLandingEnabled', 'bottomRailEnabled', 'railingColorMode', 'middleRailEnabled'];
 
@@ -90,6 +90,8 @@ export function openProjectJson(onLoad, onError) {
         if (!('bottomRailHeight' in stairConfig)) stairConfig.bottomRailHeight = 1;
         if (!('railingColorMode' in stairConfig)) stairConfig.railingColorMode = 'work';
         if (!('middleRailEnabled' in stairConfig)) stairConfig.middleRailEnabled = false;
+        if (!('railLowerExtensionIn' in stairConfig)) stairConfig.railLowerExtensionIn = 0;
+        if (!('railUpperExtensionIn' in stairConfig)) stairConfig.railUpperExtensionIn = 0;
         // middleRailHeights is an array — handle separately with safe validation
         if (Array.isArray(data.stairConfig?.middleRailHeights)) {
           const valid = data.stairConfig.middleRailHeights.filter(

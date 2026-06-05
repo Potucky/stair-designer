@@ -3,7 +3,7 @@ import { TUBE_SIZES } from '../data/materialProfiles.js';
 import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
 import { normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
-function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', integer = false }) {
+function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', integer = false, allowZero = false }) {
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState('');
   const cancelRef = useRef(false);
@@ -19,7 +19,7 @@ function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', 
     }
     if (!/^(\d+\.?\d*|\.\d+)$/.test(trimmed)) return null;
     const v = parseFloat(trimmed);
-    return Number.isFinite(v) && v > 0 ? v : null;
+    return Number.isFinite(v) && (allowZero ? v >= 0 : v > 0) ? v : null;
   };
 
   const handleFocus = (e) => {
@@ -345,6 +345,31 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                   </div>
                 );
               })()}
+            </div>
+
+            {/* Rail End Extensions */}
+            <div style={{ marginTop: 12 }}>
+              <div className="field-label-sm" style={{ marginBottom: 6 }}>Rail End Extensions</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Lower End Ext (in)</span>
+                <NumericDraftInput
+                  className="field-input"
+                  style={{ width: 64 }}
+                  value={stairConfig.railLowerExtensionIn ?? 0}
+                  allowZero
+                  onCommit={v => setStairConfig(s => ({ ...s, railLowerExtensionIn: Math.max(0, v) }))}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Upper End Ext (in)</span>
+                <NumericDraftInput
+                  className="field-input"
+                  style={{ width: 64 }}
+                  value={stairConfig.railUpperExtensionIn ?? 0}
+                  allowZero
+                  onCommit={v => setStairConfig(s => ({ ...s, railUpperExtensionIn: Math.max(0, v) }))}
+                />
+              </div>
             </div>
 
             {/* Top rail list */}

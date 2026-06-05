@@ -65,13 +65,38 @@ function resolveRailEndpoint(endpoint, manualPosts, treadPositions, riserHeight,
   return null;
 }
 
+// Identifies which endpoints are terminal (open) vs internal joints.
+// A start endpoint is open if no other rail's end arrives at the same post.
+// An end endpoint is open if no other rail's start departs from the same post.
+// Fixed endpoints are always treated as open (no chaining through a fixed point).
+function getOpenEndFlags(normalizedRails) {
+  const startsSet = new Set(
+    normalizedRails
+      .filter(r => r.startEndpoint.anchorType === 'post')
+      .map(r => r.startEndpoint.postId)
+  );
+  const endsSet = new Set(
+    normalizedRails
+      .filter(r => r.endEndpoint.anchorType === 'post')
+      .map(r => r.endEndpoint.postId)
+  );
+  return {
+    isOpenStart: (ep) => ep.anchorType !== 'post' || !endsSet.has(ep.postId),
+    isOpenEnd: (ep) => ep.anchorType !== 'post' || !startsSet.has(ep.postId),
+  };
+}
+
 // Valid rail segments with start/end in scene units and lengthIn in inches.
 // Handles both old { startPostId, endPostId } and new { startEndpoint, endEndpoint } shapes.
 // Applies straight endpoint extensions when configured (type: 'straight', lengthIn > 0).
-export function getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run) {
+// Also applies global open-end extensions: railLowerExtensionIn at the start of terminal segments,
+// railUpperExtensionIn at the end of terminal segments. Internal joints are not extended.
+export function getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn = 0, railUpperExtensionIn = 0) {
   const segments = [];
-  for (const rail of manualTopRails) {
-    const r = normalizeRailEndpoints(rail);
+  const normalizedRails = manualTopRails.map(normalizeRailEndpoints);
+  const flags = getOpenEndFlags(normalizedRails);
+
+  for (const r of normalizedRails) {
     const start = resolveRailEndpoint(r.startEndpoint, manualPosts, treadPositions, riserHeight, run);
     const end = resolveRailEndpoint(r.endEndpoint, manualPosts, treadPositions, riserHeight, run);
     if (!start || !end) continue;
@@ -81,12 +106,20 @@ export function getManualRailSegments(manualTopRails, manualPosts, treadPosition
     const dz = end.z - start.z;
     const coreScene = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-    const startExt = r.startEndpoint.extension?.type === 'straight'
+    // Per-rail endpoint extensions (existing per-segment feature)
+    const perRailStartExt = r.startEndpoint.extension?.type === 'straight'
       ? Math.max(0, Number(r.startEndpoint.extension.lengthIn) || 0)
       : 0;
-    const endExt = r.endEndpoint.extension?.type === 'straight'
+    const perRailEndExt = r.endEndpoint.extension?.type === 'straight'
       ? Math.max(0, Number(r.endEndpoint.extension.lengthIn) || 0)
       : 0;
+
+    // Global open-end extensions: only applied at terminal endpoints
+    const globalStartExt = flags.isOpenStart(r.startEndpoint) ? Math.max(0, railLowerExtensionIn) : 0;
+    const globalEndExt = flags.isOpenEnd(r.endEndpoint) ? Math.max(0, railUpperExtensionIn) : 0;
+
+    const startExt = perRailStartExt + globalStartExt;
+    const endExt = perRailEndExt + globalEndExt;
 
     const totalLengthIn = coreScene / INtoU + startExt + endExt;
 
@@ -161,10 +194,13 @@ function resolveBottomRailEndpoint(endpoint, manualPosts, treadPositions, riserH
 
 // Middle rail segments reusing the same post-to-post connections as manualTopRails,
 // but with endpoints at middleRailHeightIn inches above the stair nosing line.
-export function getManualMiddleRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeightIn) {
+// railLowerExtensionIn / railUpperExtensionIn extend terminal segments past their outer posts.
+export function getManualMiddleRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeightIn, railLowerExtensionIn = 0, railUpperExtensionIn = 0) {
   const segments = [];
-  for (const rail of manualTopRails) {
-    const r = normalizeRailEndpoints(rail);
+  const normalizedRails = manualTopRails.map(normalizeRailEndpoints);
+  const flags = getOpenEndFlags(normalizedRails);
+
+  for (const r of normalizedRails) {
     const start = resolveBottomRailEndpoint(r.startEndpoint, manualPosts, treadPositions, riserHeight, run, middleRailHeightIn);
     const end = resolveBottomRailEndpoint(r.endEndpoint, manualPosts, treadPositions, riserHeight, run, middleRailHeightIn);
     if (!start || !end) continue;
@@ -172,19 +208,40 @@ export function getManualMiddleRailSegments(manualTopRails, manualPosts, treadPo
     const dx = end.x - start.x;
     const dy = end.y - start.y;
     const dz = end.z - start.z;
-    const lengthIn = Math.sqrt(dx * dx + dy * dy + dz * dz) / INtoU;
+    const coreScene = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-    segments.push({ rail: r, start, end, lengthIn });
+    const startExt = flags.isOpenStart(r.startEndpoint) ? Math.max(0, railLowerExtensionIn) : 0;
+    const endExt = flags.isOpenEnd(r.endEndpoint) ? Math.max(0, railUpperExtensionIn) : 0;
+    const totalLengthIn = coreScene / INtoU + startExt + endExt;
+
+    let extStart = start;
+    let extEnd = end;
+    if (coreScene > 0.001 && (startExt > 0 || endExt > 0)) {
+      const ux = dx / coreScene;
+      const uy = dy / coreScene;
+      const uz = dz / coreScene;
+      if (startExt > 0) {
+        extStart = { x: start.x - ux * startExt * INtoU, y: start.y - uy * startExt * INtoU, z: start.z - uz * startExt * INtoU };
+      }
+      if (endExt > 0) {
+        extEnd = { x: end.x + ux * endExt * INtoU, y: end.y + uy * endExt * INtoU, z: end.z + uz * endExt * INtoU };
+      }
+    }
+
+    segments.push({ rail: r, start: extStart, end: extEnd, lengthIn: totalLengthIn });
   }
   return segments;
 }
 
 // Bottom rail segments reusing the same post-to-post connections as manualTopRails,
 // but with endpoints at bottomRailHeightIn inches above each post base (tread surface).
-export function getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeightIn) {
+// railLowerExtensionIn / railUpperExtensionIn extend terminal segments past their outer posts.
+export function getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeightIn, railLowerExtensionIn = 0, railUpperExtensionIn = 0) {
   const segments = [];
-  for (const rail of manualTopRails) {
-    const r = normalizeRailEndpoints(rail);
+  const normalizedRails = manualTopRails.map(normalizeRailEndpoints);
+  const flags = getOpenEndFlags(normalizedRails);
+
+  for (const r of normalizedRails) {
     const start = resolveBottomRailEndpoint(r.startEndpoint, manualPosts, treadPositions, riserHeight, run, bottomRailHeightIn);
     const end = resolveBottomRailEndpoint(r.endEndpoint, manualPosts, treadPositions, riserHeight, run, bottomRailHeightIn);
     if (!start || !end) continue;
@@ -192,9 +249,27 @@ export function getManualBottomRailSegments(manualTopRails, manualPosts, treadPo
     const dx = end.x - start.x;
     const dy = end.y - start.y;
     const dz = end.z - start.z;
-    const lengthIn = Math.sqrt(dx * dx + dy * dy + dz * dz) / INtoU;
+    const coreScene = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-    segments.push({ rail: r, start, end, lengthIn });
+    const startExt = flags.isOpenStart(r.startEndpoint) ? Math.max(0, railLowerExtensionIn) : 0;
+    const endExt = flags.isOpenEnd(r.endEndpoint) ? Math.max(0, railUpperExtensionIn) : 0;
+    const totalLengthIn = coreScene / INtoU + startExt + endExt;
+
+    let extStart = start;
+    let extEnd = end;
+    if (coreScene > 0.001 && (startExt > 0 || endExt > 0)) {
+      const ux = dx / coreScene;
+      const uy = dy / coreScene;
+      const uz = dz / coreScene;
+      if (startExt > 0) {
+        extStart = { x: start.x - ux * startExt * INtoU, y: start.y - uy * startExt * INtoU, z: start.z - uz * startExt * INtoU };
+      }
+      if (endExt > 0) {
+        extEnd = { x: end.x + ux * endExt * INtoU, y: end.y + uy * endExt * INtoU, z: end.z + uz * endExt * INtoU };
+      }
+    }
+
+    segments.push({ rail: r, start: extStart, end: extEnd, lengthIn: totalLengthIn });
   }
   return segments;
 }

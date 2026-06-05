@@ -408,7 +408,7 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
 }
 
 // Renders top rail beams. Handles post-anchored, fixed/detached endpoints, and straight extensions.
-function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, railingColorMode }) {
+function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, railingColorMode, railLowerExtensionIn = 0, railUpperExtensionIn = 0 }) {
   const INtoU = 0.5;
   const RAIL_W = 2 * INtoU;
   const RAIL_H = 1 * INtoU;
@@ -416,8 +416,8 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
   const POST_SEAT = 1 * INtoU;
 
   const segments = useMemo(
-    () => getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run),
-    [manualTopRails, manualPosts, treadPositions, riserHeight, run]
+    () => getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn),
+    [manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn]
   );
 
   return (
@@ -464,15 +464,15 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
   );
 }
 
-function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight, railingColorMode }) {
+function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight, railingColorMode, railLowerExtensionIn = 0, railUpperExtensionIn = 0 }) {
   const INtoU = 0.5;
   const RAIL_W = 2 * INtoU;
   const RAIL_H = 1 * INtoU;
   const POST_SEAT = 1 * INtoU;
 
   const segments = useMemo(
-    () => getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight),
-    [manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight]
+    () => getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight, railLowerExtensionIn, railUpperExtensionIn),
+    [manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight, railLowerExtensionIn, railUpperExtensionIn]
   );
 
   return (
@@ -517,7 +517,7 @@ function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions
   );
 }
 
-function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeights, railingColorMode }) {
+function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeights, railingColorMode, railLowerExtensionIn = 0, railUpperExtensionIn = 0 }) {
   const INtoU = 0.5;
   const RAIL_W = 1 * INtoU;
   const RAIL_H = 1 * INtoU;
@@ -525,9 +525,9 @@ function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions
 
   const allSegments = useMemo(
     () => middleRailHeights.flatMap(h =>
-      getManualMiddleRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, h).map(seg => ({ ...seg, height: h }))
+      getManualMiddleRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, h, railLowerExtensionIn, railUpperExtensionIn).map(seg => ({ ...seg, height: h }))
     ),
-    [manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeights]
+    [manualTopRails, manualPosts, treadPositions, riserHeight, run, middleRailHeights, railLowerExtensionIn, railUpperExtensionIn]
   );
 
   return (
@@ -701,7 +701,7 @@ function MeasureTool({ active, units }) {
 }
 
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0 }) {
-  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight } = stairConfig;
+  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'work';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
   const orbitRef = useRef();
@@ -779,6 +779,8 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             riserHeight={calc.riserHeight}
             run={run}
             railingColorMode={effectiveColorMode}
+            railLowerExtensionIn={railLowerExtensionIn}
+            railUpperExtensionIn={railUpperExtensionIn}
           />
 
           {bottomRailEnabled && (
@@ -790,6 +792,8 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
               run={run}
               bottomRailHeight={bottomRailHeight ?? 1}
               railingColorMode={effectiveColorMode}
+              railLowerExtensionIn={railLowerExtensionIn}
+              railUpperExtensionIn={railUpperExtensionIn}
             />
           )}
 
@@ -802,6 +806,8 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
               run={run}
               middleRailHeights={effectiveMiddleRailHeights}
               railingColorMode={effectiveColorMode}
+              railLowerExtensionIn={railLowerExtensionIn}
+              railUpperExtensionIn={railUpperExtensionIn}
             />
           )}
         </group>

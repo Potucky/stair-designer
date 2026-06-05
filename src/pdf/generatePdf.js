@@ -74,6 +74,8 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   let y = pageHeader(1, 'Side View — Dimensioned Drawing');
 
   const { height, run, steps } = stairConfig;
+  const railLowerExtensionIn = stairConfig.railLowerExtensionIn ?? 0;
+  const railUpperExtensionIn = stairConfig.railUpperExtensionIn ?? 0;
   const { riserHeight, treadDepth, angleDeg, stringerLength } = calc;
 
   const isBlackRailing = stairConfig.railingColorMode === 'black';
@@ -243,7 +245,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       validManualPosts,
       calc.treadPositions,
       calc.riserHeight,
-      stairConfig.run
+      stairConfig.run,
+      railLowerExtensionIn,
+      railUpperExtensionIn
     );
 
     const sxToPdf = (sx) => ox + dw / 2 + (sx / INtoU) * sc;
@@ -277,7 +281,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       calc.treadPositions,
       calc.riserHeight,
       stairConfig.run,
-      bottomRailHeight
+      bottomRailHeight,
+      railLowerExtensionIn,
+      railUpperExtensionIn
     );
 
     const sxToPdf = (sx) => ox + dw / 2 + (sx / INtoU) * sc;
@@ -321,7 +327,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
           calc.treadPositions,
           calc.riserHeight,
           stairConfig.run,
-          height
+          height,
+          railLowerExtensionIn,
+          railUpperExtensionIn
         );
 
         mrSegs.forEach((seg) => {
@@ -496,7 +504,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     validManualPosts,
     calc.treadPositions,
     calc.riserHeight,
-    stairConfig.run
+    stairConfig.run,
+    railLowerExtensionIn,
+    railUpperExtensionIn
   );
   if (resolvedRailSegs.length > 0) {
     y = kv('Top Rails:', String(resolvedRailSegs.length), M, y);

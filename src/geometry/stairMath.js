@@ -92,7 +92,7 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
   };
 }
 
-export function buildMaterialList({ width, steps, stringerLength, railingEnabled, handrailHeight, tubeSize, manualPosts = [], manualTopRails = [], treadPositions = [], riserHeight = 0, run = 0, bottomLandingEnabled = false, bottomLandingLength = 36, topLandingEnabled = false, topLandingLength = 36, bottomRailEnabled = false, bottomRailHeight = 1, middleRailEnabled = false, middleRailHeights = [], middleRailHeight }) {
+export function buildMaterialList({ width, steps, stringerLength, railingEnabled, handrailHeight, tubeSize, manualPosts = [], manualTopRails = [], treadPositions = [], riserHeight = 0, run = 0, bottomLandingEnabled = false, bottomLandingLength = 36, topLandingEnabled = false, topLandingLength = 36, bottomRailEnabled = false, bottomRailHeight = 1, middleRailEnabled = false, middleRailHeights = [], middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 }) {
   const items = [];
 
   if (bottomLandingEnabled) {
@@ -111,7 +111,7 @@ export function buildMaterialList({ width, steps, stringerLength, railingEnabled
   }
 
   if (manualTopRails.length > 0) {
-    const segments = getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run);
+    const segments = getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn);
     if (segments.length > 0) {
       const totalLen = segments.reduce((s, seg) => s + seg.lengthIn, 0);
       items.push({ part: 'Top Rail', qty: segments.length, lengthIn: totalLen.toFixed(2), profile: '2x1 Rect Tube', note: 'Total length' });
@@ -119,7 +119,7 @@ export function buildMaterialList({ width, steps, stringerLength, railingEnabled
   }
 
   if (bottomRailEnabled && manualTopRails.length > 0) {
-    const segments = getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight);
+    const segments = getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight, railLowerExtensionIn, railUpperExtensionIn);
     if (segments.length > 0) {
       const totalLen = segments.reduce((s, seg) => s + seg.lengthIn, 0);
       items.push({ part: 'Bottom Rail', qty: segments.length, lengthIn: totalLen.toFixed(2), profile: '2x1 Rect Tube', note: 'Total length' });
@@ -132,7 +132,7 @@ export function buildMaterialList({ width, steps, stringerLength, railingEnabled
       : (middleRailHeight != null ? [middleRailHeight] : []);
     if (effectiveMiddleRailHeights.length > 0) {
       const allSegments = effectiveMiddleRailHeights.flatMap(h =>
-        getManualMiddleRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, h)
+        getManualMiddleRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, h, railLowerExtensionIn, railUpperExtensionIn)
       );
       if (allSegments.length > 0) {
         const totalLen = allSegments.reduce((s, seg) => s + seg.lengthIn, 0);
