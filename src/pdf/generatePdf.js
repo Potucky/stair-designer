@@ -202,39 +202,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   doc.setTextColor('#3366cc');
   doc.text(`Stringer: ${fmtDim(stringerLength)}`, ox + dw / 2 + 6, oy - dh / 2 - 8);
 
-  // ── Manual Posts (side view) ───────────────────────────────────────────────
-  {
-    const postProfile = getTubeProfile(stairConfig.tubeSize);
-    const postW = Math.max(3, postProfile.width * sc);
-
-    validManualPosts.forEach((post, idx) => {
-      const tp = calc.treadPositions[post.stepIndex];
-
-      const pxX   = ox + (Number(post.xIn) + Number(post.offsetXIn)) * sc;
-      const baseY = oy - tp.y * sc;
-      const postH = Number(post.heightIn) * sc;
-      if (postH <= 0) return;
-
-      const topY = baseY - postH;
-
-      // Post rectangle
-      doc.setFillColor(railColors.postFill);
-      doc.setDrawColor(railColors.postBorder);
-      doc.setLineWidth(0.7);
-      doc.rect(pxX - postW / 2, topY, postW, postH, 'FD');
-
-      // Compact label near top of post
-      let label = `P${idx + 1}`;
-      if (post.mount === 'side' && post.side && post.side !== 'center') {
-        label += ` s${post.side[0].toUpperCase()}`; // sL or sR
-      }
-      doc.setFontSize(6.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(railColors.postLabel);
-      doc.text(label, pxX + postW / 2 + 2, topY + 7);
-    });
-  }
-
   // ── Manual Top Rails (side view) ──────────────────────────────────────────
   // Uses getManualRailSegments so fixed-endpoint rails (post deleted) still render.
   // Scene coords → PDF: x = ox + dw/2 + sceneX/INtoU*sc
@@ -352,6 +319,39 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
         });
       });
     }
+  }
+
+  // ── Manual Posts (side view) — drawn last so post bodies mask rail endpoints
+  {
+    const postProfile = getTubeProfile(stairConfig.tubeSize);
+    const postW = Math.max(3, postProfile.width * sc);
+
+    validManualPosts.forEach((post, idx) => {
+      const tp = calc.treadPositions[post.stepIndex];
+
+      const pxX   = ox + (Number(post.xIn) + Number(post.offsetXIn)) * sc;
+      const baseY = oy - tp.y * sc;
+      const postH = Number(post.heightIn) * sc;
+      if (postH <= 0) return;
+
+      const topY = baseY - postH;
+
+      // Post rectangle
+      doc.setFillColor(railColors.postFill);
+      doc.setDrawColor(railColors.postBorder);
+      doc.setLineWidth(0.7);
+      doc.rect(pxX - postW / 2, topY, postW, postH, 'FD');
+
+      // Compact label near top of post
+      let label = `P${idx + 1}`;
+      if (post.mount === 'side' && post.side && post.side !== 'center') {
+        label += ` s${post.side[0].toUpperCase()}`; // sL or sR
+      }
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(railColors.postLabel);
+      doc.text(label, pxX + postW / 2 + 2, topY + 7);
+    });
   }
 
   // ── Height dimension (left side) ──────────────────────────────────────────

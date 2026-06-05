@@ -435,10 +435,10 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
         if (coreLen > 0.01) {
           const ux = dx / coreLen, uy = dy / coreLen, uz = dz / coreLen;
           if (rail.startEndpoint?.anchorType === 'post') {
-            visStart = { x: start.x - ux * POST_SEAT, y: start.y - uy * POST_SEAT, z: start.z - uz * POST_SEAT };
+            visStart = { x: start.x + ux * POST_SEAT, y: start.y + uy * POST_SEAT, z: start.z + uz * POST_SEAT };
           }
           if (rail.endEndpoint?.anchorType === 'post') {
-            visEnd = { x: end.x + ux * POST_SEAT, y: end.y + uy * POST_SEAT, z: end.z + uz * POST_SEAT };
+            visEnd = { x: end.x - ux * POST_SEAT, y: end.y - uy * POST_SEAT, z: end.z - uz * POST_SEAT };
           }
         }
 
@@ -489,10 +489,10 @@ function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions
         if (coreLen > 0.01) {
           const ux = dx / coreLen, uy = dy / coreLen, uz = dz / coreLen;
           if (rail.startEndpoint?.anchorType === 'post') {
-            visStart = { x: start.x - ux * POST_SEAT, y: start.y - uy * POST_SEAT, z: start.z - uz * POST_SEAT };
+            visStart = { x: start.x + ux * POST_SEAT, y: start.y + uy * POST_SEAT, z: start.z + uz * POST_SEAT };
           }
           if (rail.endEndpoint?.anchorType === 'post') {
-            visEnd = { x: end.x + ux * POST_SEAT, y: end.y + uy * POST_SEAT, z: end.z + uz * POST_SEAT };
+            visEnd = { x: end.x - ux * POST_SEAT, y: end.y - uy * POST_SEAT, z: end.z - uz * POST_SEAT };
           }
         }
 
@@ -544,10 +544,10 @@ function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions
         if (coreLen > 0.01) {
           const ux = dx / coreLen, uy = dy / coreLen, uz = dz / coreLen;
           if (rail.startEndpoint?.anchorType === 'post') {
-            visStart = { x: start.x - ux * POST_SEAT, y: start.y - uy * POST_SEAT, z: start.z - uz * POST_SEAT };
+            visStart = { x: start.x + ux * POST_SEAT, y: start.y + uy * POST_SEAT, z: start.z + uz * POST_SEAT };
           }
           if (rail.endEndpoint?.anchorType === 'post') {
-            visEnd = { x: end.x + ux * POST_SEAT, y: end.y + uy * POST_SEAT, z: end.z + uz * POST_SEAT };
+            visEnd = { x: end.x - ux * POST_SEAT, y: end.y - uy * POST_SEAT, z: end.z - uz * POST_SEAT };
           }
         }
 
