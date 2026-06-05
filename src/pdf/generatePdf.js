@@ -89,9 +89,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // Drawing area layout — landscape page (LW=792, LH=612)
   const dAreaX = M + 62;                         // room for H-dim label on left
-  const dAreaY = y + 8;                          // just below header  (≈84)
+  const dAreaY = y + 24;                         // below header with breathing room (≈100)
   const dAreaW = LW - dAreaX - M - 12;           // ≈622 pts wide (landscape)
-  const dAreaH = 420;                            // fits landscape page height
+  const dAreaH = 450;                            // taller area centers stair on landscape page
 
   // Ground line sits 50 pts above the bottom of dArea (run-dim label below)
   const groundY = dAreaY + dAreaH - 50;          // ≈544
@@ -387,44 +387,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       }
     });
   }
-
-  // ── Top-view width inset ───────────────────────────────────────────────────
-  const insetW = 138;
-  const insetH = 56;
-  const insetX = LW - M - insetW;   // right-aligned to landscape page margin
-  const insetY = oy + 55;            // below run-dimension label
-
-  doc.setFillColor('#f0f4ff');
-  doc.setDrawColor('#1a1a2e');
-  doc.setLineWidth(0.6);
-  doc.roundedRect(insetX, insetY, insetW, insetH, 3, 3, 'FD');
-
-  doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor('#1a1a2e');
-  doc.text('TOP VIEW (width detail)', insetX + insetW / 2, insetY + 10, { align: 'center' });
-
-  const tvPad = 10;
-  const tvX1 = insetX + tvPad;
-  const tvX2 = insetX + insetW - tvPad;
-  const tvY1 = insetY + 16;
-  const tvY2 = insetY + insetH - 9;
-  doc.setDrawColor('#1a1a2e');
-  doc.setLineWidth(1.2);
-  doc.rect(tvX1, tvY1, tvX2 - tvX1, tvY2 - tvY1);
-
-  const tvMidY = (tvY1 + tvY2) / 2;
-  doc.setDrawColor('#555555');
-  doc.setLineWidth(0.5);
-  doc.line(tvX1, tvMidY, tvX2, tvMidY);
-  doc.line(tvX1 + 5, tvMidY - 3, tvX1, tvMidY);
-  doc.line(tvX1 + 5, tvMidY + 3, tvX1, tvMidY);
-  doc.line(tvX2 - 5, tvMidY - 3, tvX2, tvMidY);
-  doc.line(tvX2 - 5, tvMidY + 3, tvX2, tvMidY);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor('#1a1a2e');
-  doc.text(`Stair Width = ${fmtDim(stairConfig.width, 0)}`, insetX + insetW / 2, tvMidY + 11, { align: 'center' });
 
   pageFooter(LW, LH);
 
