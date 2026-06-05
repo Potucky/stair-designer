@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getTubeProfile, getManualRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [] }) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
@@ -308,8 +308,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // ── Manual Top Rails (side view) — drawn after posts so Top Rail sits on top
   // Uses getManualRailSegments so fixed-endpoint rails (post deleted) still render.
-  // Scene coords → PDF: x = ox + dw/2 + sceneX/INtoU*sc
-  //                     y = oy - sceneY/INtoU*sc - rPx/2 + (TREAD_THICK/INtoU)*sc
+  // syToPdf maps post-top scene Y → post-top PDF y (the top edge of the post rect).
+  // We then shift the stroke up by lw/2 so its bottom face sits at the post top,
+  // plus a tiny overlap (0.25 in) so no hairline gap appears.
   {
     const railSegs = getManualRailSegments(
       Array.isArray(manualTopRails) ? manualTopRails : [],
@@ -324,14 +325,43 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     const sxToPdf = (sx) => ox + dw / 2 + (sx / INtoU) * sc;
     const syToPdf = (sy) => oy - (sy / INtoU) * sc - rPx / 2 + (TREAD_THICK / INtoU) * sc;
 
+    const lw = Math.max(1.5, Math.min(sc, 6));
+    const overlapPts = 0.25 * sc; // 0.25 in visual overlap into post top
+
+    const postProfile = getTubeProfile(stairConfig.tubeSize);
+    const postW = Math.max(3, postProfile.width * sc);
+
+    // Open-end flags: detect terminal endpoints with no chained rail on that side
+    const normRails = (Array.isArray(manualTopRails) ? manualTopRails : []).map(normalizeRailEndpoints);
+    const endPostIds   = new Set(normRails.filter(r => r.endEndpoint.anchorType   === 'post').map(r => r.endEndpoint.postId));
+    const startPostIds = new Set(normRails.filter(r => r.startEndpoint.anchorType === 'post').map(r => r.startEndpoint.postId));
+    const isOpenStart = (ep) => ep.anchorType !== 'post' || !endPostIds.has(ep.postId);
+    const isOpenEnd   = (ep) => ep.anchorType !== 'post' || !startPostIds.has(ep.postId);
+
     railSegs.forEach((seg, idx) => {
-      const sx = sxToPdf(seg.start.x);
-      const sy = syToPdf(seg.start.y);
-      const ex = sxToPdf(seg.end.x);
-      const ey = syToPdf(seg.end.y);
+      // Shift y: bottom face of stroke lands at post top with tiny overlap
+      let sx = sxToPdf(seg.start.x);
+      let sy = syToPdf(seg.start.y) - lw / 2 + overlapPts;
+      let ex = sxToPdf(seg.end.x);
+      let ey = syToPdf(seg.end.y) - lw / 2 + overlapPts;
+
+      // At terminal posts with no extension, extend to the outside face so no post corner is exposed
+      const r = seg.rail;
+      const perStartExt = r.startEndpoint.extension?.type === 'straight' ? Math.max(0, Number(r.startEndpoint.extension.lengthIn) || 0) : 0;
+      const perEndExt   = r.endEndpoint.extension?.type   === 'straight' ? Math.max(0, Number(r.endEndpoint.extension.lengthIn)   || 0) : 0;
+      const globalStartExt = isOpenStart(r.startEndpoint) ? Math.max(0, railLowerExtensionIn) : 0;
+      const globalEndExt   = isOpenEnd(r.endEndpoint)     ? Math.max(0, railUpperExtensionIn) : 0;
+
+      const horizDir = sx <= ex ? 1 : -1;
+      if (isOpenStart(r.startEndpoint) && perStartExt + globalStartExt === 0) {
+        sx -= horizDir * postW / 2;
+      }
+      if (isOpenEnd(r.endEndpoint) && perEndExt + globalEndExt === 0) {
+        ex += horizDir * postW / 2;
+      }
 
       doc.setDrawColor(railColors.railLine);
-      doc.setLineWidth(Math.max(1.5, Math.min(sc, 6)));
+      doc.setLineWidth(lw);
       doc.line(sx, sy, ex, ey);
 
       const mx = (sx + ex) / 2;

@@ -427,8 +427,11 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
         if (length < 0.01) return null;
 
         const midV = startV.clone().lerp(endV, 0.5);
-        // Lift center so bottom face of the rail sits at post top, not bisected by it
-        midV.y += RAIL_H / 2;
+        // Perpendicular lift: bottom face seats on post tops with 0.25 in overlap to close slope gap
+        const rDx = endV.x - startV.x, rDy = endV.y - startV.y, rDz = endV.z - startV.z;
+        const rLen = Math.sqrt(rDx * rDx + rDy * rDy + rDz * rDz);
+        const cosSlope = rLen > 0 ? Math.sqrt(rDx * rDx + rDz * rDz) / rLen : 1;
+        midV.y += (RAIL_H / 2) * cosSlope - 0.125;
         const direction = endV.clone().sub(startV).normalize();
         const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
 
