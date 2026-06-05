@@ -196,12 +196,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   doc.line(ox, oy, ox + dw, oy - dh);
   doc.setLineDashPattern([], 0);
 
-  // Stringer length label (alongside diagonal)
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor('#3366cc');
-  doc.text(`Stringer: ${fmtDim(stringerLength)}`, ox + dw / 2 + 6, oy - dh / 2 - 8);
-
   // ── Manual Bottom Rails (side view) ──────────────────────────────────────
   if (stairConfig.bottomRailEnabled) {
     const bottomRailHeight = stairConfig.bottomRailHeight ?? 1;
@@ -228,13 +222,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       doc.setDrawColor(railColors.railLine);
       doc.setLineWidth(Math.max(1.5, Math.min(sc, 6)));
       doc.line(sx, sy, ex, ey);
-
-      const mx = (sx + ex) / 2;
-      const my = (sy + ey) / 2 + 8;
-      doc.setFontSize(6.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(railColors.railLabel);
-      doc.text(`BR${idx + 1}`, mx, my);
     });
   }
 
@@ -249,7 +236,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       const sxToPdf = (sx) => ox + dw / 2 + (sx / INtoU) * sc;
       const syToPdf = (sy) => oy - (sy / INtoU) * sc - rPx / 2 + (TREAD_THICK / INtoU) * sc;
 
-      let mrIdx = 0;
       effectiveMiddleRailHeights.forEach((height) => {
         const mrSegs = getManualMiddleRailSegments(
           Array.isArray(manualTopRails) ? manualTopRails : [],
@@ -271,14 +257,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
           doc.setDrawColor(railColors.mrLine);
           doc.setLineWidth(Math.max(1.5, Math.min(sc, 6)));
           doc.line(sx, sy, ex, ey);
-
-          const mx = (sx + ex) / 2;
-          const my = (sy + ey) / 2 + 4;
-          doc.setFontSize(6.5);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(railColors.mrLabel);
-          doc.text(`MR${mrIdx + 1}`, mx, my);
-          mrIdx++;
         });
       });
     }
@@ -363,13 +341,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       doc.setDrawColor(railColors.railLine);
       doc.setLineWidth(lw);
       doc.line(sx, sy, ex, ey);
-
-      const mx = (sx + ex) / 2;
-      const my = (sy + ey) / 2 - 5;
-      doc.setFontSize(6.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(railColors.railLabel);
-      doc.text(`TR${idx + 1}`, mx, my);
     });
   }
 
@@ -397,74 +368,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       doc.setTextColor(railColors.postLabel);
       doc.text(label, pxX + postW / 2 + 2, topY + 7);
     });
-  }
-
-  // ── Height dimension (left side) ──────────────────────────────────────────
-  const hdX = ox - 42;
-  doc.setDrawColor('#555555');
-  doc.setLineWidth(0.5);
-  doc.line(hdX, oy, hdX, oy - dh);
-  doc.line(hdX - 5, oy, hdX + 5, oy);
-  doc.line(hdX - 5, oy - dh, hdX + 5, oy - dh);
-  doc.line(hdX - 3, oy - 9, hdX, oy);
-  doc.line(hdX + 3, oy - 9, hdX, oy);
-  doc.line(hdX - 3, oy - dh + 9, hdX, oy - dh);
-  doc.line(hdX + 3, oy - dh + 9, hdX, oy - dh);
-  doc.setFontSize(9.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor('#1a1a2e');
-  doc.text(`H = ${fmtDim(height, 0)}`, hdX - 7, oy - dh / 2 + 4, { align: 'right' });
-
-  // ── Run dimension (bottom) ─────────────────────────────────────────────────
-  const rdY = oy + 34;
-  doc.setDrawColor('#555555');
-  doc.setLineWidth(0.5);
-  doc.line(ox, rdY, ox + dw, rdY);
-  doc.line(ox, rdY - 5, ox, rdY + 5);
-  doc.line(ox + dw, rdY - 5, ox + dw, rdY + 5);
-  doc.line(ox + 6, rdY - 4, ox, rdY);
-  doc.line(ox + 6, rdY + 4, ox, rdY);
-  doc.line(ox + dw - 6, rdY - 4, ox + dw, rdY);
-  doc.line(ox + dw - 6, rdY + 4, ox + dw, rdY);
-  doc.setFontSize(9.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor('#1a1a2e');
-  doc.text(`Run = ${fmtDim(run, 0)}`, ox + dw / 2, rdY + 13, { align: 'center' });
-
-  // ── Angle arc at base ──────────────────────────────────────────────────────
-  const arcR = 36;
-  const angleRad = (angleDeg * Math.PI) / 180;
-  doc.setDrawColor('#cc6600');
-  doc.setLineWidth(0.9);
-  for (let i = 1; i <= 20; i++) {
-    const a0 = ((i - 1) / 20) * angleRad;
-    const a1 = (i / 20) * angleRad;
-    doc.line(
-      ox + arcR * Math.cos(a0), oy - arcR * Math.sin(a0),
-      ox + arcR * Math.cos(a1), oy - arcR * Math.sin(a1)
-    );
-  }
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor('#cc6600');
-  doc.text(`${angleDeg.toFixed(1)}°`, ox + arcR + 5, oy - arcR * 0.58);
-
-  // ── Riser + Tread callout on first step ───────────────────────────────────
-  if (steps > 0) {
-    const callX = ox + tPx + 14;
-    const callRY = oy - rPx * 0.55;
-    const callTY = callRY + 14;
-    doc.setDrawColor('#666666');
-    doc.setLineWidth(0.4);
-    doc.setLineDashPattern([2, 2], 0);
-    doc.line(ox, oy - rPx / 2, callX - 2, callRY);
-    doc.line(ox + tPx / 2, oy - rPx, callX - 2, callTY);
-    doc.setLineDashPattern([], 0);
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor('#1a1a2e');
-    doc.text(`R = ${fmtDim(riserHeight, 3)}`, callX, callRY + 3);
-    doc.text(`T = ${fmtDim(treadDepth, 3)}`, callX, callTY + 3);
   }
 
   // ── Top-view width inset ───────────────────────────────────────────────────
