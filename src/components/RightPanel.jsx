@@ -115,7 +115,7 @@ function ExtChips({ curLen, onSet }) {
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode }) {
   const [saveStatus, setSaveStatus] = useState(null);
 
   const str = (field) => (e) => setProject((p) => ({ ...p, [field]: e.target.value }));
@@ -273,6 +273,12 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                   Top Rail
                 </button>
                 <button
+                  className={`panel-btn${fastRailsMode ? ' panel-btn-active' : ''}`}
+                  onClick={onToggleFastRailsMode}
+                >
+                  Fast Rails
+                </button>
+                <button
                   className={`panel-btn${stairConfig.bottomRailEnabled ? ' panel-btn-active' : ''}`}
                   onClick={() => setStairConfig(s => ({ ...s, bottomRailEnabled: !s.bottomRailEnabled }))}
                 >
@@ -301,6 +307,12 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               )}
               {topRailMode && topRailFirstPostId && (
                 <div className="post-tool-hint">First post selected — click second post</div>
+              )}
+              {fastRailsMode && !fastRailsPrevPostId && (
+                <div className="post-tool-hint">Fast Rails: place first post</div>
+              )}
+              {fastRailsMode && fastRailsPrevPostId && (
+                <div className="post-tool-hint">Fast Rails: place next post to create rails</div>
               )}
               {stairConfig.bottomRailEnabled && (
                 <label className="field-label" style={{ marginTop: 8 }}>Bottom Rail Height (in)

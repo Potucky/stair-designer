@@ -238,7 +238,7 @@ function DimensionLabels({ stairConfig, calc, units }) {
   );
 }
 
-function StairModel({ height, run, width, steps, handrailHeight, treadPositions, postPlacementMode, onAddManualPost }) {
+function StairModel({ height, run, width, steps, handrailHeight, treadPositions, postPlacementMode, onAddManualPost, fastRailsMode, onFastRailsPost }) {
   const INtoU = 0.5;
 
   const h = height * INtoU;
@@ -253,7 +253,7 @@ function StairModel({ height, run, width, steps, handrailHeight, treadPositions,
     const tx = x * INtoU;
     const ty = y * INtoU;
 
-    const handleTreadClick = postPlacementMode ? (e) => {
+    const handleTreadClick = (postPlacementMode || fastRailsMode) ? (e) => {
       e.stopPropagation();
       const normal = e.face?.normal;
       let mount = 'top';
@@ -267,16 +267,21 @@ function StairModel({ height, run, width, steps, handrailHeight, treadPositions,
         zIn = normal.z > 0 ? width / 2 : -(width / 2);
       }
 
-      onAddManualPost({
+      const postData = {
         stepIndex: i,
         mount,
         side,
-        xIn: x,       // tread center X in stair inches
+        xIn: x,
         zIn,
         offsetXIn: 0,
         offsetZIn: 0,
         heightIn: handrailHeight,
-      });
+      };
+      if (fastRailsMode) {
+        onFastRailsPost(postData);
+      } else {
+        onAddManualPost(postData);
+      }
     } : undefined;
 
     return (
@@ -313,7 +318,7 @@ function BottomLanding({ run, width, bottomLandingLength }) {
   );
 }
 
-function TopLanding({ run, width, height, steps, topLandingLength, postPlacementMode, onAddManualPost, handrailHeight, treadPositions }) {
+function TopLanding({ run, width, height, steps, topLandingLength, postPlacementMode, onAddManualPost, handrailHeight, treadPositions, fastRailsMode, onFastRailsPost }) {
   const INtoU = 0.5;
   const r = run * INtoU;
   const w = width * INtoU;
@@ -323,7 +328,7 @@ function TopLanding({ run, width, height, steps, topLandingLength, postPlacement
   const landLen = topLandingLength * INtoU;
 
   const finalIndex = treadPositions && treadPositions.length > 0 ? treadPositions.length - 1 : -1;
-  const handleClick = (postPlacementMode && finalIndex >= 0) ? (e) => {
+  const handleClick = ((postPlacementMode || fastRailsMode) && finalIndex >= 0) ? (e) => {
     e.stopPropagation();
     const finalTread = treadPositions[finalIndex];
     const normal = e.face?.normal;
@@ -335,7 +340,7 @@ function TopLanding({ run, width, height, steps, topLandingLength, postPlacement
       side = normal.z > 0 ? 'right' : 'left';
       zIn = normal.z > 0 ? width / 2 : -(width / 2);
     }
-    onAddManualPost({
+    const postData = {
       stepIndex: finalIndex,
       mount,
       side,
@@ -344,7 +349,12 @@ function TopLanding({ run, width, height, steps, topLandingLength, postPlacement
       offsetXIn: 0,
       offsetZIn: 0,
       heightIn: handrailHeight,
-    });
+    };
+    if (fastRailsMode) {
+      onFastRailsPost(postData);
+    } else {
+      onAddManualPost(postData);
+    }
   } : undefined;
 
   return (
@@ -356,7 +366,7 @@ function TopLanding({ run, width, height, steps, topLandingLength, postPlacement
 }
 
 // Renders manually placed posts from the manualPosts array.
-function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tubeSize, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, railingColorMode }) {
+function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tubeSize, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, railingColorMode, fastRailsMode, fastRailsPrevPostId, onFastRailsPostSelect }) {
   const INtoU = 0.5;
   const profile = getTubeProfile(tubeSize);
   const postSide = profile.width * INtoU; // real profile width in scene units
@@ -376,12 +386,15 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
         const basePostColor = railingColorMode === 'black' ? '#111111' : '#4a4a4a';
         let color = basePostColor;
         if (id === topRailFirstPostId) color = '#3b82f6';
+        else if (fastRailsMode && id === fastRailsPrevPostId) color = '#22c55e';
         else if (id === selectedManualPostId) color = '#f59e0b';
 
         const handleClick = (e) => {
           e.stopPropagation();
           if (topRailMode) {
             onTopRailPostClick(id);
+          } else if (fastRailsMode) {
+            onFastRailsPostSelect(id);
           } else {
             onSelectManualPost(id);
           }
@@ -646,13 +659,13 @@ function MeasureTool({ active, units }) {
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard' }) {
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect }) {
   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'work';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
-  const activeCursor = isMeasure || postPlacementMode || topRailMode ? 'crosshair' : undefined;
+  const activeCursor = isMeasure || postPlacementMode || topRailMode || fastRailsMode ? 'crosshair' : undefined;
 
   return (
     <div className="scene-container" style={activeCursor ? { cursor: activeCursor } : undefined}>
@@ -687,7 +700,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength} />
         )}
         {topLandingEnabled && (
-          <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} treadPositions={calc.treadPositions} />
+          <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} treadPositions={calc.treadPositions} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
         )}
 
         <StairModel
@@ -699,6 +712,8 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           treadPositions={topLandingEnabled && calc.treadPositions.length > 0 ? calc.treadPositions.slice(0, -1) : calc.treadPositions}
           postPlacementMode={postPlacementMode}
           onAddManualPost={onAddManualPost}
+          fastRailsMode={fastRailsMode}
+          onFastRailsPost={onFastRailsPost}
         />
 
         {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
@@ -716,6 +731,9 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             topRailFirstPostId={topRailFirstPostId}
             onTopRailPostClick={onTopRailPostClick}
             railingColorMode={effectiveColorMode}
+            fastRailsMode={fastRailsMode}
+            fastRailsPrevPostId={fastRailsPrevPostId}
+            onFastRailsPostSelect={onFastRailsPostSelect}
           />
 
           <ManualTopRailsRenderer

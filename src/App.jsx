@@ -34,6 +34,9 @@ export default function App() {
   const [selectedManualTopRailId, setSelectedManualTopRailId] = useState(null);
   const [topRailPathMode, setTopRailPathMode] = useState('standard');
 
+  const [fastRailsMode, setFastRailsMode] = useState(false);
+  const [fastRailsPrevPostId, setFastRailsPrevPostId] = useState(null);
+
   const [structureOffsetXIn, setStructureOffsetXIn] = useState(0);
   const [structureOffsetZIn, setStructureOffsetZIn] = useState(0);
   const [structureMoveSelected, setStructureMoveSelected] = useState(false);
@@ -44,6 +47,8 @@ export default function App() {
         setPostPlacementMode(false);
         setTopRailMode(false);
         setTopRailFirstPostId(null);
+        setFastRailsMode(false);
+        setFastRailsPrevPostId(null);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -151,6 +156,8 @@ export default function App() {
     setSelectedManualPostId(null);
     setTopRailMode(false);
     setTopRailFirstPostId(null);
+    setFastRailsMode(false);
+    setFastRailsPrevPostId(null);
   };
 
   const handleToggleTopRailMode = () => {
@@ -158,6 +165,52 @@ export default function App() {
     setTopRailFirstPostId(null);
     setPostPlacementMode(false);
     setSelectedManualPostId(null);
+    setFastRailsMode(false);
+    setFastRailsPrevPostId(null);
+  };
+
+  const handleToggleFastRailsMode = () => {
+    setFastRailsMode(prev => {
+      if (!prev) {
+        setPostPlacementMode(false);
+        setTopRailMode(false);
+        setTopRailFirstPostId(null);
+      }
+      setFastRailsPrevPostId(null);
+      return !prev;
+    });
+  };
+
+  const handleFastRailsPost = (postData) => {
+    const newId = `post-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setManualPosts(prev => [...prev, { ...postData, id: newId }]);
+    setSelectedManualPostId(newId);
+
+    if (fastRailsPrevPostId) {
+      const prevId = fastRailsPrevPostId;
+      const duplicate = manualTopRails.some(
+        r => (r.startPostId === prevId && r.endPostId === newId) ||
+             (r.startPostId === newId && r.endPostId === prevId)
+      );
+      if (!duplicate) {
+        const railId = `rail-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        setManualTopRails(prev => [...prev, {
+          id: railId,
+          startPostId: prevId,
+          endPostId: newId,
+          profile: '2x1',
+          startEndpoint: { anchorType: 'post', postId: prevId, pointIn: null, extension: { type: 'none', lengthIn: 0 } },
+          endEndpoint: { anchorType: 'post', postId: newId, pointIn: null, extension: { type: 'none', lengthIn: 0 } },
+        }]);
+      }
+    }
+
+    setFastRailsPrevPostId(newId);
+  };
+
+  const handleFastRailsPostSelect = (id) => {
+    setFastRailsPrevPostId(id);
+    setSelectedManualPostId(id);
   };
 
   const handleTopRailPostClick = (postId) => {
@@ -272,6 +325,10 @@ export default function App() {
         structureOffsetXIn={structureOffsetXIn}
         structureOffsetZIn={structureOffsetZIn}
         topRailPathMode={topRailPathMode}
+        fastRailsMode={fastRailsMode}
+        fastRailsPrevPostId={fastRailsPrevPostId}
+        onFastRailsPost={handleFastRailsPost}
+        onFastRailsPostSelect={handleFastRailsPostSelect}
       />
       <RightPanel
         project={project}
@@ -309,6 +366,9 @@ export default function App() {
         onResetStructureOffset={handleResetStructureOffset}
         structureOffsetXIn={structureOffsetXIn}
         structureOffsetZIn={structureOffsetZIn}
+        fastRailsMode={fastRailsMode}
+        fastRailsPrevPostId={fastRailsPrevPostId}
+        onToggleFastRailsMode={handleToggleFastRailsMode}
       />
       <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} units={units} />
     </div>
