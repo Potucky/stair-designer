@@ -305,7 +305,7 @@ function StairModel({ height, run, width, steps, handrailHeight, treadPositions,
   );
 }
 
-function BottomLanding({ run, width, bottomLandingLength, postPlacementMode, onAddManualPost, handrailHeight, fastRailsMode, onFastRailsPost }) {
+function BottomLanding({ run, width, bottomLandingLength, treadDepth, postPlacementMode, onAddManualPost, handrailHeight, fastRailsMode, onFastRailsPost }) {
   const INtoU = 0.5;
   const r = run * INtoU;
   const w = width * INtoU;
@@ -314,6 +314,7 @@ function BottomLanding({ run, width, bottomLandingLength, postPlacementMode, onA
   const handleClick = (postPlacementMode || fastRailsMode) ? (e) => {
     e.stopPropagation();
     const xIn = e.point.x / INtoU + run / 2;  // stair-relative inches (negative for bottom landing)
+    if (xIn < -treadDepth || xIn > 0) return;
     const zIn = e.point.z / INtoU;
     const postData = {
       surfaceType: 'bottomLanding',
@@ -344,12 +345,14 @@ function TopLanding({ run, width, height, steps, topLandingLength, postPlacement
   const h = height * INtoU;
   const riserH = steps > 0 ? h / steps : h;
   const treadD = steps > 0 ? r / steps : 0;
+  const treadDepth = steps > 0 ? run / steps : 0;
   const landLen = topLandingLength * INtoU;
 
   const hasTreads = treadPositions && treadPositions.length > 0;
   const handleClick = ((postPlacementMode || fastRailsMode) && hasTreads) ? (e) => {
     e.stopPropagation();
     const xIn = e.point.x / INtoU + run / 2;  // stair-relative inches (beyond run for top landing)
+    if (xIn < run || xIn > run + treadDepth) return;
     const zIn = e.point.z / INtoU;
     const postData = {
       surfaceType: 'topLanding',
@@ -708,7 +711,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
         />
 
         {bottomLandingEnabled && (
-          <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
+          <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength} treadDepth={calc.treadDepth} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
         )}
         {topLandingEnabled && (
           <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} treadPositions={calc.treadPositions} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
