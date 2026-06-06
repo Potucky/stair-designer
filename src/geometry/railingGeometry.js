@@ -367,7 +367,7 @@ export function getManualTopRailManualSegments(manualTopRails, manualPosts, trea
       if (len > 0.001) { dirX = dx / len; dirZ = dz / len; }
     }
 
-    const manualSegs = (rail.manualSegments && rail.manualSegments.length > 0)
+    const manualSegs = Array.isArray(rail.manualSegments)
       ? rail.manualSegments
       : DEFAULT_MANUAL_SEGMENTS;
 
@@ -378,19 +378,22 @@ export function getManualTopRailManualSegments(manualTopRails, manualPosts, trea
     for (let i = 0; i < manualSegs.length; i++) {
       const seg = manualSegs[i];
       if (seg.type === 'forward') {
-        const lengthU = (seg.lengthIn ?? 60) * INtoU;
+        const rawLen = Number(seg.lengthIn);
+        const resolvedLen = Number.isFinite(rawLen) && rawLen > 0 ? rawLen : 60;
+        const lengthU = resolvedLen * INtoU;
         if (lengthU < 0.001) continue;
         segments.push({
           rail: r,
           segKey: `${r.id}-m${i}`,
           start: { x: curX, y: curY, z: curZ },
           end: { x: curX + dirX * lengthU, y: curY, z: curZ + dirZ * lengthU },
-          lengthIn: seg.lengthIn ?? 60,
+          lengthIn: resolvedLen,
         });
         curX += dirX * lengthU;
         curZ += dirZ * lengthU;
       } else if (seg.type === 'turn') {
-        const rad = (seg.angleDeg ?? 90) * Math.PI / 180;
+        const rawDeg = Number(seg.angleDeg);
+        const rad = (Number.isFinite(rawDeg) && rawDeg > 0 ? rawDeg : 90) * Math.PI / 180;
         let nx, nz;
         if (seg.side === 'left') {
           // Positive rotation around Y axis

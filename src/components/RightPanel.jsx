@@ -541,9 +541,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                       const selRail = manualTopRails.find(r => r.id === selectedManualTopRailId);
                       if (!selRail) return null;
                       const r = normalizeRailEndpoints(selRail);
-                      const startPostId = r.startEndpoint.anchorType === 'post' ? r.startEndpoint.postId : null;
-                      const startPostIdx = startPostId ? (manualPosts?.findIndex(p => p.id === startPostId) ?? -1) : -1;
-                      const segs = (selRail.manualSegments && selRail.manualSegments.length > 0)
+                      const segs = Array.isArray(selRail.manualSegments)
                         ? selRail.manualSegments
                         : DEFAULT_MANUAL_SEGMENTS;
 
@@ -552,7 +550,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                       return (
                         <>
                           <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 8 }}>
-                            Start: {startPostIdx >= 0 ? `P${startPostIdx + 1}` : 'first post'}
+                            Start: first post
                           </div>
                           {segs.map((seg, i) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 4 }}>
