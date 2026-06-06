@@ -349,7 +349,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             </div>
 
             {/* Rail End Extensions */}
-            <div style={{ marginTop: 12 }}>
+            {topRailPathMode === 'standard' && <div style={{ marginTop: 12 }}>
               <div className="field-label-sm" style={{ marginBottom: 6 }}>Top Rail End Extensions</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Lower End Ext (in)</span>
@@ -371,7 +371,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                   onCommit={v => setStairConfig(s => ({ ...s, railUpperExtensionIn: Math.max(0, v) }))}
                 />
               </div>
-            </div>
+            </div>}
 
             {/* Top Rail Mode switch */}
             <div style={{ marginTop: 12 }}>
