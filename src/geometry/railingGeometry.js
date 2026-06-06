@@ -342,11 +342,7 @@ export function getManualTopRailDoglegSegments(manualTopRails, manualPosts, trea
   return segments;
 }
 
-export const DEFAULT_MANUAL_SEGMENTS = [
-  { type: 'forward', lengthIn: 60 },
-  { type: 'turn', side: 'right', angleDeg: 90 },
-  { type: 'forward', lengthIn: 24 },
-];
+export const DEFAULT_MANUAL_SEGMENTS = [];
 
 // Manual Top Rail path from user-defined segments starting at the first post.
 // Turns rotate the horizontal XZ direction; Forward advances in that direction at constant Y.

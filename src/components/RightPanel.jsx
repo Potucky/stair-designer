@@ -3,7 +3,7 @@ import { TUBE_SIZES } from '../data/materialProfiles.js';
 import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
 import { normalizeRailEndpoints, DEFAULT_MANUAL_SEGMENTS } from '../geometry/railingGeometry.js';
 
-function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', integer = false, allowZero = false }) {
+function NumericDraftInput({ value, onCommit, className, style, inputMode = 'decimal', integer = false, allowZero = false }) {
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState('');
   const cancelRef = useRef(false);
@@ -65,6 +65,7 @@ function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', 
   return (
     <input
       className={className}
+      style={style}
       type="text"
       inputMode={inputMode}
       value={focused ? draft : String(value)}

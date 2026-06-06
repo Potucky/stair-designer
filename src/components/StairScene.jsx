@@ -730,7 +730,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             topRailPathMode={topRailPathMode}
           />
 
-          {bottomRailEnabled && topRailPathMode !== 'manual' && (
+          {bottomRailEnabled && (
             <ManualBottomRailsRenderer
               manualTopRails={manualTopRails || []}
               manualPosts={manualPosts || []}
@@ -742,7 +742,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             />
           )}
 
-          {middleRailEnabled && effectiveMiddleRailHeights.length > 0 && topRailPathMode !== 'manual' && (
+          {middleRailEnabled && effectiveMiddleRailHeights.length > 0 && (
             <ManualMiddleRailsRenderer
               manualTopRails={manualTopRails || []}
               manualPosts={manualPosts || []}
