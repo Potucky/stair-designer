@@ -3,7 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { fmtUnit } from '../utils/format.js';
-import { getTubeProfile, getManualPostBase, getLandingPostVisualHeightIn, getManualTopRailDoglegSegments, getManualTopRailManualSegments, getManualBottomRailSegments, getManualMiddleRailSegments } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualPostBase, getManualTopRailDoglegSegments, getManualTopRailManualSegments, getManualBottomRailSegments, getManualMiddleRailSegments } from '../geometry/railingGeometry.js';
 
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
@@ -314,9 +314,9 @@ function BottomLanding({ run, width, steps, bottomLandingLength, postPlacementMo
 
   const handleClick = (postPlacementMode || fastRailsMode) ? (e) => {
     e.stopPropagation();
-    // Clamp to within one tread depth of the stair bottom edge (xIn=0)
+    // Clamp so post stays within one tread depth of the stair bottom edge: xIn ∈ [-treadDepth, 0]
     const rawXIn = e.point.x / INtoU + run / 2;
-    const xIn = Math.max(rawXIn, -treadDepth);
+    const xIn = Math.max(Math.min(rawXIn, 0), -treadDepth);
     const zIn = e.point.z / INtoU;
     const postData = {
       surfaceType: 'bottomLanding',
@@ -347,14 +347,15 @@ function TopLanding({ run, width, height, steps, topLandingLength, postPlacement
   const h = height * INtoU;
   const riserH = steps > 0 ? h / steps : h;
   const treadD = steps > 0 ? r / steps : 0;
+  const treadDepthIn = steps > 0 ? run / steps : run;
   const landLen = topLandingLength * INtoU;
 
   const hasTreads = treadPositions && treadPositions.length > 0;
   const handleClick = ((postPlacementMode || fastRailsMode) && hasTreads) ? (e) => {
     e.stopPropagation();
-    // Clamp to within one tread depth of the stair top edge (xIn=run)
+    // Clamp so post stays within one tread depth of the stair top edge: xIn ∈ [run, run+treadDepth]
     const rawXIn = e.point.x / INtoU + run / 2;
-    const xIn = Math.min(rawXIn, run);
+    const xIn = Math.max(Math.min(rawXIn, run + treadDepthIn), run);
     const zIn = e.point.z / INtoU;
     const postData = {
       surfaceType: 'topLanding',
@@ -394,10 +395,7 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
         const base = getManualPostBase(post, treadPositions, riserHeight, run);
         if (!base) return null;
 
-        const isLandingPost = post.surfaceType === 'bottomLanding' || post.surfaceType === 'topLanding';
-        const postH = isLandingPost
-          ? getLandingPostVisualHeightIn(post, treadPositions, riserHeight, run) * INtoU
-          : heightIn * INtoU;
+        const postH = heightIn * INtoU;
         const worldX = base.x;
         const worldY = base.y + postH / 2;
         const worldZ = base.z;

@@ -63,22 +63,6 @@ export function normalizeRailEndpoints(rail) {
   };
 }
 
-// Returns the visual height in INCHES for a landing post in match-stair mode.
-// The post top is projected onto the stair-pitch line at the post's X position.
-export function getLandingPostVisualHeightIn(post, treadPositions, riserHeight, run) {
-  const base = getManualPostBase(post, treadPositions, riserHeight, run);
-  if (!base) return Number(post.heightIn);
-  const steps = treadPositions.length;
-  const treadDepth = steps > 0 ? run / steps : run;
-  const treadD_u = (treadDepth > 0 ? treadDepth : run) * INtoU;
-  if (treadD_u < 0.001) return Number(post.heightIn);
-  const rH_u = riserHeight * INtoU;
-  const r_u = run * INtoU;
-  const pitchY = (rH_u / treadD_u) * (base.x + r_u / 2) + TREAD_THICK;
-  const topRailY = pitchY + Number(post.heightIn) * INtoU;
-  return Math.max(0.001, topRailY - base.y) / INtoU;
-}
-
 // Resolve an endpoint to a scene-unit { x, y, z } point. Returns null if unresolvable.
 // For landing posts the top rail Y is projected onto the stair-pitch line so the
 // resulting segment direction equals the stair slope (rise/run), not the post-to-post vector.

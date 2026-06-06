@@ -655,18 +655,26 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                       <div className="post-adjust-row">
                         <button className="panel-btn" onClick={() => {
                           const candidate = (sel.offsetXIn || 0) - 1;
-                          // Bottom landing: clamp so post stays within one tread depth of stair edge
-                          const clamped = sel.surfaceType === 'bottomLanding'
-                            ? Math.max(candidate, -calc.treadDepth - sel.xIn)
-                            : candidate;
+                          let clamped = candidate;
+                          if (sel.surfaceType === 'bottomLanding') {
+                            // effective xIn ∈ [-treadDepth, 0]: lower bound
+                            clamped = Math.max(candidate, -calc.treadDepth - sel.xIn);
+                          } else if (sel.surfaceType === 'topLanding') {
+                            // effective xIn ∈ [run, run+treadDepth]: lower bound
+                            clamped = Math.max(candidate, stairConfig.run - sel.xIn);
+                          }
                           onUpdateManualPost(sel.id, { offsetXIn: clamped });
                         }}>← Along</button>
                         <button className="panel-btn" onClick={() => {
                           const candidate = (sel.offsetXIn || 0) + 1;
-                          // Top landing: clamp so post stays within one tread depth of stair top
-                          const clamped = sel.surfaceType === 'topLanding'
-                            ? Math.min(candidate, stairConfig.run - sel.xIn)
-                            : candidate;
+                          let clamped = candidate;
+                          if (sel.surfaceType === 'topLanding') {
+                            // effective xIn ∈ [run, run+treadDepth]: upper bound
+                            clamped = Math.min(candidate, stairConfig.run + calc.treadDepth - sel.xIn);
+                          } else if (sel.surfaceType === 'bottomLanding') {
+                            // effective xIn ∈ [-treadDepth, 0]: upper bound
+                            clamped = Math.min(candidate, -sel.xIn);
+                          }
                           onUpdateManualPost(sel.id, { offsetXIn: clamped });
                         }}>Along →</button>
                       </div>
