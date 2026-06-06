@@ -643,20 +643,38 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             {(() => {
               const sel = manualPosts && manualPosts.find(p => p.id === selectedManualPostId);
               if (!sel) return null;
+              const isLanding = sel.surfaceType === 'bottomLanding' || sel.surfaceType === 'topLanding';
+              const landingLabel = sel.surfaceType === 'bottomLanding' ? 'Bottom Landing' : 'Top Landing';
               return (
                 <div style={{ marginTop: 10 }}>
                   <div className="field-label-sm" style={{ marginBottom: 4 }}>
-                    Adjust Post — step {sel.stepIndex + 1} ({sel.mount})
+                    {isLanding ? `Adjust Post — ${landingLabel}` : `Adjust Post — step ${sel.stepIndex + 1} (${sel.mount})`}
                   </div>
-                  <div className="post-adjust-row">
-                    <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetXIn: sel.offsetXIn - 1 })}>← Nosing</button>
-                    <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetXIn: sel.offsetXIn + 1 })}>Riser →</button>
-                  </div>
-                  <div className="post-adjust-row">
-                    <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetZIn: sel.offsetZIn - 1 })}>Left</button>
-                    <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetZIn: sel.offsetZIn + 1 })}>Right</button>
-                    <button className="panel-btn panel-btn-danger" onClick={() => onDeleteManualPost(sel.id)}>Delete</button>
-                  </div>
+                  {isLanding ? (
+                    <>
+                      <div className="post-adjust-row">
+                        <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetXIn: (sel.offsetXIn || 0) - 1 })}>← Along</button>
+                        <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetXIn: (sel.offsetXIn || 0) + 1 })}>Along →</button>
+                      </div>
+                      <div className="post-adjust-row">
+                        <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetZIn: (sel.offsetZIn || 0) - 1 })}>Left</button>
+                        <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetZIn: (sel.offsetZIn || 0) + 1 })}>Right</button>
+                        <button className="panel-btn panel-btn-danger" onClick={() => onDeleteManualPost(sel.id)}>Delete</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="post-adjust-row">
+                        <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetXIn: sel.offsetXIn - 1 })}>← Nosing</button>
+                        <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetXIn: sel.offsetXIn + 1 })}>Riser →</button>
+                      </div>
+                      <div className="post-adjust-row">
+                        <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetZIn: sel.offsetZIn - 1 })}>Left</button>
+                        <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetZIn: sel.offsetZIn + 1 })}>Right</button>
+                        <button className="panel-btn panel-btn-danger" onClick={() => onDeleteManualPost(sel.id)}>Delete</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })()}

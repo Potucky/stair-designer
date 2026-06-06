@@ -34,17 +34,19 @@ function isValidManualTopRail(r) {
 }
 
 function isValidManualPost(p) {
+  if (!p || typeof p !== 'object' || typeof p.id !== 'string') return false;
+  if (typeof p.xIn !== 'number' || !Number.isFinite(p.xIn)) return false;
+  if (typeof p.zIn !== 'number' || !Number.isFinite(p.zIn)) return false;
+  if (typeof p.offsetXIn !== 'number' || !Number.isFinite(p.offsetXIn)) return false;
+  if (typeof p.offsetZIn !== 'number' || !Number.isFinite(p.offsetZIn)) return false;
+  if (typeof p.heightIn !== 'number' || !Number.isFinite(p.heightIn) || p.heightIn <= 0) return false;
+  // Landing posts don't need stepIndex/mount/side
+  if (p.surfaceType === 'bottomLanding' || p.surfaceType === 'topLanding') return true;
+  // Tread posts require stepIndex, mount, side (backward compat)
   return (
-    p && typeof p === 'object' &&
-    typeof p.id === 'string' &&
     typeof p.stepIndex === 'number' && Number.isInteger(p.stepIndex) && p.stepIndex >= 0 &&
     (p.mount === 'top' || p.mount === 'side') &&
-    (p.side === 'left' || p.side === 'right' || p.side === 'center') &&
-    typeof p.xIn === 'number' && Number.isFinite(p.xIn) &&
-    typeof p.zIn === 'number' && Number.isFinite(p.zIn) &&
-    typeof p.offsetXIn === 'number' && Number.isFinite(p.offsetXIn) &&
-    typeof p.offsetZIn === 'number' && Number.isFinite(p.offsetZIn) &&
-    typeof p.heightIn === 'number' && Number.isFinite(p.heightIn) && p.heightIn > 0
+    (p.side === 'left' || p.side === 'right' || p.side === 'center')
   );
 }
 

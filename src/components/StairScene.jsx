@@ -305,13 +305,32 @@ function StairModel({ height, run, width, steps, handrailHeight, treadPositions,
   );
 }
 
-function BottomLanding({ run, width, bottomLandingLength }) {
+function BottomLanding({ run, width, bottomLandingLength, postPlacementMode, onAddManualPost, handrailHeight, fastRailsMode, onFastRailsPost }) {
   const INtoU = 0.5;
   const r = run * INtoU;
   const w = width * INtoU;
   const landLen = bottomLandingLength * INtoU;
+
+  const handleClick = (postPlacementMode || fastRailsMode) ? (e) => {
+    e.stopPropagation();
+    const xIn = e.point.x / INtoU + run / 2;  // stair-relative inches (negative for bottom landing)
+    const zIn = e.point.z / INtoU;
+    const postData = {
+      surfaceType: 'bottomLanding',
+      mount: 'top',
+      side: 'center',
+      xIn,
+      zIn,
+      offsetXIn: 0,
+      offsetZIn: 0,
+      heightIn: handrailHeight,
+    };
+    if (fastRailsMode) onFastRailsPost(postData);
+    else onAddManualPost(postData);
+  } : undefined;
+
   return (
-    <mesh position={[-r / 2 - landLen / 2, TREAD_THICK / 2, 0]} castShadow receiveShadow>
+    <mesh position={[-r / 2 - landLen / 2, TREAD_THICK / 2, 0]} onClick={handleClick} castShadow receiveShadow>
       <boxGeometry args={[landLen, TREAD_THICK, w]} />
       <meshStandardMaterial color="#7c8da0" metalness={0.3} roughness={0.6} />
     </mesh>
@@ -327,24 +346,16 @@ function TopLanding({ run, width, height, steps, topLandingLength, postPlacement
   const treadD = steps > 0 ? r / steps : 0;
   const landLen = topLandingLength * INtoU;
 
-  const finalIndex = treadPositions && treadPositions.length > 0 ? treadPositions.length - 1 : -1;
-  const handleClick = ((postPlacementMode || fastRailsMode) && finalIndex >= 0) ? (e) => {
+  const hasTreads = treadPositions && treadPositions.length > 0;
+  const handleClick = ((postPlacementMode || fastRailsMode) && hasTreads) ? (e) => {
     e.stopPropagation();
-    const finalTread = treadPositions[finalIndex];
-    const normal = e.face?.normal;
-    let mount = 'top';
-    let side = 'center';
-    let zIn = 0;
-    if (normal && Math.abs(normal.z) > Math.abs(normal.y) && Math.abs(normal.z) > Math.abs(normal.x)) {
-      mount = 'side';
-      side = normal.z > 0 ? 'right' : 'left';
-      zIn = normal.z > 0 ? width / 2 : -(width / 2);
-    }
+    const xIn = e.point.x / INtoU + run / 2;  // stair-relative inches (beyond run for top landing)
+    const zIn = e.point.z / INtoU;
     const postData = {
-      stepIndex: finalIndex,
-      mount,
-      side,
-      xIn: finalTread.x,
+      surfaceType: 'topLanding',
+      mount: 'top',
+      side: 'center',
+      xIn,
       zIn,
       offsetXIn: 0,
       offsetZIn: 0,
@@ -697,7 +708,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
         />
 
         {bottomLandingEnabled && (
-          <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength} />
+          <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
         )}
         {topLandingEnabled && (
           <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} treadPositions={calc.treadPositions} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />

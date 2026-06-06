@@ -9,14 +9,29 @@ export function getTubeProfile(tubeSize) {
 
 // Base center of a post in scene units (world coords: X offset by -run*INtoU/2)
 export function getManualPostBase(post, treadPositions, riserHeight, run) {
+  const r_u = run * INtoU;
+  const oX = (post.xIn + (post.offsetXIn || 0)) * INtoU - r_u / 2;
+  const oZ = (post.zIn + (post.offsetZIn || 0)) * INtoU;
+
+  // Landing posts use their absolute xIn/zIn with a fixed surface Y
+  if (post.surfaceType === 'bottomLanding') {
+    return { x: oX, y: TREAD_THICK, z: oZ };
+  }
+  if (post.surfaceType === 'topLanding') {
+    const lastTp = treadPositions[treadPositions.length - 1];
+    if (!lastTp) return null;
+    const rH_u = riserHeight * INtoU;
+    return { x: oX, y: lastTp.y * INtoU - rH_u / 2 + TREAD_THICK, z: oZ };
+  }
+
+  // Tread post (original behavior, backward compatible)
   const tp = treadPositions[post.stepIndex];
   if (!tp) return null;
-  const r_u = run * INtoU;
   const rH_u = riserHeight * INtoU;
   return {
-    x: (post.xIn + post.offsetXIn) * INtoU - r_u / 2,
+    x: oX,
     y: tp.y * INtoU - rH_u / 2 + TREAD_THICK,
-    z: (post.zIn + post.offsetZIn) * INtoU,
+    z: oZ,
   };
 }
 
@@ -153,12 +168,18 @@ export function getManualRailSegments(manualTopRails, manualPosts, treadPosition
 // Resolve a bottom rail endpoint: post-anchored points sit bottomRailHeightIn above the stair
 // nosing line at the post's x position, so the rail runs parallel to the stair slope and the
 // tube bottom never intersects tread plates regardless of where intermediate treads fall.
+// Landing posts use a flat surface (no nosing slope).
 function resolveBottomRailEndpoint(endpoint, manualPosts, treadPositions, riserHeight, run, bottomRailHeightIn) {
   if (endpoint.anchorType === 'post') {
     const post = manualPosts.find(p => p.id === endpoint.postId);
     if (!post) return null;
     const base = getManualPostBase(post, treadPositions, riserHeight, run);
     if (!base) return null;
+
+    // Landing posts sit on a flat surface — just offset above the post base
+    if (post.surfaceType === 'bottomLanding' || post.surfaceType === 'topLanding') {
+      return { x: base.x, y: base.y + bottomRailHeightIn * INtoU, z: base.z };
+    }
 
     const steps = treadPositions.length;
     const treadDepth = steps > 0 ? run / steps : run;
