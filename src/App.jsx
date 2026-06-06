@@ -6,12 +6,14 @@ import Toolbar from './components/Toolbar.jsx';
 import StairScene from './components/StairScene.jsx';
 import RightPanel from './components/RightPanel.jsx';
 import StatusBar from './components/StatusBar.jsx';
+import OpenProjectModal from './components/OpenProjectModal.jsx';
 
 import { calcStair, buildMaterialList } from './geometry/stairMath.js';
 import { validateStair } from './geometry/validation.js';
 import { saveProjectJson, openProjectJson } from './utils/saveJson.js';
 import { generatePdf } from './pdf/generatePdf.js';
 import { saveProject } from './lib/saveProject.js';
+import { loadProject } from './lib/loadProject.js';
 import { DEFAULT_STAIR, DEFAULT_PROJECT } from './constants/defaults.js';
 import { getManualPostTop, normalizeRailEndpoints, INtoU } from './geometry/railingGeometry.js';
 
@@ -26,6 +28,9 @@ export default function App() {
   const [showDimensions, setShowDimensions] = useState(true);
   const [viewResetToken, setViewResetToken] = useState(0);
   const skipAutosaveRestoreRef = useRef(false);
+
+  const [currentProjectId, setCurrentProjectId] = useState(null);
+  const [openProjectModalOpen, setOpenProjectModalOpen] = useState(false);
 
   const [manualPosts, setManualPosts] = useState([]);
   const [postPlacementMode, setPostPlacementMode] = useState(false);
@@ -73,6 +78,9 @@ export default function App() {
       if (typeof data.structureOffsetXIn === 'number') setStructureOffsetXIn(data.structureOffsetXIn);
       if (typeof data.structureOffsetZIn === 'number') setStructureOffsetZIn(data.structureOffsetZIn);
       if (data.topRailPathMode === 'manual' || data.topRailPathMode === 'standard') setTopRailPathMode(data.topRailPathMode);
+      if (typeof data.currentProjectId === 'string' && data.currentProjectId) {
+        setCurrentProjectId(data.currentProjectId);
+      }
     } catch {
       // Corrupt localStorage — ignore
     }
@@ -91,6 +99,7 @@ export default function App() {
           structureOffsetXIn,
           structureOffsetZIn,
           topRailPathMode,
+          currentProjectId,
         };
         localStorage.setItem(LS_KEY, JSON.stringify(snapshot));
       } catch {
@@ -98,7 +107,7 @@ export default function App() {
       }
     }, 500);
     return () => clearTimeout(id);
-  }, [project, stairConfig, units, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode]);
+  }, [project, stairConfig, units, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode, currentProjectId]);
 
   const calc = useMemo(() => calcStair(stairConfig), [stairConfig]);
 
@@ -333,6 +342,8 @@ export default function App() {
         setPostPlacementMode(false);
         setTopRailMode(false);
         setTopRailFirstPostId(null);
+        // Imported from file — not associated with any Supabase project
+        setCurrentProjectId(null);
       },
       (msg) => alert(`Could not open file: ${msg}`),
     );
@@ -341,7 +352,41 @@ export default function App() {
 
   const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualPosts, manualTopRails, structureOffsetZIn, topRailPathMode });
 
-  const handleSaveProject = () => saveProject({ project, stairConfig, calc, warnings, materials, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode });
+  const handleSaveProject = async () => {
+    const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode, currentProjectId });
+    if (result.ok && result.projectId) {
+      setCurrentProjectId(result.projectId);
+    }
+    return result;
+  };
+
+  const handleSelectProject = async (projectId) => {
+    setOpenProjectModalOpen(false);
+    const result = await loadProject(projectId);
+    if (!result.ok) {
+      alert(`Could not load project: ${result.error}`);
+      return;
+    }
+    const { project: p, version: v } = result;
+    const sc = v.stair_config ?? {};
+    skipAutosaveRestoreRef.current = true;
+    setProject({ name: p.project_name ?? '', client: p.client_name ?? '' });
+    setStairConfig({ ...DEFAULT_STAIR, ...sc });
+    setManualPosts(Array.isArray(v.manual_posts) ? v.manual_posts : []);
+    setManualTopRails(Array.isArray(v.manual_top_rails) ? v.manual_top_rails.map(normalizeRailEndpoints) : []);
+    if (typeof sc.structureOffsetXIn === 'number') setStructureOffsetXIn(sc.structureOffsetXIn);
+    else setStructureOffsetXIn(0);
+    if (typeof sc.structureOffsetZIn === 'number') setStructureOffsetZIn(sc.structureOffsetZIn);
+    else setStructureOffsetZIn(0);
+    if (sc.topRailPathMode === 'manual' || sc.topRailPathMode === 'standard') setTopRailPathMode(sc.topRailPathMode);
+    else setTopRailPathMode('standard');
+    setSelectedManualPostId(null);
+    setSelectedManualTopRailId(null);
+    setPostPlacementMode(false);
+    setTopRailMode(false);
+    setTopRailFirstPostId(null);
+    setCurrentProjectId(p.id);
+  };
 
   const handlePrint = () => window.print();
 
@@ -352,7 +397,15 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Header onOpenJson={handleOpenJson} onSaveJson={handleSaveJson} onExportPdf={handleExportPdf} onPrint={handlePrint} units={units} onUnitsChange={setUnits} />
+      <Header
+        onOpenJson={handleOpenJson}
+        onSaveJson={handleSaveJson}
+        onExportPdf={handleExportPdf}
+        onPrint={handlePrint}
+        units={units}
+        onUnitsChange={setUnits}
+        onOpenProject={() => setOpenProjectModalOpen(true)}
+      />
       <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} showDimensions={showDimensions} onToggleDimensions={() => setShowDimensions((v) => !v)} />
       <StairScene
         stairConfig={stairConfig}
@@ -389,6 +442,7 @@ export default function App() {
         warnings={warnings}
         materials={materials}
         onSaveProject={handleSaveProject}
+        onOpenProject={() => setOpenProjectModalOpen(true)}
         onExportPdf={handleExportPdf}
         units={units}
         manualPosts={manualPosts}
@@ -421,6 +475,12 @@ export default function App() {
         onToggleFastRailsMode={handleToggleFastRailsMode}
       />
       <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} units={units} />
+      {openProjectModalOpen && (
+        <OpenProjectModal
+          onSelect={handleSelectProject}
+          onClose={() => setOpenProjectModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

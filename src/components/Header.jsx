@@ -1,4 +1,4 @@
-export default function Header({ onOpenJson, onSaveJson, onExportPdf, onPrint, units, onUnitsChange }) {
+export default function Header({ onOpenJson, onSaveJson, onExportPdf, onPrint, units, onUnitsChange, onOpenProject }) {
   const menus = ['File', 'Edit', 'View', 'Build', 'Materials', 'Export', 'Help'];
 
   return (
