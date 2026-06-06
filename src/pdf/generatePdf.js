@@ -198,13 +198,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     }
   }
 
-  // Stringer — diagonal dashed blue line
-  doc.setDrawColor('#3366cc');
-  doc.setLineWidth(1.2);
-  doc.setLineDashPattern([7, 3], 0);
-  doc.line(mx(ox), oy, mx(ox + dw), oy - dh);
-  doc.setLineDashPattern([], 0);
-
   // ── Manual Bottom Rails (side view) ──────────────────────────────────────
   if (stairConfig.bottomRailEnabled) {
     const bottomRailHeight = stairConfig.bottomRailHeight ?? 1;
