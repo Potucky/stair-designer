@@ -1,4 +1,4 @@
-import { getManualRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments } from './railingGeometry.js';
+import { getManualRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, getManualTopRailManualSegments } from './railingGeometry.js';
 
 export function calcStair({ height, run, width, steps, railingEnabled, handrailHeight, postSpacing, railingRunMode = 'matchStair', manualRailingRun }) {
   const riserHeight = steps > 0 ? height / steps : 0;
@@ -92,7 +92,7 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
   };
 }
 
-export function buildMaterialList({ width, steps, stringerLength, railingEnabled, handrailHeight, tubeSize, manualPosts = [], manualTopRails = [], treadPositions = [], riserHeight = 0, run = 0, bottomLandingEnabled = false, bottomLandingLength = 36, topLandingEnabled = false, topLandingLength = 36, bottomRailEnabled = false, bottomRailHeight = 1, middleRailEnabled = false, middleRailHeights = [], middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 }) {
+export function buildMaterialList({ width, steps, stringerLength, railingEnabled, handrailHeight, tubeSize, manualPosts = [], manualTopRails = [], treadPositions = [], riserHeight = 0, run = 0, bottomLandingEnabled = false, bottomLandingLength = 36, topLandingEnabled = false, topLandingLength = 36, bottomRailEnabled = false, bottomRailHeight = 1, middleRailEnabled = false, middleRailHeights = [], middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, topRailPathMode = 'standard' }) {
   const items = [];
 
   if (bottomLandingEnabled) {
@@ -111,7 +111,9 @@ export function buildMaterialList({ width, steps, stringerLength, railingEnabled
   }
 
   if (manualTopRails.length > 0) {
-    const segments = getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn);
+    const segments = topRailPathMode === 'manual'
+      ? getManualTopRailManualSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run)
+      : getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn);
     if (segments.length > 0) {
       const totalLen = segments.reduce((s, seg) => s + seg.lengthIn, 0);
       items.push({ part: 'Top Rail', qty: segments.length, lengthIn: totalLen.toFixed(2), profile: '2x1 Rect Tube', note: 'Total length' });

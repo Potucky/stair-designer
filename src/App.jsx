@@ -97,7 +97,8 @@ export default function App() {
     middleRailHeight: stairConfig.middleRailHeight,
     railLowerExtensionIn: stairConfig.railLowerExtensionIn ?? 0,
     railUpperExtensionIn: stairConfig.railUpperExtensionIn ?? 0,
-  }), [stairConfig, calc, manualPosts, manualTopRails]);
+    topRailPathMode,
+  }), [stairConfig, calc, manualPosts, manualTopRails, topRailPathMode]);
 
   const handleAddManualPost = (postData) => {
     const id = `post-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
