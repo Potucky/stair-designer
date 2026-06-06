@@ -3,7 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { fmtUnit } from '../utils/format.js';
-import { getTubeProfile, getManualPostBase, getManualTopRailDoglegSegments, getManualTopRailManualSegments, getManualBottomRailSegments, getManualMiddleRailSegments } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualPostBase, getManualTopRailDoglegSegments, getManualBottomRailSegments, getManualMiddleRailSegments } from '../geometry/railingGeometry.js';
 
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
@@ -408,16 +408,14 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
 }
 
 // Renders top rail beams. Handles post-anchored, fixed/detached endpoints, and straight extensions.
-function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, railingColorMode, railLowerExtensionIn = 0, railUpperExtensionIn = 0, topRailPathMode = 'standard' }) {
+function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, railingColorMode, railLowerExtensionIn = 0, railUpperExtensionIn = 0 }) {
   const INtoU = 0.5;
   const RAIL_W = 2 * INtoU;
   const RAIL_H = 1 * INtoU;
 
   const segments = useMemo(
-    () => topRailPathMode === 'manual'
-      ? getManualTopRailManualSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run)
-      : getManualTopRailDoglegSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn),
-    [topRailPathMode, manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn]
+    () => getManualTopRailDoglegSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn),
+    [manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn]
   );
 
   return (
@@ -646,7 +644,7 @@ function MeasureTool({ active, units }) {
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard' }) {
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0 }) {
   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'work';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
@@ -727,10 +725,9 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             railingColorMode={effectiveColorMode}
             railLowerExtensionIn={railLowerExtensionIn}
             railUpperExtensionIn={railUpperExtensionIn}
-            topRailPathMode={topRailPathMode}
           />
 
-          {bottomRailEnabled && topRailPathMode !== 'manual' && (
+          {bottomRailEnabled && (
             <ManualBottomRailsRenderer
               manualTopRails={manualTopRails || []}
               manualPosts={manualPosts || []}
@@ -742,7 +739,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             />
           )}
 
-          {middleRailEnabled && effectiveMiddleRailHeights.length > 0 && topRailPathMode !== 'manual' && (
+          {middleRailEnabled && effectiveMiddleRailHeights.length > 0 && (
             <ManualMiddleRailsRenderer
               manualTopRails={manualTopRails || []}
               manualPosts={manualPosts || []}

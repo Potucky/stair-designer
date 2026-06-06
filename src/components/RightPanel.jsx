@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { TUBE_SIZES } from '../data/materialProfiles.js';
 import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
-import { normalizeRailEndpoints, DEFAULT_MANUAL_SEGMENTS } from '../geometry/railingGeometry.js';
+import { normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
 function NumericDraftInput({ value, onCommit, className, inputMode = 'decimal', integer = false, allowZero = false }) {
   const [focused, setFocused] = useState(false);
@@ -114,7 +114,7 @@ function ExtChips({ curLen, onSet }) {
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn }) {
   const [saveStatus, setSaveStatus] = useState(null);
 
   const str = (field) => (e) => setProject((p) => ({ ...p, [field]: e.target.value }));
@@ -372,21 +372,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               </div>
             </div>
 
-            {/* Top Rail Mode switch */}
-            <div style={{ marginTop: 12 }}>
-              <div className="field-label-sm" style={{ marginBottom: 6 }}>Top Rail Mode</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  className={`panel-btn${topRailPathMode !== 'manual' ? ' panel-btn-active' : ''}`}
-                  onClick={() => onTopRailPathModeChange('standard')}
-                >Standard</button>
-                <button
-                  className={`panel-btn${topRailPathMode === 'manual' ? ' panel-btn-active' : ''}`}
-                  onClick={() => onTopRailPathModeChange('manual')}
-                >Manual</button>
-              </div>
-            </div>
-
             {/* Top rail list */}
             {manualTopRails && manualTopRails.length > 0 && (
               <div style={{ marginTop: 10 }}>
@@ -420,7 +405,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                 })}
 
                 {/* Endpoint extension controls for selected rail */}
-                {topRailPathMode === 'standard' && selectedManualTopRailId && (() => {
+                {selectedManualTopRailId && (() => {
                   const sel = manualTopRails.find(r => r.id === selectedManualTopRailId);
                   if (!sel) return null;
                   const r = normalizeRailEndpoints(sel);
@@ -462,7 +447,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                 })()}
 
                 {/* Dogleg controls for selected Top Rail */}
-                {topRailPathMode === 'standard' && selectedManualTopRailId && (() => {
+                {selectedManualTopRailId && (() => {
                   const sel = manualTopRails.find(r => r.id === selectedManualTopRailId);
                   if (!sel) return null;
                   const doglegEnabled = !!sel.doglegEnabled;
@@ -532,94 +517,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                     </div>
                   );
                 })()}
-
-                {/* Manual Top Rail Path */}
-                {topRailPathMode === 'manual' && (
-                  <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-                    <div className="field-label-sm" style={{ marginBottom: 4 }}>Manual Top Rail Path</div>
-                    {selectedManualTopRailId ? (() => {
-                      const selRail = manualTopRails.find(r => r.id === selectedManualTopRailId);
-                      if (!selRail) return null;
-                      const r = normalizeRailEndpoints(selRail);
-                      const segs = Array.isArray(selRail.manualSegments)
-                        ? selRail.manualSegments
-                        : DEFAULT_MANUAL_SEGMENTS;
-
-                      const updateSegs = (newSegs) => onUpdateManualTopRail(selRail.id, { manualSegments: newSegs });
-
-                      return (
-                        <>
-                          <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 8 }}>
-                            Start: first post
-                          </div>
-                          {segs.map((seg, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 4 }}>
-                              <select
-                                className="field-input"
-                                style={{ flex: '0 0 72px', fontSize: 10, padding: '2px 4px' }}
-                                value={seg.type}
-                                onChange={e => {
-                                  const t = e.target.value;
-                                  updateSegs(segs.map((s, j) => j !== i ? s
-                                    : t === 'forward'
-                                      ? { type: 'forward', lengthIn: 60 }
-                                      : { type: 'turn', side: 'right', angleDeg: 90 }
-                                  ));
-                                }}
-                              >
-                                <option value="forward">Forward</option>
-                                <option value="turn">Turn</option>
-                              </select>
-                              {seg.type === 'forward' && (
-                                <>
-                                  <NumericDraftInput
-                                    className="field-input"
-                                    style={{ flex: 1, fontSize: 10 }}
-                                    value={seg.lengthIn}
-                                    onCommit={v => updateSegs(segs.map((s, j) => j === i ? { ...s, lengthIn: v } : s))}
-                                  />
-                                  <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>in</span>
-                                </>
-                              )}
-                              {seg.type === 'turn' && (
-                                <>
-                                  <select
-                                    className="field-input"
-                                    style={{ flex: '0 0 52px', fontSize: 10, padding: '2px 4px' }}
-                                    value={seg.side ?? 'right'}
-                                    onChange={e => updateSegs(segs.map((s, j) => j === i ? { ...s, side: e.target.value } : s))}
-                                  >
-                                    <option value="left">Left</option>
-                                    <option value="right">Right</option>
-                                  </select>
-                                  <NumericDraftInput
-                                    className="field-input"
-                                    style={{ flex: 1, fontSize: 10 }}
-                                    value={seg.angleDeg ?? 90}
-                                    onCommit={v => updateSegs(segs.map((s, j) => j === i ? { ...s, angleDeg: v } : s))}
-                                  />
-                                  <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>°</span>
-                                </>
-                              )}
-                              <button
-                                className="panel-btn panel-btn-danger"
-                                style={{ padding: '2px 6px', fontSize: 10, flexShrink: 0 }}
-                                onClick={() => updateSegs(segs.filter((_, j) => j !== i))}
-                              >×</button>
-                            </div>
-                          ))}
-                          <button
-                            className="panel-btn"
-                            style={{ marginTop: 4, width: '100%', fontSize: 10 }}
-                            onClick={() => updateSegs([...segs, { type: 'forward', lengthIn: 60 }])}
-                          >+ Add Segment</button>
-                        </>
-                      );
-                    })() : (
-                      <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Select a Top Rail to edit its path</div>
-                    )}
-                  </div>
-                )}
               </div>
             )}
 
