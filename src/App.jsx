@@ -32,6 +32,7 @@ export default function App() {
   const [topRailMode, setTopRailMode] = useState(false);
   const [topRailFirstPostId, setTopRailFirstPostId] = useState(null);
   const [selectedManualTopRailId, setSelectedManualTopRailId] = useState(null);
+  const [topRailPathMode, setTopRailPathMode] = useState('standard');
 
   const [structureOffsetXIn, setStructureOffsetXIn] = useState(0);
   const [structureOffsetZIn, setStructureOffsetZIn] = useState(0);
@@ -270,6 +271,7 @@ export default function App() {
         railingColorMode={stairConfig.railingColorMode}
         structureOffsetXIn={structureOffsetXIn}
         structureOffsetZIn={structureOffsetZIn}
+        topRailPathMode={topRailPathMode}
       />
       <RightPanel
         project={project}
@@ -296,6 +298,8 @@ export default function App() {
         selectedManualTopRailId={selectedManualTopRailId}
         onSelectManualTopRail={handleSelectManualTopRail}
         onUpdateManualTopRail={handleUpdateManualTopRail}
+        topRailPathMode={topRailPathMode}
+        onTopRailPathModeChange={setTopRailPathMode}
         structureMoveSelected={structureMoveSelected}
         onToggleStructureMove={handleToggleStructureMove}
         onMoveForward={handleMoveForward}
