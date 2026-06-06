@@ -659,7 +659,7 @@ function MeasureTool({ active, units }) {
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect }) {
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, modalOpen = false, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect }) {
   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'work';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
@@ -716,7 +716,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           onFastRailsPost={onFastRailsPost}
         />
 
-        {showDimensions && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
+        {showDimensions && !modalOpen && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
 
         <group position={[structureOffsetXIn * 0.5, 0, structureOffsetZIn * 0.5]}>
           <ManualPostsRenderer

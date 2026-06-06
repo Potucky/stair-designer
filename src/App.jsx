@@ -414,6 +414,7 @@ export default function App() {
         viewResetToken={viewResetToken}
         units={units}
         showDimensions={showDimensions}
+        modalOpen={openProjectModalOpen}
         activeTool={activeTool}
         manualPosts={manualPosts}
         postPlacementMode={postPlacementMode}
