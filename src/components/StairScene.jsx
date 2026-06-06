@@ -3,7 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { fmtUnit } from '../utils/format.js';
-import { getTubeProfile, getManualPostBase, getManualTopRailDoglegSegments, getManualTopRailManualSegments, getManualBottomRailSegments, getManualMiddleRailSegments } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualPostBase, getLandingPostVisualHeightIn, getManualTopRailDoglegSegments, getManualTopRailManualSegments, getManualBottomRailSegments, getManualMiddleRailSegments } from '../geometry/railingGeometry.js';
 
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
@@ -305,15 +305,18 @@ function StairModel({ height, run, width, steps, handrailHeight, treadPositions,
   );
 }
 
-function BottomLanding({ run, width, bottomLandingLength, postPlacementMode, onAddManualPost, handrailHeight, fastRailsMode, onFastRailsPost }) {
+function BottomLanding({ run, width, steps, bottomLandingLength, postPlacementMode, onAddManualPost, handrailHeight, fastRailsMode, onFastRailsPost }) {
   const INtoU = 0.5;
   const r = run * INtoU;
   const w = width * INtoU;
   const landLen = bottomLandingLength * INtoU;
+  const treadDepth = steps > 0 ? run / steps : run;
 
   const handleClick = (postPlacementMode || fastRailsMode) ? (e) => {
     e.stopPropagation();
-    const xIn = e.point.x / INtoU + run / 2;  // stair-relative inches (negative for bottom landing)
+    // Clamp to within one tread depth of the stair bottom edge (xIn=0)
+    const rawXIn = e.point.x / INtoU + run / 2;
+    const xIn = Math.max(rawXIn, -treadDepth);
     const zIn = e.point.z / INtoU;
     const postData = {
       surfaceType: 'bottomLanding',
@@ -349,7 +352,9 @@ function TopLanding({ run, width, height, steps, topLandingLength, postPlacement
   const hasTreads = treadPositions && treadPositions.length > 0;
   const handleClick = ((postPlacementMode || fastRailsMode) && hasTreads) ? (e) => {
     e.stopPropagation();
-    const xIn = e.point.x / INtoU + run / 2;  // stair-relative inches (beyond run for top landing)
+    // Clamp to within one tread depth of the stair top edge (xIn=run)
+    const rawXIn = e.point.x / INtoU + run / 2;
+    const xIn = Math.min(rawXIn, run);
     const zIn = e.point.z / INtoU;
     const postData = {
       surfaceType: 'topLanding',
@@ -389,7 +394,10 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
         const base = getManualPostBase(post, treadPositions, riserHeight, run);
         if (!base) return null;
 
-        const postH = heightIn * INtoU;
+        const isLandingPost = post.surfaceType === 'bottomLanding' || post.surfaceType === 'topLanding';
+        const postH = isLandingPost
+          ? getLandingPostVisualHeightIn(post, treadPositions, riserHeight, run) * INtoU
+          : heightIn * INtoU;
         const worldX = base.x;
         const worldY = base.y + postH / 2;
         const worldZ = base.z;
@@ -708,7 +716,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
         />
 
         {bottomLandingEnabled && (
-          <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
+          <BottomLanding run={run} width={width} steps={steps} bottomLandingLength={bottomLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
         )}
         {topLandingEnabled && (
           <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} treadPositions={calc.treadPositions} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />

@@ -653,8 +653,22 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                   {isLanding ? (
                     <>
                       <div className="post-adjust-row">
-                        <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetXIn: (sel.offsetXIn || 0) - 1 })}>← Along</button>
-                        <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetXIn: (sel.offsetXIn || 0) + 1 })}>Along →</button>
+                        <button className="panel-btn" onClick={() => {
+                          const candidate = (sel.offsetXIn || 0) - 1;
+                          // Bottom landing: clamp so post stays within one tread depth of stair edge
+                          const clamped = sel.surfaceType === 'bottomLanding'
+                            ? Math.max(candidate, -calc.treadDepth - sel.xIn)
+                            : candidate;
+                          onUpdateManualPost(sel.id, { offsetXIn: clamped });
+                        }}>← Along</button>
+                        <button className="panel-btn" onClick={() => {
+                          const candidate = (sel.offsetXIn || 0) + 1;
+                          // Top landing: clamp so post stays within one tread depth of stair top
+                          const clamped = sel.surfaceType === 'topLanding'
+                            ? Math.min(candidate, stairConfig.run - sel.xIn)
+                            : candidate;
+                          onUpdateManualPost(sel.id, { offsetXIn: clamped });
+                        }}>Along →</button>
                       </div>
                       <div className="post-adjust-row">
                         <button className="panel-btn" onClick={() => onUpdateManualPost(sel.id, { offsetZIn: (sel.offsetZIn || 0) - 1 })}>Left</button>

@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getTubeProfile, getManualRailSegments, getManualTopRailManualSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualRailSegments, getManualTopRailManualSegments, getManualBottomRailSegments, getManualMiddleRailSegments, getLandingPostVisualHeightIn, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [], structureOffsetZIn = 0, topRailPathMode = 'standard' }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [792, 612] });
@@ -274,6 +274,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     const postW = Math.max(3, postProfile.width * sc);
 
     validManualPosts.forEach((post) => {
+      const isLanding = post.surfaceType === 'bottomLanding' || post.surfaceType === 'topLanding';
       let baseY;
       if (post.surfaceType === 'bottomLanding') {
         // Post sits on the visible top surface of the bottom landing slab
@@ -287,8 +288,11 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
         baseY = oy - tp.y * sc;
       }
 
-      const pxX   = mx(ox + (Number(post.xIn) + Number(post.offsetXIn || 0)) * sc);
-      const postH = Number(post.heightIn) * sc;
+      const pxX = mx(ox + (Number(post.xIn) + Number(post.offsetXIn || 0)) * sc);
+      // Landing posts auto-trim/extend to meet the stair-pitch top rail contact point
+      const postH = isLanding
+        ? getLandingPostVisualHeightIn(post, calc.treadPositions, calc.riserHeight, stairConfig.run) * sc
+        : Number(post.heightIn) * sc;
       if (postH <= 0) return;
 
       const topY = baseY - postH;
@@ -386,6 +390,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     const postW = Math.max(3, postProfile.width * sc);
 
     validManualPosts.forEach((post, idx) => {
+      const isLanding = post.surfaceType === 'bottomLanding' || post.surfaceType === 'topLanding';
       let baseY;
       if (post.surfaceType === 'bottomLanding') {
         // Post sits on the visible top surface of the bottom landing slab
@@ -399,8 +404,10 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
         baseY = oy - tp.y * sc;
       }
 
-      const pxX   = mx(ox + (Number(post.xIn) + Number(post.offsetXIn || 0)) * sc);
-      const postH = Number(post.heightIn) * sc;
+      const pxX = mx(ox + (Number(post.xIn) + Number(post.offsetXIn || 0)) * sc);
+      const postH = isLanding
+        ? getLandingPostVisualHeightIn(post, calc.treadPositions, calc.riserHeight, stairConfig.run) * sc
+        : Number(post.heightIn) * sc;
       if (postH <= 0) return;
 
       const topY = baseY - postH;

@@ -63,11 +63,41 @@ export function normalizeRailEndpoints(rail) {
   };
 }
 
+// Returns the visual height in INCHES for a landing post in match-stair mode.
+// The post top is projected onto the stair-pitch line at the post's X position.
+export function getLandingPostVisualHeightIn(post, treadPositions, riserHeight, run) {
+  const base = getManualPostBase(post, treadPositions, riserHeight, run);
+  if (!base) return Number(post.heightIn);
+  const steps = treadPositions.length;
+  const treadDepth = steps > 0 ? run / steps : run;
+  const treadD_u = (treadDepth > 0 ? treadDepth : run) * INtoU;
+  if (treadD_u < 0.001) return Number(post.heightIn);
+  const rH_u = riserHeight * INtoU;
+  const r_u = run * INtoU;
+  const pitchY = (rH_u / treadD_u) * (base.x + r_u / 2) + TREAD_THICK;
+  const topRailY = pitchY + Number(post.heightIn) * INtoU;
+  return Math.max(0.001, topRailY - base.y) / INtoU;
+}
+
 // Resolve an endpoint to a scene-unit { x, y, z } point. Returns null if unresolvable.
+// For landing posts the top rail Y is projected onto the stair-pitch line so the
+// resulting segment direction equals the stair slope (rise/run), not the post-to-post vector.
 function resolveRailEndpoint(endpoint, manualPosts, treadPositions, riserHeight, run) {
   if (endpoint.anchorType === 'post') {
     const post = manualPosts.find(p => p.id === endpoint.postId);
     if (!post) return null;
+    if (post.surfaceType === 'bottomLanding' || post.surfaceType === 'topLanding') {
+      const base = getManualPostBase(post, treadPositions, riserHeight, run);
+      if (!base) return null;
+      const steps = treadPositions.length;
+      const treadDepth = steps > 0 ? run / steps : run;
+      const treadD_u = (treadDepth > 0 ? treadDepth : run) * INtoU;
+      if (treadD_u < 0.001) return getManualPostTop(post, treadPositions, riserHeight, run);
+      const rH_u = riserHeight * INtoU;
+      const r_u = run * INtoU;
+      const pitchY = (rH_u / treadD_u) * (base.x + r_u / 2) + TREAD_THICK;
+      return { x: base.x, y: pitchY + Number(post.heightIn) * INtoU, z: base.z };
+    }
     return getManualPostTop(post, treadPositions, riserHeight, run);
   }
   if (endpoint.anchorType === 'fixed' && endpoint.pointIn) {
@@ -176,11 +206,8 @@ function resolveBottomRailEndpoint(endpoint, manualPosts, treadPositions, riserH
     const base = getManualPostBase(post, treadPositions, riserHeight, run);
     if (!base) return null;
 
-    // Landing posts sit on a flat surface — just offset above the post base
-    if (post.surfaceType === 'bottomLanding' || post.surfaceType === 'topLanding') {
-      return { x: base.x, y: base.y + bottomRailHeightIn * INtoU, z: base.z };
-    }
-
+    // All posts (tread and landing) use the stair-pitch nosing line so that bottom/middle
+    // rails stay parallel to the stair slope regardless of where landing posts are placed.
     const steps = treadPositions.length;
     const treadDepth = steps > 0 ? run / steps : run;
     const rH_u = riserHeight * INtoU;
