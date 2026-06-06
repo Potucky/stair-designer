@@ -114,7 +114,7 @@ function ExtChips({ curLen, onSet }) {
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn }) {
   const [saveStatus, setSaveStatus] = useState(null);
 
   const str = (field) => (e) => setProject((p) => ({ ...p, [field]: e.target.value }));
@@ -372,6 +372,21 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               </div>
             </div>
 
+            {/* Top Rail Mode switch */}
+            <div style={{ marginTop: 12 }}>
+              <div className="field-label-sm" style={{ marginBottom: 6 }}>Top Rail Mode</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  className={`panel-btn${topRailPathMode !== 'manual' ? ' panel-btn-active' : ''}`}
+                  onClick={() => onTopRailPathModeChange('standard')}
+                >Standard</button>
+                <button
+                  className={`panel-btn${topRailPathMode === 'manual' ? ' panel-btn-active' : ''}`}
+                  onClick={() => onTopRailPathModeChange('manual')}
+                >Manual</button>
+              </div>
+            </div>
+
             {/* Top rail list */}
             {manualTopRails && manualTopRails.length > 0 && (
               <div style={{ marginTop: 10 }}>
@@ -405,7 +420,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                 })}
 
                 {/* Endpoint extension controls for selected rail */}
-                {selectedManualTopRailId && (() => {
+                {topRailPathMode === 'standard' && selectedManualTopRailId && (() => {
                   const sel = manualTopRails.find(r => r.id === selectedManualTopRailId);
                   if (!sel) return null;
                   const r = normalizeRailEndpoints(sel);
@@ -447,7 +462,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                 })()}
 
                 {/* Dogleg controls for selected Top Rail */}
-                {selectedManualTopRailId && (() => {
+                {topRailPathMode === 'standard' && selectedManualTopRailId && (() => {
                   const sel = manualTopRails.find(r => r.id === selectedManualTopRailId);
                   if (!sel) return null;
                   const doglegEnabled = !!sel.doglegEnabled;
@@ -517,6 +532,19 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                     </div>
                   );
                 })()}
+
+                {/* Manual Top Rail Path placeholder */}
+                {topRailPathMode === 'manual' && (
+                  <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                    <div className="field-label-sm" style={{ marginBottom: 4 }}>Manual Top Rail Path</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 4 }}>Start: first post</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 8 }}>Segments: not implemented yet</div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="panel-btn" disabled>+ Forward</button>
+                      <button className="panel-btn" disabled>+ Turn</button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
