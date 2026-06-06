@@ -289,19 +289,20 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     const postW = Math.max(3, postProfile.width * sc);
 
     validManualPosts.forEach((post) => {
-      let tpY;
+      let baseY;
       if (post.surfaceType === 'bottomLanding') {
-        tpY = 0;
+        // Post sits on the visible top surface of the bottom landing slab
+        const slabH = Math.max(4, 3.5 * sc);
+        baseY = oy - slabH;
       } else if (post.surfaceType === 'topLanding') {
-        tpY = height;
+        baseY = oy - height * sc;
       } else {
         const tp = calc.treadPositions[post.stepIndex];
         if (!tp) return;
-        tpY = tp.y;
+        baseY = oy - tp.y * sc;
       }
 
       const pxX   = mx(ox + (Number(post.xIn) + Number(post.offsetXIn || 0)) * sc);
-      const baseY = oy - tpY * sc;
       const postH = Number(post.heightIn) * sc;
       if (postH <= 0) return;
 
@@ -400,19 +401,20 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     const postW = Math.max(3, postProfile.width * sc);
 
     validManualPosts.forEach((post, idx) => {
-      let tpY;
+      let baseY;
       if (post.surfaceType === 'bottomLanding') {
-        tpY = 0;
+        // Post sits on the visible top surface of the bottom landing slab
+        const slabH = Math.max(4, 3.5 * sc);
+        baseY = oy - slabH;
       } else if (post.surfaceType === 'topLanding') {
-        tpY = height;
+        baseY = oy - height * sc;
       } else {
         const tp = calc.treadPositions[post.stepIndex];
         if (!tp) return;
-        tpY = tp.y;
+        baseY = oy - tp.y * sc;
       }
 
       const pxX   = mx(ox + (Number(post.xIn) + Number(post.offsetXIn || 0)) * sc);
-      const baseY = oy - tpY * sc;
       const postH = Number(post.heightIn) * sc;
       if (postH <= 0) return;
 
