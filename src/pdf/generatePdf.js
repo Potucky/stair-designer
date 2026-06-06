@@ -135,10 +135,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     doc.setDrawColor('#1a1a2e');
     doc.setLineWidth(1.2);
     doc.rect(mirrored ? mx(ox) : ox - landPx, oy - slabH, landPx, slabH, 'FD');
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor('#1a1a2e');
-    doc.text(`Landing: ${fmtDim(stairConfig.bottomLandingLength, 0)}`, mirrored ? mx(ox - landPx / 2) : ox - landPx / 2, oy - slabH - 3, { align: 'center' });
   }
 
   // ── Top Landing (side view) ───────────────────────────────────────────────
@@ -163,10 +159,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       const y2 = ly + Math.max(0, d - landPx);
       if (x1 !== x2 || y1 !== y2) doc.line(x1, y1, x2, y2);
     }
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor('#1a1a2e');
-    doc.text(`Landing: ${fmtDim(stairConfig.topLandingLength, 0)}`, tlx + landPx / 2, ly - 3, { align: 'center' });
   }
 
   // Wall line — dashed vertical reference at left (or right when mirrored)
