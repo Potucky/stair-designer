@@ -271,6 +271,7 @@ export default function App() {
         railingColorMode={stairConfig.railingColorMode}
         structureOffsetXIn={structureOffsetXIn}
         structureOffsetZIn={structureOffsetZIn}
+        topRailPathMode={topRailPathMode}
       />
       <RightPanel
         project={project}

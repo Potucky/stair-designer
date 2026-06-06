@@ -342,6 +342,73 @@ export function getManualTopRailDoglegSegments(manualTopRails, manualPosts, trea
   return segments;
 }
 
+export const DEFAULT_MANUAL_SEGMENTS = [
+  { type: 'forward', lengthIn: 60 },
+  { type: 'turn', side: 'right', angleDeg: 90 },
+  { type: 'forward', lengthIn: 24 },
+];
+
+// Manual Top Rail path from user-defined segments starting at the first post.
+// Turns rotate the horizontal XZ direction; Forward advances in that direction at constant Y.
+export function getManualTopRailManualSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run) {
+  const segments = [];
+
+  for (const rail of manualTopRails) {
+    const r = normalizeRailEndpoints(rail);
+    const startPt = resolveRailEndpoint(r.startEndpoint, manualPosts, treadPositions, riserHeight, run);
+    if (!startPt) continue;
+
+    const endPt = resolveRailEndpoint(r.endEndpoint, manualPosts, treadPositions, riserHeight, run);
+    let dirX = 1, dirZ = 0;
+    if (endPt) {
+      const dx = endPt.x - startPt.x;
+      const dz = endPt.z - startPt.z;
+      const len = Math.sqrt(dx * dx + dz * dz);
+      if (len > 0.001) { dirX = dx / len; dirZ = dz / len; }
+    }
+
+    const manualSegs = (rail.manualSegments && rail.manualSegments.length > 0)
+      ? rail.manualSegments
+      : DEFAULT_MANUAL_SEGMENTS;
+
+    let curX = startPt.x;
+    const curY = startPt.y;
+    let curZ = startPt.z;
+
+    for (let i = 0; i < manualSegs.length; i++) {
+      const seg = manualSegs[i];
+      if (seg.type === 'forward') {
+        const lengthU = (seg.lengthIn ?? 60) * INtoU;
+        if (lengthU < 0.001) continue;
+        segments.push({
+          rail: r,
+          segKey: `${r.id}-m${i}`,
+          start: { x: curX, y: curY, z: curZ },
+          end: { x: curX + dirX * lengthU, y: curY, z: curZ + dirZ * lengthU },
+          lengthIn: seg.lengthIn ?? 60,
+        });
+        curX += dirX * lengthU;
+        curZ += dirZ * lengthU;
+      } else if (seg.type === 'turn') {
+        const rad = (seg.angleDeg ?? 90) * Math.PI / 180;
+        let nx, nz;
+        if (seg.side === 'left') {
+          // Positive rotation around Y axis
+          nx = dirX * Math.cos(rad) + dirZ * Math.sin(rad);
+          nz = -dirX * Math.sin(rad) + dirZ * Math.cos(rad);
+        } else {
+          // Negative rotation around Y axis
+          nx = dirX * Math.cos(rad) - dirZ * Math.sin(rad);
+          nz = dirX * Math.sin(rad) + dirZ * Math.cos(rad);
+        }
+        dirX = nx; dirZ = nz;
+      }
+    }
+  }
+
+  return segments;
+}
+
 // Bottom rail segments reusing the same post-to-post connections as manualTopRails,
 // but with endpoints at bottomRailHeightIn inches above each post base (tread surface).
 // Extensions are accepted for API compatibility but callers pass 0 — only Top Rail extends.
