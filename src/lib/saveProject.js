@@ -1,6 +1,17 @@
 import supabase from './supabaseClient.js';
 
-export async function saveProject({ project, stairConfig, calc, warnings, materials, manualPosts = [], manualTopRails = [] }) {
+export async function saveProject({
+  project,
+  stairConfig,
+  calc,
+  warnings,
+  materials,
+  manualPosts = [],
+  manualTopRails = [],
+  structureOffsetXIn = 0,
+  structureOffsetZIn = 0,
+  topRailPathMode = 'standard',
+}) {
   if (!supabase) {
     return { ok: false, error: 'Supabase is not configured.' };
   }
@@ -22,12 +33,21 @@ export async function saveProject({ project, stairConfig, calc, warnings, materi
       return { ok: false, error: projectError.message };
     }
 
+    // stair_config holds the full user-configurable state so no new columns
+    // are needed when additional settings are added to the app.
+    const fullConfig = {
+      ...stairConfig,
+      structureOffsetXIn,
+      structureOffsetZIn,
+      topRailPathMode,
+    };
+
     const { error: versionError } = await supabase
       .from('stair_config_versions')
       .insert({
         project_id: projectId,
         version_label: 'v1',
-        stair_config: stairConfig,
+        stair_config: fullConfig,
         calculated_results: calc,
         warnings: warnings,
         materials: materials,

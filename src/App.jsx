@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import './styles.css';
 
 import Header from './components/Header.jsx';
@@ -15,6 +15,8 @@ import { saveProject } from './lib/saveProject.js';
 import { DEFAULT_STAIR, DEFAULT_PROJECT } from './constants/defaults.js';
 import { getManualPostTop, normalizeRailEndpoints, INtoU } from './geometry/railingGeometry.js';
 
+const LS_KEY = 'stairDesigner_autosave';
+
 export default function App() {
   const [project, setProject] = useState(DEFAULT_PROJECT);
   const [stairConfig, setStairConfig] = useState(DEFAULT_STAIR);
@@ -23,6 +25,7 @@ export default function App() {
   const [view, setView] = useState('3d');
   const [showDimensions, setShowDimensions] = useState(true);
   const [viewResetToken, setViewResetToken] = useState(0);
+  const skipAutosaveRestoreRef = useRef(false);
 
   const [manualPosts, setManualPosts] = useState([]);
   const [postPlacementMode, setPostPlacementMode] = useState(false);
@@ -54,6 +57,48 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // Restore from localStorage on mount (runs once, before first user action)
+  useEffect(() => {
+    if (skipAutosaveRestoreRef.current) return;
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data.project) setProject((p) => ({ ...p, ...data.project }));
+      if (data.stairConfig) setStairConfig((s) => ({ ...DEFAULT_STAIR, ...s, ...data.stairConfig }));
+      if (data.units === 'mm' || data.units === 'in') setUnits(data.units);
+      if (Array.isArray(data.manualPosts)) setManualPosts(data.manualPosts);
+      if (Array.isArray(data.manualTopRails)) setManualTopRails(data.manualTopRails.map(normalizeRailEndpoints));
+      if (typeof data.structureOffsetXIn === 'number') setStructureOffsetXIn(data.structureOffsetXIn);
+      if (typeof data.structureOffsetZIn === 'number') setStructureOffsetZIn(data.structureOffsetZIn);
+      if (data.topRailPathMode === 'manual' || data.topRailPathMode === 'standard') setTopRailPathMode(data.topRailPathMode);
+    } catch {
+      // Corrupt localStorage — ignore
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Autosave current project state to localStorage after every change (debounced)
+  useEffect(() => {
+    const id = setTimeout(() => {
+      try {
+        const snapshot = {
+          project,
+          stairConfig,
+          units,
+          manualPosts,
+          manualTopRails,
+          structureOffsetXIn,
+          structureOffsetZIn,
+          topRailPathMode,
+        };
+        localStorage.setItem(LS_KEY, JSON.stringify(snapshot));
+      } catch {
+        // Storage full or unavailable — ignore
+      }
+    }, 500);
+    return () => clearTimeout(id);
+  }, [project, stairConfig, units, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode]);
 
   const calc = useMemo(() => calcStair(stairConfig), [stairConfig]);
 
@@ -273,12 +318,16 @@ export default function App() {
 
   const handleOpenJson = () =>
     openProjectJson(
-      ({ project: p, stairConfig: sc, units: u, manualPosts: mp, manualTopRails: mtr }) => {
+      ({ project: p, stairConfig: sc, units: u, manualPosts: mp, manualTopRails: mtr, structureOffsetXIn: sox, structureOffsetZIn: soz, topRailPathMode: trpm }) => {
+        skipAutosaveRestoreRef.current = true;
         setProject({ ...DEFAULT_PROJECT, ...p });
         setStairConfig({ ...DEFAULT_STAIR, ...sc });
         if (u) setUnits(u);
         setManualPosts(Array.isArray(mp) ? mp : []);
         setManualTopRails(Array.isArray(mtr) ? mtr.map(normalizeRailEndpoints) : []);
+        if (typeof sox === 'number') setStructureOffsetXIn(sox);
+        if (typeof soz === 'number') setStructureOffsetZIn(soz);
+        if (trpm) setTopRailPathMode(trpm);
         setSelectedManualPostId(null);
         setSelectedManualTopRailId(null);
         setPostPlacementMode(false);
@@ -288,11 +337,11 @@ export default function App() {
       (msg) => alert(`Could not open file: ${msg}`),
     );
 
-  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualPosts, manualTopRails });
+  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode });
 
   const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualPosts, manualTopRails, structureOffsetZIn, topRailPathMode });
 
-  const handleSaveProject = () => saveProject({ project, stairConfig, calc, warnings, materials, manualPosts, manualTopRails });
+  const handleSaveProject = () => saveProject({ project, stairConfig, calc, warnings, materials, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode });
 
   const handlePrint = () => window.print();
 

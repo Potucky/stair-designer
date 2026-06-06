@@ -105,7 +105,12 @@ export function openProjectJson(onLoad, onError) {
             ? [legacy]
             : [18];
         }
-        onLoad({ project, stairConfig, units, manualPosts, manualTopRails });
+        const structureOffsetXIn = typeof data.structureOffsetXIn === 'number' && Number.isFinite(data.structureOffsetXIn)
+          ? data.structureOffsetXIn : 0;
+        const structureOffsetZIn = typeof data.structureOffsetZIn === 'number' && Number.isFinite(data.structureOffsetZIn)
+          ? data.structureOffsetZIn : 0;
+        const topRailPathMode = data.topRailPathMode === 'manual' ? 'manual' : 'standard';
+        onLoad({ project, stairConfig, units, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode });
       } catch (err) {
         onError(err.message || 'Invalid file');
       }
@@ -115,7 +120,7 @@ export function openProjectJson(onLoad, onError) {
   input.click();
 }
 
-export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [] }) {
+export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [], structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard' }) {
   const payload = {
     app: 'Stair Designer',
     version: 'v0.0.1 MVP',
@@ -125,6 +130,9 @@ export function saveProjectJson({ project, stairConfig, calc, warnings, material
     stairConfig,
     manualPosts,
     manualTopRails,
+    structureOffsetXIn,
+    structureOffsetZIn,
+    topRailPathMode,
     calculations: calc,
     warnings: warnings.map((w) => ({ level: w.level, message: w.msg })),
     materialList: materials,
