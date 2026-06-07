@@ -107,16 +107,15 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     : handrailH;
   const totalVisualH = height + Math.max(handrailH, maxPostH) + riserHeight / 2;
 
-  const topPad = 18;  // pt gap above highest drawn element — keeps top rail clear of header
-  const botPad = 36;  // pt gap below ground line
+  const pad = 24;  // equal clearance above top element and below ground line
 
   const scaleX = (dAreaW * 0.80) / (run || 1);
-  const scaleY = (safeH - topPad - botPad) / (totalVisualH || 1);
+  const scaleY = (safeH - 2 * pad) / (totalVisualH || 1);
   const sc     = Math.min(scaleX, scaleY);
 
-  // Center drawing vertically in the safe zone
+  // Center block: equal top/bottom gaps within [safeTop, safeBot]
   const drawH   = totalVisualH * sc;
-  const groundY = Math.round((safeTop + topPad + safeBot - botPad) / 2 + drawH / 2);
+  const groundY = Math.round((safeTop + safeBot) / 2 + drawH / 2);
 
   const dw = run * sc;
   const dh = height * sc;
