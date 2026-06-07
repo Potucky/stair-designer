@@ -351,8 +351,8 @@ function TopLanding({ run, width, height, steps, topLandingLength, postPlacement
   const hasTreads = treadPositions && treadPositions.length > 0;
   const handleClick = ((postPlacementMode || fastRailsMode) && hasTreads) ? (e) => {
     e.stopPropagation();
-    const xIn = e.point.x / INtoU + run / 2;  // stair-relative inches (beyond run for top landing)
-    if (xIn < run || xIn > run + treadDepth) return;
+    const xIn = e.point.x / INtoU + run / 2;  // stair-relative inches; top landing stair-side edge is at run - treadDepth
+    if (xIn < run - treadDepth || xIn > run) return;
     const zIn = e.point.z / INtoU;
     const postData = {
       surfaceType: 'topLanding',

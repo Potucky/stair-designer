@@ -669,7 +669,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                           const effectiveX = sel.xIn + newOffset;
                           const allowed = sel.surfaceType === 'bottomLanding'
                             ? effectiveX >= -calc.treadDepth
-                            : effectiveX >= stairConfig.run;
+                            : effectiveX >= stairConfig.run - calc.treadDepth;
                           if (allowed) onUpdateManualPost(sel.id, { offsetXIn: newOffset });
                         }}>← Along</button>
                         <button className="panel-btn" onClick={() => {
@@ -677,7 +677,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                           const effectiveX = sel.xIn + newOffset;
                           const allowed = sel.surfaceType === 'bottomLanding'
                             ? effectiveX <= 0
-                            : effectiveX <= stairConfig.run + calc.treadDepth;
+                            : effectiveX <= stairConfig.run;
                           if (allowed) onUpdateManualPost(sel.id, { offsetXIn: newOffset });
                         }}>Along →</button>
                       </div>
