@@ -499,7 +499,7 @@ export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositio
         segKey: `${r.id}-cr-sx`,
         start: {
           x: startPt.x - dirX * startExt * INtoU,
-          y: startPt.y - pitchPerHoriz * (startExt * INtoU),
+          y: startPt.y - pitchPerHoriz * (dirX * startExt * INtoU),
           z: startPt.z - dirZ * startExt * INtoU,
         },
         end: { x: startPt.x, y: startPt.y, z: startPt.z },
@@ -521,7 +521,7 @@ export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositio
           : (_valid ? Math.max(1, Math.min(240, _raw)) : 24);
         const lenU = len * INtoU;
         const endX = curX + dirX * lenU;
-        const endY = curY + pitchPerHoriz * lenU;
+        const endY = curY + pitchPerHoriz * (dirX * lenU);
         const endZ = curZ + dirZ * lenU;
         segments.push({
           rail: r,
@@ -550,7 +550,7 @@ export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositio
         start: { x: curX, y: curY, z: curZ },
         end: {
           x: curX + dirX * endExt * INtoU,
-          y: curY + pitchPerHoriz * (endExt * INtoU),
+          y: curY + pitchPerHoriz * (dirX * endExt * INtoU),
           z: curZ + dirZ * endExt * INtoU,
         },
         lengthIn: endExt,
