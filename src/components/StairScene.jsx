@@ -670,13 +670,127 @@ function MeasureTool({ active, units }) {
   );
 }
 
+function ManualDimTool({ active }) {
+  const [pointA, setPointA] = useState(null);
+  const [pointB, setPointB] = useState(null);
+  const phaseRef = useRef('idle');
+  const { camera, raycaster, scene, gl } = useThree();
+
+  useEffect(() => {
+    if (!active) {
+      phaseRef.current = 'idle';
+      setPointA(null);
+      setPointB(null);
+    }
+  }, [active]);
+
+  useEffect(() => {
+    if (!active) return;
+    const canvas = gl.domElement;
+    let downX = 0, downY = 0;
+
+    const onPointerDown = (e) => { downX = e.clientX; downY = e.clientY; };
+
+    const onClick = (e) => {
+      const dx = e.clientX - downX;
+      const dy = e.clientY - downY;
+      if (dx * dx + dy * dy > 25) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const ny = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera({ x: nx, y: ny }, camera);
+      const hits = raycaster.intersectObjects(scene.children, true);
+      const hit = hits.find(h => {
+        const m = h.object.material;
+        if (!m || Array.isArray(m)) return false;
+        return !m.transparent || m.opacity > 0.5;
+      });
+      if (!hit) return;
+
+      const pt = hit.point.clone();
+      if (phaseRef.current === 'idle') {
+        setPointA(pt);
+        setPointB(null);
+        phaseRef.current = 'placing';
+      } else {
+        setPointB(pt);
+        phaseRef.current = 'idle';
+      }
+    };
+
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        phaseRef.current = 'idle';
+        setPointA(null);
+        setPointB(null);
+      }
+    };
+
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('click', onClick);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('click', onClick);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [active, camera, raycaster, scene, gl]);
+
+  const dimGeom = useMemo(() => {
+    if (!pointA || !pointB) return null;
+    const dist = pointA.distanceTo(pointB);
+    if (dist < 2 * S + 0.5) return null;
+
+    const dir = pointB.clone().sub(pointA).normalize();
+    let perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0));
+    if (perp.lengthSq() < 0.0001) perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(1, 0, 0));
+    perp.normalize().multiplyScalar(AW);
+
+    const aInner = pointA.clone().add(dir.clone().multiplyScalar(S));
+    const bInner = pointB.clone().sub(dir.clone().multiplyScalar(S));
+
+    return {
+      aInner, bInner, perp,
+      mid: pointA.clone().lerp(pointB, 0.5),
+      wingA1: aInner.clone().add(perp), wingA2: aInner.clone().sub(perp),
+      wingB1: bInner.clone().add(perp), wingB2: bInner.clone().sub(perp),
+    };
+  }, [pointA, pointB]);
+
+  if (!active) return null;
+
+  return (
+    <>
+      {pointA && !dimGeom && (
+        <mesh position={pointA.toArray()}>
+          <sphereGeometry args={[0.5, 10, 10]} />
+          <meshBasicMaterial color={DIM_COLOR} />
+        </mesh>
+      )}
+      {dimGeom && (
+        <>
+          <Line points={[dimGeom.aInner.toArray(), dimGeom.bInner.toArray()]} color={DIM_COLOR} lineWidth={1.5} />
+          <ArrowHead tip={pointA.toArray()} wingA={dimGeom.wingA1.toArray()} wingB={dimGeom.wingA2.toArray()} />
+          <ArrowHead tip={pointB.toArray()} wingA={dimGeom.wingB1.toArray()} wingB={dimGeom.wingB2.toArray()} />
+          <Html position={dimGeom.mid.toArray()} center>
+            <div style={LABEL_STYLE}>DIM</div>
+          </Html>
+        </>
+      )}
+    </>
+  );
+}
+
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, modalOpen = false, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect }) {
   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'work';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
-  const activeCursor = isMeasure || postPlacementMode || topRailMode || fastRailsMode ? 'crosshair' : undefined;
+  const isDims = activeTool === 'dims';
+  const activeCursor = isMeasure || isDims || postPlacementMode || topRailMode || fastRailsMode ? 'crosshair' : undefined;
 
   return (
     <div className="scene-container" style={activeCursor ? { cursor: activeCursor } : undefined}>
@@ -727,7 +841,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           onFastRailsPost={onFastRailsPost}
         />
 
-        {showDimensions && !modalOpen && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
+        {false && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
 
         <group position={[structureOffsetXIn * 0.5, 0, structureOffsetZIn * 0.5]}>
           <ManualPostsRenderer
@@ -785,6 +899,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
         </group>
 
         <MeasureTool active={isMeasure} units={units} />
+        <ManualDimTool active={isDims} />
 
         <OrbitControls
           ref={orbitRef}
