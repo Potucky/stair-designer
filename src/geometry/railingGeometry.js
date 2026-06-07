@@ -294,6 +294,8 @@ export function getManualTopRailDoglegSegments(manualTopRails, manualPosts, trea
       ? { x: start.x - ux * startExt * INtoU, y: start.y - uy * startExt * INtoU, z: start.z - uz * startExt * INtoU }
       : start;
 
+    if (r.customRouteEnabled) continue;
+
     if (!r.doglegEnabled) {
       const extEnd = endExt > 0
         ? { x: end.x + ux * endExt * INtoU, y: end.y + uy * endExt * INtoU, z: end.z + uz * endExt * INtoU }
@@ -421,6 +423,77 @@ export function getManualTopRailManualSegments(manualTopRails, manualPosts, trea
           nx = dirX * Math.cos(rad) - dirZ * Math.sin(rad);
           nz = dirX * Math.sin(rad) + dirZ * Math.cos(rad);
         }
+        dirX = nx; dirZ = nz;
+      }
+    }
+  }
+
+  return segments;
+}
+
+// Custom route segments: walks customRouteSegments (straight/left90/right90) from the start
+// post top. Pitch is derived from the original start→end post tops so all pieces stay raked
+// at stair angle rather than running level. Turns rotate the plan direction only; no tube is
+// drawn for turn commands.
+export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run) {
+  const segments = [];
+
+  for (const rail of manualTopRails) {
+    if (!rail.customRouteEnabled) continue;
+    const r = normalizeRailEndpoints(rail);
+    const startPt = resolveRailEndpoint(r.startEndpoint, manualPosts, treadPositions, riserHeight, run);
+    if (!startPt) continue;
+
+    const endPt = resolveRailEndpoint(r.endEndpoint, manualPosts, treadPositions, riserHeight, run);
+
+    let dirX = 1, dirZ = 0;
+    let pitchPerHoriz = 0;
+
+    if (endPt) {
+      const dx = endPt.x - startPt.x;
+      const dz = endPt.z - startPt.z;
+      const horizScene = Math.sqrt(dx * dx + dz * dz);
+      if (horizScene > 0.001) {
+        dirX = dx / horizScene;
+        dirZ = dz / horizScene;
+        pitchPerHoriz = (endPt.y - startPt.y) / horizScene;
+      }
+    }
+
+    const routeSegs = Array.isArray(rail.customRouteSegments) && rail.customRouteSegments.length > 0
+      ? rail.customRouteSegments
+      : [{ type: 'straight', lengthIn: 24 }];
+
+    let curX = startPt.x;
+    let curY = startPt.y;
+    let curZ = startPt.z;
+
+    for (let i = 0; i < routeSegs.length; i++) {
+      const seg = routeSegs[i];
+      if (seg.type === 'straight') {
+        const len = Math.max(0, Number(seg.lengthIn) || 0);
+        if (len < 0.001) continue;
+        const lenU = len * INtoU;
+        const endX = curX + dirX * lenU;
+        const endY = curY + pitchPerHoriz * lenU;
+        const endZ = curZ + dirZ * lenU;
+        segments.push({
+          rail: r,
+          segKey: `${r.id}-cr${i}`,
+          start: { x: curX, y: curY, z: curZ },
+          end: { x: endX, y: endY, z: endZ },
+          lengthIn: len,
+        });
+        curX = endX;
+        curY = endY;
+        curZ = endZ;
+      } else if (seg.type === 'left90') {
+        const nx = -dirZ;
+        const nz = dirX;
+        dirX = nx; dirZ = nz;
+      } else if (seg.type === 'right90') {
+        const nx = dirZ;
+        const nz = -dirX;
         dirX = nx; dirZ = nz;
       }
     }

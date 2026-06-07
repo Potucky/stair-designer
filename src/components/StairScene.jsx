@@ -3,7 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { fmtUnit } from '../utils/format.js';
-import { getTubeProfile, getManualPostBase, getManualTopRailDoglegSegments, getManualTopRailManualSegments, getManualBottomRailSegments, getManualMiddleRailSegments } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualPostBase, getManualTopRailDoglegSegments, getManualTopRailManualSegments, getCustomRouteSegments, getManualBottomRailSegments, getManualMiddleRailSegments } from '../geometry/railingGeometry.js';
 
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
@@ -440,12 +440,14 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
   const RAIL_W = 2 * INtoU;
   const RAIL_H = 1 * INtoU;
 
-  const segments = useMemo(
-    () => topRailPathMode === 'manual'
-      ? getManualTopRailManualSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run)
-      : getManualTopRailDoglegSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn),
-    [topRailPathMode, manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn]
-  );
+  const segments = useMemo(() => {
+    if (topRailPathMode === 'manual') {
+      return getManualTopRailManualSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run);
+    }
+    const dogleg = getManualTopRailDoglegSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn);
+    const custom = getCustomRouteSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run);
+    return [...dogleg, ...custom];
+  }, [topRailPathMode, manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn]);
 
   return (
     <>

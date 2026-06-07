@@ -547,6 +547,85 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                   );
                 })()}
 
+                {/* Custom Route controls for selected Top Rail */}
+                {topRailPathMode === 'standard' && selectedManualTopRailId && (() => {
+                  const sel = manualTopRails.find(r => r.id === selectedManualTopRailId);
+                  if (!sel) return null;
+                  const routeEnabled = !!sel.customRouteEnabled;
+                  const routeSegs = Array.isArray(sel.customRouteSegments) ? sel.customRouteSegments : [];
+                  const updateRoute = (segs) => onUpdateManualTopRail(sel.id, { customRouteSegments: segs });
+                  return (
+                    <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginBottom: routeEnabled ? 8 : 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={routeEnabled}
+                          onChange={e => {
+                            const enabled = e.target.checked;
+                            onUpdateManualTopRail(sel.id, {
+                              customRouteEnabled: enabled,
+                              customRouteSegments: enabled && (!sel.customRouteSegments || sel.customRouteSegments.length === 0)
+                                ? [{ type: 'straight', lengthIn: 24 }]
+                                : sel.customRouteSegments || [],
+                            });
+                          }}
+                        />
+                        <span className="field-label-sm" style={{ marginBottom: 0 }}>Enable Custom Route</span>
+                      </label>
+                      {routeEnabled && (
+                        <div>
+                          {routeSegs.map((seg, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 16, flexShrink: 0 }}>{i + 1}.</span>
+                              <span style={{ fontSize: 10, color: 'var(--text)', flex: seg.type === 'straight' ? '0 0 52px' : 1 }}>
+                                {seg.type === 'straight' ? 'Straight' : seg.type === 'left90' ? 'Left 90°' : 'Right 90°'}
+                              </span>
+                              {seg.type === 'straight' && (
+                                <>
+                                  <NumericDraftInput
+                                    className="field-input"
+                                    style={{ flex: 1, fontSize: 10 }}
+                                    value={seg.lengthIn}
+                                    onCommit={v => updateRoute(routeSegs.map((s, j) => j === i ? { ...s, lengthIn: v } : s))}
+                                  />
+                                  <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>in</span>
+                                </>
+                              )}
+                              <button
+                                className="panel-btn panel-btn-danger"
+                                style={{ padding: '2px 6px', fontSize: 10, flexShrink: 0 }}
+                                onClick={() => updateRoute(routeSegs.filter((_, j) => j !== i))}
+                              >×</button>
+                            </div>
+                          ))}
+                          <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+                            <button
+                              className="panel-btn"
+                              style={{ fontSize: 10, padding: '2px 8px' }}
+                              onClick={() => updateRoute([...routeSegs, { type: 'straight', lengthIn: 24 }])}
+                            >+ Straight</button>
+                            <button
+                              className="panel-btn"
+                              style={{ fontSize: 10, padding: '2px 8px' }}
+                              onClick={() => updateRoute([...routeSegs, { type: 'left90' }])}
+                            >+ Left 90</button>
+                            <button
+                              className="panel-btn"
+                              style={{ fontSize: 10, padding: '2px 8px' }}
+                              onClick={() => updateRoute([...routeSegs, { type: 'right90' }])}
+                            >+ Right 90</button>
+                            <button
+                              className="panel-btn panel-btn-danger"
+                              style={{ fontSize: 10, padding: '2px 8px' }}
+                              onClick={() => updateRoute([])}
+                            >Clear</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Delete selected rail */}
                 {selectedManualTopRailId && (
                   <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
