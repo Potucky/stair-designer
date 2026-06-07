@@ -94,21 +94,29 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   const dAreaX = M + 62;                         // room for H-dim label on left
   const dAreaW = LW - dAreaX - M - 12;           // ≈622 pts wide (landscape)
 
-  // Fit full visual height (stair + handrail) between header line (y=60) and footer line (y=LH-36).
-  // Using only stair height in the scale caused the top rail to collide with the header.
-  const handrailH = stairConfig.handrailHeight ?? 36;
-  const totalVisualH = height + handrailH;
-  const availV = (LH - 36) - 60 - 70;           // 446 pt between header/footer minus top+bottom margins
-  const scaleX = (dAreaW * 0.80) / (run || 1);
-  const scaleY = availV / ((totalVisualH || 1) * 1.08);
-  const sc = Math.min(scaleX, scaleY);
+  // Safe drawing zone: below pageHeader content (returns y=76) and above footer line (y=576)
+  const safeTop = 82;           // 76 + 6pt gap below header
+  const safeBot = LH - 36 - 8; // 576 - 8pt margin above footer line → 568
+  const safeH   = safeBot - safeTop; // 486 pt
 
-  // Center ground line vertically between header and footer; keep ≥46 pt above footer for run-dim label
-  const drawingPts = totalVisualH * sc;
-  const groundY = Math.min(
-    Math.round(((LH - 36) + 60 + drawingPts) / 2),
-    (LH - 36) - 46
-  );
+  // Vertical extent: stair height + tallest post (or handrailHeight) + buffer for syToPdf offset.
+  // syToPdf shifts rail tops up by (riserHeight/2 - TREAD_THICK/INtoU); riserHeight/2 covers it fully.
+  const handrailH = stairConfig.handrailHeight ?? 36;
+  const maxPostH  = validManualPosts.length > 0
+    ? Math.max(...validManualPosts.map(p => Number(p.heightIn) || 0))
+    : handrailH;
+  const totalVisualH = height + Math.max(handrailH, maxPostH) + riserHeight / 2;
+
+  const topPad = 8;   // pt gap above highest drawn element
+  const botPad = 46;  // pt gap below ground line for run-dimension labels
+
+  const scaleX = (dAreaW * 0.80) / (run || 1);
+  const scaleY = (safeH - topPad - botPad) / (totalVisualH || 1);
+  const sc     = Math.min(scaleX, scaleY);
+
+  // Center drawing vertically in the safe zone
+  const drawH   = totalVisualH * sc;
+  const groundY = Math.round((safeTop + topPad + safeBot - botPad) / 2 + drawH / 2);
 
   const dw = run * sc;
   const dh = height * sc;
