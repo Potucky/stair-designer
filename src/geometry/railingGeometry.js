@@ -294,7 +294,7 @@ export function getManualTopRailDoglegSegments(manualTopRails, manualPosts, trea
       ? { x: start.x - ux * startExt * INtoU, y: start.y - uy * startExt * INtoU, z: start.z - uz * startExt * INtoU }
       : start;
 
-    if (Array.isArray(rail.customRouteSegments) && rail.customRouteSegments.length > 0) continue;
+    if (Array.isArray(r.customRouteSegments) && r.customRouteSegments.length > 0) continue;
 
     if (!r.doglegEnabled) {
       const extEnd = endExt > 0
