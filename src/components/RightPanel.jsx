@@ -117,8 +117,7 @@ function ExtChips({ curLen, onSet }) {
 
 export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onNewProject, onSaveProject, onOpenProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode }) {
   const [saveStatus, setSaveStatus] = useState(null);
-  const [turnPosition, setTurnPosition] = useState('atEnd');
-  const [customTurnDistIn, setCustomTurnDistIn] = useState(12);
+  const [turnFromP1In, setTurnFromP1In] = useState(null);
 
   const str = (field) => (e) => setProject((p) => ({ ...p, [field]: e.target.value }));
   const toggle = (field) => (e) => setStairConfig((s) => ({ ...s, [field]: e.target.checked }));
@@ -463,17 +462,27 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                     }
                   }
 
+                  const preTurnIdx = routeSegs.findIndex(s => s.role === 'preTurn');
+                  const preTurnSeg = preTurnIdx >= 0 ? routeSegs[preTurnIdx] : null;
+                  const effectiveTurnFromP1 = preTurnSeg
+                    ? preTurnSeg.lengthIn
+                    : (turnFromP1In !== null ? turnFromP1In : (horizDistIn > 0 ? Math.round(horizDistIn) : 24));
+
+                  const handleTurnFromP1Commit = (v) => {
+                    const clamped = Math.max(0, Math.min(240, v));
+                    setTurnFromP1In(clamped);
+                    if (preTurnSeg && preTurnIdx >= 0) {
+                      updateRoute(routeSegs.map((s, j) => j === preTurnIdx ? { ...s, lengthIn: clamped } : s));
+                    }
+                  };
+
                   const addTurn = (side) => {
                     const turn = { type: side === 'left' ? 'left90' : 'right90' };
                     const afterStraight = { type: 'straight', lengthIn: 24 };
-                    if (routeSegs.length === 0 && turnPosition !== 'atEnd' && horizDistIn > 0) {
-                      let straightLen = Math.round(horizDistIn);
-                      if (turnPosition === 'beforePost') straightLen = Math.max(1, Math.round(horizDistIn) - 12);
-                      else if (turnPosition === 'atPost') straightLen = Math.round(horizDistIn);
-                      else if (turnPosition === 'afterPost') straightLen = Math.round(horizDistIn + endExtLen);
-                      else if (turnPosition === 'custom') straightLen = Math.max(1, Math.min(240, customTurnDistIn));
+                    if (routeSegs.length === 0) {
+                      const distIn = Math.max(0, Math.min(240, effectiveTurnFromP1));
                       // role:'preTurn' marks this straight as the implicit approach segment — hidden in UI
-                      updateRoute([{ type: 'straight', lengthIn: straightLen, role: 'preTurn' }, turn, afterStraight]);
+                      updateRoute([{ type: 'straight', lengthIn: distIn, role: 'preTurn' }, turn, afterStraight]);
                     } else {
                       updateRoute([...routeSegs, turn, afterStraight]);
                     }
@@ -501,28 +510,15 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                         })}
                       />
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, marginBottom: 4 }}>
-                        <span className="field-label-sm" style={{ marginBottom: 0, flexShrink: 0 }}>Turn pos</span>
-                        <select
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 4 }}>
+                        <span className="field-label-sm" style={{ marginBottom: 0, flexShrink: 0 }}>Turn from P1 (in)</span>
+                        <NumericDraftInput
                           className="field-input"
                           style={{ flex: 1, fontSize: 10 }}
-                          value={turnPosition}
-                          onChange={e => setTurnPosition(e.target.value)}
-                        >
-                          <option value="atEnd">At end</option>
-                          <option value="beforePost">Before post</option>
-                          <option value="atPost">At post</option>
-                          <option value="afterPost">After post</option>
-                          <option value="custom">Custom (in)</option>
-                        </select>
-                        {turnPosition === 'custom' && (
-                          <NumericDraftInput
-                            className="field-input"
-                            style={{ width: 44, fontSize: 10 }}
-                            value={customTurnDistIn}
-                            onCommit={v => setCustomTurnDistIn(Math.max(1, Math.min(240, v)))}
-                          />
-                        )}
+                          value={effectiveTurnFromP1}
+                          allowZero
+                          onCommit={handleTurnFromP1Commit}
+                        />
                       </div>
 
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: routeSegs.length > 0 ? 6 : 0 }}>
@@ -555,8 +551,12 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                             }
                             updateRoute(routeSegs.filter((_, j) => !toRemove.has(j)));
                           };
+                          const prevRaw = realIdx > 0 ? routeSegs[realIdx - 1] : null;
+                          const stationIn = isTurn && prevRaw && prevRaw.role === 'preTurn' ? prevRaw.lengthIn : null;
                           const label = isTurn
-                            ? (seg.type === 'left90' ? 'Turn L 90°' : 'Turn R 90°')
+                            ? (seg.type === 'left90'
+                                ? (stationIn !== null ? `Turn L90 at ${stationIn} in from P1` : 'Turn L 90°')
+                                : (stationIn !== null ? `Turn R90 at ${stationIn} in from P1` : 'Turn R 90°'))
                             : (afterTurn ? 'After turn' : 'Straight');
                           return (
                             <div key={realIdx} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
