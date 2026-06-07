@@ -380,7 +380,7 @@ function TopLanding({ run, width, height, steps, topLandingLength, postPlacement
 }
 
 // Renders manually placed posts from the manualPosts array.
-function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tubeSize, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, railingColorMode, fastRailsMode, fastRailsPrevPostId, onFastRailsPostSelect }) {
+function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tubeSize, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, railingColorMode, fastRailsMode, fastRailsPrevPostId, onFastRailsPostSelect, isDims }) {
   const INtoU = 0.5;
   const profile = getTubeProfile(tubeSize);
   const postSide = profile.width * INtoU; // real profile width in scene units
@@ -405,6 +405,7 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
 
         const handleClick = (e) => {
           e.stopPropagation();
+          if (isDims) return;
           if (topRailMode) {
             onTopRailPostClick(id);
           } else if (fastRailsMode) {
@@ -674,7 +675,8 @@ function ManualDimTool({ active }) {
   const [pointA, setPointA] = useState(null);
   const [pointB, setPointB] = useState(null);
   const phaseRef = useRef('idle');
-  const { camera, raycaster, scene, gl } = useThree();
+  const rayRef = useRef(new THREE.Raycaster());
+  const { camera, scene, gl } = useThree();
 
   useEffect(() => {
     if (!active) {
@@ -694,22 +696,32 @@ function ManualDimTool({ active }) {
     const onClick = (e) => {
       const dx = e.clientX - downX;
       const dy = e.clientY - downY;
-      if (dx * dx + dy * dy > 25) return;
+      if (dx * dx + dy * dy > 64) return; // skip if moved > 8px (drag)
 
       const rect = canvas.getBoundingClientRect();
       const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       const ny = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
-      raycaster.setFromCamera({ x: nx, y: ny }, camera);
-      const hits = raycaster.intersectObjects(scene.children, true);
-      const hit = hits.find(h => {
+      rayRef.current.setFromCamera({ x: nx, y: ny }, camera);
+      const hits = rayRef.current.intersectObjects(scene.children, true);
+      const solidHit = hits.find(h => {
+        if (!h.object.isMesh) return false;
+        if (h.object.userData.isDimMarker) return false;
         const m = h.object.material;
-        if (!m || Array.isArray(m)) return false;
-        return !m.transparent || m.opacity > 0.5;
+        if (!m || Array.isArray(m) || m.isShaderMaterial) return false;
+        return true;
       });
-      if (!hit) return;
 
-      const pt = hit.point.clone();
+      let pt;
+      if (solidHit) {
+        pt = solidHit.point.clone();
+      } else {
+        // Fall back to ground plane when clicking empty space
+        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        pt = new THREE.Vector3();
+        if (!rayRef.current.ray.intersectPlane(groundPlane, pt)) return;
+      }
+
       if (phaseRef.current === 'idle') {
         setPointA(pt);
         setPointB(null);
@@ -736,7 +748,7 @@ function ManualDimTool({ active }) {
       canvas.removeEventListener('click', onClick);
       window.removeEventListener('keydown', onKey);
     };
-  }, [active, camera, raycaster, scene, gl]);
+  }, [active, camera, scene, gl]);
 
   const dimGeom = useMemo(() => {
     if (!pointA || !pointB) return null;
@@ -763,8 +775,8 @@ function ManualDimTool({ active }) {
 
   return (
     <>
-      {pointA && !dimGeom && (
-        <mesh position={pointA.toArray()}>
+      {pointA && !pointB && (
+        <mesh position={pointA.toArray()} userData={{ isDimMarker: true }}>
           <sphereGeometry args={[0.5, 10, 10]} />
           <meshBasicMaterial color={DIM_COLOR} />
         </mesh>
@@ -859,6 +871,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             fastRailsMode={fastRailsMode}
             fastRailsPrevPostId={fastRailsPrevPostId}
             onFastRailsPostSelect={onFastRailsPostSelect}
+            isDims={isDims}
           />
 
           <ManualTopRailsRenderer
