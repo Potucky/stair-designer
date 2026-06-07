@@ -465,15 +465,17 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
 
                   const addTurn = (side) => {
                     const turn = { type: side === 'left' ? 'left90' : 'right90' };
+                    const afterStraight = { type: 'straight', lengthIn: 24 };
                     if (routeSegs.length === 0 && turnPosition !== 'atEnd' && horizDistIn > 0) {
                       let straightLen = Math.round(horizDistIn);
                       if (turnPosition === 'beforePost') straightLen = Math.max(1, Math.round(horizDistIn) - 12);
                       else if (turnPosition === 'atPost') straightLen = Math.round(horizDistIn);
                       else if (turnPosition === 'afterPost') straightLen = Math.round(horizDistIn + endExtLen);
                       else if (turnPosition === 'custom') straightLen = Math.max(1, Math.min(240, customTurnDistIn));
-                      updateRoute([{ type: 'straight', lengthIn: straightLen }, turn]);
+                      // role:'preTurn' marks this straight as the implicit approach segment — hidden in UI
+                      updateRoute([{ type: 'straight', lengthIn: straightLen, role: 'preTurn' }, turn, afterStraight]);
                     } else {
-                      updateRoute([...routeSegs, turn]);
+                      updateRoute([...routeSegs, turn, afterStraight]);
                     }
                   };
 
@@ -532,30 +534,56 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                         )}
                       </div>
 
-                      {routeSegs.map((seg, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
-                          <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 14, flexShrink: 0 }}>{i + 1}.</span>
-                          <span style={{ fontSize: 10, color: 'var(--text)', flex: seg.type === 'straight' ? '0 0 48px' : 1 }}>
-                            {seg.type === 'straight' ? 'Straight' : seg.type === 'left90' ? 'L 90°' : 'R 90°'}
-                          </span>
-                          {seg.type === 'straight' && (
-                            <>
-                              <NumericDraftInput
-                                className="field-input"
-                                style={{ flex: 1, fontSize: 10 }}
-                                value={seg.lengthIn}
-                                onCommit={v => updateRoute(routeSegs.map((s, j) => j === i ? { ...s, lengthIn: Math.max(1, Math.min(240, v)) } : s))}
-                              />
-                              <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>in</span>
-                            </>
-                          )}
-                          <button
-                            className="panel-btn panel-btn-danger"
-                            style={{ padding: '2px 6px', fontSize: 10, flexShrink: 0 }}
-                            onClick={() => updateRoute(routeSegs.filter((_, j) => j !== i))}
-                          >×</button>
-                        </div>
-                      ))}
+                      {(() => {
+                        // Build display items: skip implicit preTurn segments, label turns and after-turn straights
+                        const displayItems = [];
+                        for (let i = 0; i < routeSegs.length; i++) {
+                          const seg = routeSegs[i];
+                          if (seg.role === 'preTurn') continue;
+                          const isTurn = seg.type === 'left90' || seg.type === 'right90';
+                          const prevSeg = displayItems.length > 0 ? displayItems[displayItems.length - 1].seg : null;
+                          const afterTurn = !isTurn && !!prevSeg && (prevSeg.type === 'left90' || prevSeg.type === 'right90');
+                          displayItems.push({ seg, realIdx: i, afterTurn });
+                        }
+                        return displayItems.map(({ seg, realIdx, afterTurn }, displayIdx) => {
+                          const isTurn = seg.type === 'left90' || seg.type === 'right90';
+                          const handleDelete = () => {
+                            const toRemove = new Set([realIdx]);
+                            // When removing a turn, also remove its hidden preTurn approach straight
+                            if (isTurn && realIdx > 0 && routeSegs[realIdx - 1].role === 'preTurn') {
+                              toRemove.add(realIdx - 1);
+                            }
+                            updateRoute(routeSegs.filter((_, j) => !toRemove.has(j)));
+                          };
+                          const label = isTurn
+                            ? (seg.type === 'left90' ? 'Turn L 90°' : 'Turn R 90°')
+                            : (afterTurn ? 'After turn' : 'Straight');
+                          return (
+                            <div key={realIdx} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 14, flexShrink: 0 }}>{displayIdx + 1}.</span>
+                              <span style={{ fontSize: 10, color: 'var(--text)', flex: seg.type === 'straight' ? '0 0 64px' : 1 }}>
+                                {label}
+                              </span>
+                              {seg.type === 'straight' && (
+                                <>
+                                  <NumericDraftInput
+                                    className="field-input"
+                                    style={{ flex: 1, fontSize: 10 }}
+                                    value={seg.lengthIn}
+                                    onCommit={v => updateRoute(routeSegs.map((s, j) => j === realIdx ? { ...s, lengthIn: Math.max(1, Math.min(240, v)) } : s))}
+                                  />
+                                  <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>in</span>
+                                </>
+                              )}
+                              <button
+                                className="panel-btn panel-btn-danger"
+                                style={{ padding: '2px 6px', fontSize: 10, flexShrink: 0 }}
+                                onClick={handleDelete}
+                              >×</button>
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   );
                 })()}
