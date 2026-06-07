@@ -514,7 +514,11 @@ export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositio
     for (let i = 0; i < routeSegs.length; i++) {
       const seg = routeSegs[i];
       if (seg.type === 'straight') {
-        const len = Math.max(1, Math.min(240, Number(seg.lengthIn) || 24));
+        const _raw = Number(seg.lengthIn);
+        const _valid = Number.isFinite(_raw);
+        const len = seg.role === 'preTurn'
+          ? (_valid ? Math.max(0, Math.min(240, _raw)) : 24)
+          : (_valid ? Math.max(1, Math.min(240, _raw)) : 24);
         const lenU = len * INtoU;
         const endX = curX + dirX * lenU;
         const endY = curY + pitchPerHoriz * lenU;
