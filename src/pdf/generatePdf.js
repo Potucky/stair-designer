@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getTubeProfile, getManualRailSegments, getManualTopRailManualSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
+import { getTubeProfile, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [], structureOffsetZIn = 0, topRailPathMode = 'standard' }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [792, 612] });
@@ -301,9 +301,10 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   }
 
   // ── Manual Top Rails (side view) — drawn after posts so Top Rail sits on top
-  // Uses getManualRailSegments so fixed-endpoint rails (post deleted) still render.
+  // Uses resolveTopRailSegments (shared with 3D and materials) so dogleg/custom route
+  // geometry is represented honestly in the PDF side view.
   // syToPdf maps post-top scene Y → post-top PDF y (the top edge of the post rect).
-  // We then shift the stroke up by lw/2 so its bottom face sits at the post top,
+  // Stroke is shifted up by lw/2 so its bottom face sits at the post top,
   // plus a tiny overlap (0.25 in) so no hairline gap appears.
   {
     const sxToPdf = mirrored
@@ -313,58 +314,40 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     const lw = Math.max(1.5, Math.min(sc, 6));
     const overlapPts = 0.25 * sc;
 
-    if (topRailPathMode === 'manual') {
-      const manualSegs = getManualTopRailManualSegments(
-        Array.isArray(manualTopRails) ? manualTopRails : [],
-        validManualPosts,
-        calc.treadPositions,
-        calc.riserHeight,
-        stairConfig.run
-      );
-      manualSegs.forEach((seg) => {
-        const sx = sxToPdf(seg.start.x);
-        const sy = syToPdf(seg.start.y) - lw / 2 + overlapPts;
-        const ex = sxToPdf(seg.end.x);
-        const ey = syToPdf(seg.end.y) - lw / 2 + overlapPts;
-        doc.setDrawColor(railColors.railLine);
-        doc.setLineWidth(lw);
-        doc.line(sx, sy, ex, ey);
-      });
-    } else {
-      const railSegs = getManualRailSegments(
-        Array.isArray(manualTopRails) ? manualTopRails : [],
-        validManualPosts,
-        calc.treadPositions,
-        calc.riserHeight,
-        stairConfig.run,
-        railLowerExtensionIn,
-        railUpperExtensionIn
-      );
+    const railSegs = resolveTopRailSegments(
+      Array.isArray(manualTopRails) ? manualTopRails : [],
+      validManualPosts,
+      calc.treadPositions,
+      calc.riserHeight,
+      stairConfig.run,
+      railLowerExtensionIn,
+      railUpperExtensionIn,
+      topRailPathMode
+    );
 
-      const postProfile = getTubeProfile(stairConfig.tubeSize);
-      const postW = Math.max(3, postProfile.width * sc);
+    const postProfile = getTubeProfile(stairConfig.tubeSize);
+    const postW = Math.max(3, postProfile.width * sc);
 
-      // Open-end flags: detect terminal endpoints with no chained rail on that side
-      const normRails = (Array.isArray(manualTopRails) ? manualTopRails : []).map(normalizeRailEndpoints);
-      const endPostIds   = new Set(normRails.filter(r => r.endEndpoint.anchorType   === 'post').map(r => r.endEndpoint.postId));
-      const startPostIds = new Set(normRails.filter(r => r.startEndpoint.anchorType === 'post').map(r => r.startEndpoint.postId));
-      const isOpenStart = (ep) => ep.anchorType !== 'post' || !endPostIds.has(ep.postId);
-      const isOpenEnd   = (ep) => ep.anchorType !== 'post' || !startPostIds.has(ep.postId);
+    // Open-end flags used for post-face extension on straight segments only
+    const normRails = (Array.isArray(manualTopRails) ? manualTopRails : []).map(normalizeRailEndpoints);
+    const endPostIds   = new Set(normRails.filter(r => r.endEndpoint.anchorType   === 'post').map(r => r.endEndpoint.postId));
+    const startPostIds = new Set(normRails.filter(r => r.startEndpoint.anchorType === 'post').map(r => r.startEndpoint.postId));
+    const isOpenStart = (ep) => ep.anchorType !== 'post' || !endPostIds.has(ep.postId);
+    const isOpenEnd   = (ep) => ep.anchorType !== 'post' || !startPostIds.has(ep.postId);
 
-      railSegs.forEach((seg) => {
-        // Shift y: bottom face of stroke lands at post top with tiny overlap
-        let sx = sxToPdf(seg.start.x);
-        let sy = syToPdf(seg.start.y) - lw / 2 + overlapPts;
-        let ex = sxToPdf(seg.end.x);
-        let ey = syToPdf(seg.end.y) - lw / 2 + overlapPts;
+    railSegs.forEach((seg) => {
+      let sx = sxToPdf(seg.start.x);
+      let sy = syToPdf(seg.start.y) - lw / 2 + overlapPts;
+      let ex = sxToPdf(seg.end.x);
+      let ey = syToPdf(seg.end.y) - lw / 2 + overlapPts;
 
-        // At terminal posts with no extension, extend to the outside face so no post corner is exposed
-        const r = seg.rail;
-        const perStartExt = r.startEndpoint.extension?.type === 'straight' ? Math.max(0, Number(r.startEndpoint.extension.lengthIn) || 0) : 0;
-        const perEndExt   = r.endEndpoint.extension?.type   === 'straight' ? Math.max(0, Number(r.endEndpoint.extension.lengthIn)   || 0) : 0;
+      // Post-face extension: only for standard straight segments (not dogleg, not custom route, not manual)
+      const r = seg.rail;
+      if (topRailPathMode === 'standard' && r && !r.doglegEnabled && !(Array.isArray(r.customRouteSegments) && r.customRouteSegments.length > 0)) {
+        const perStartExt = r.startEndpoint?.extension?.type === 'straight' ? Math.max(0, Number(r.startEndpoint.extension.lengthIn) || 0) : 0;
+        const perEndExt   = r.endEndpoint?.extension?.type   === 'straight' ? Math.max(0, Number(r.endEndpoint.extension.lengthIn)   || 0) : 0;
         const globalStartExt = isOpenStart(r.startEndpoint) ? Math.max(0, railLowerExtensionIn) : 0;
         const globalEndExt   = isOpenEnd(r.endEndpoint)     ? Math.max(0, railUpperExtensionIn) : 0;
-
         const horizDir = sx <= ex ? 1 : -1;
         if (isOpenStart(r.startEndpoint) && perStartExt + globalStartExt === 0) {
           sx -= horizDir * postW / 2;
@@ -372,12 +355,12 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
         if (isOpenEnd(r.endEndpoint) && perEndExt + globalEndExt === 0) {
           ex += horizDir * postW / 2;
         }
+      }
 
-        doc.setDrawColor(railColors.railLine);
-        doc.setLineWidth(lw);
-        doc.line(sx, sy, ex, ey);
-      });
-    }
+      doc.setDrawColor(railColors.railLine);
+      doc.setLineWidth(lw);
+      doc.line(sx, sy, ex, ey);
+    });
   }
 
   // ── Manual Post Labels (side view) — drawn last for readability
@@ -461,23 +444,16 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   if (validManualPosts.length > 0) {
     y = kv('Manual Posts:', String(validManualPosts.length), M, y);
   }
-  const resolvedRailSegs = topRailPathMode === 'manual'
-    ? getManualTopRailManualSegments(
-        Array.isArray(manualTopRails) ? manualTopRails : [],
-        validManualPosts,
-        calc.treadPositions,
-        calc.riserHeight,
-        stairConfig.run
-      )
-    : getManualRailSegments(
-        Array.isArray(manualTopRails) ? manualTopRails : [],
-        validManualPosts,
-        calc.treadPositions,
-        calc.riserHeight,
-        stairConfig.run,
-        railLowerExtensionIn,
-        railUpperExtensionIn
-      );
+  const resolvedRailSegs = resolveTopRailSegments(
+    Array.isArray(manualTopRails) ? manualTopRails : [],
+    validManualPosts,
+    calc.treadPositions,
+    calc.riserHeight,
+    stairConfig.run,
+    railLowerExtensionIn,
+    railUpperExtensionIn,
+    topRailPathMode
+  );
   if (resolvedRailSegs.length > 0) {
     y = kv('Top Rails:', String(resolvedRailSegs.length), M, y);
   }

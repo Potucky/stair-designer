@@ -578,7 +578,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                             doglegStartIn: sel.doglegStartIn ?? 12,
                             doglegSide: sel.doglegSide ?? 'left',
                             doglegOffsetIn: sel.doglegOffsetIn ?? 6,
-                            doglegAfterIn: sel.doglegAfterIn ?? 12,
                           })}
                         />
                         <span className="field-label-sm" style={{ marginBottom: 0 }}>Enable 90° Dogleg</span>
@@ -616,16 +615,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                               value={sel.doglegOffsetIn ?? 6}
                               allowZero
                               onCommit={v => onUpdateManualTopRail(sel.id, { doglegOffsetIn: Math.max(0, v) })}
-                            />
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>After turn (in)</span>
-                            <NumericDraftInput
-                              className="field-input"
-                              style={{ width: 64 }}
-                              value={sel.doglegAfterIn ?? 12}
-                              allowZero
-                              onCommit={v => onUpdateManualTopRail(sel.id, { doglegAfterIn: Math.max(0, v) })}
                             />
                           </div>
                         </div>

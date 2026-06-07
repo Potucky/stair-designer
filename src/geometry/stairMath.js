@@ -1,4 +1,4 @@
-import { getManualRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, getManualTopRailManualSegments } from './railingGeometry.js';
+import { resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments } from './railingGeometry.js';
 
 export function calcStair({ height, run, width, steps, railingEnabled, handrailHeight, postSpacing, railingRunMode = 'matchStair', manualRailingRun }) {
   const riserHeight = steps > 0 ? height / steps : 0;
@@ -111,9 +111,7 @@ export function buildMaterialList({ width, steps, stringerLength, railingEnabled
   }
 
   if (manualTopRails.length > 0) {
-    const segments = topRailPathMode === 'manual'
-      ? getManualTopRailManualSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run)
-      : getManualRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn);
+    const segments = resolveTopRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn, topRailPathMode);
     if (segments.length > 0) {
       const totalLen = segments.reduce((s, seg) => s + seg.lengthIn, 0);
       items.push({ part: 'Top Rail', qty: segments.length, lengthIn: totalLen.toFixed(2), profile: '2x1 Rect Tube', note: 'Total length' });

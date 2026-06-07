@@ -367,6 +367,23 @@ export function getManualTopRailDoglegSegments(manualTopRails, manualPosts, trea
 
 export const DEFAULT_MANUAL_SEGMENTS = [];
 
+// Shared top rail segment resolver used by 3D rendering, PDF, and material/cut list.
+// Returns the final real-inch segment list for a set of top rails, honoring:
+//   - straight rails (no dogleg, no custom route)
+//   - per-rail endpoint extensions and global open-end extensions
+//   - dogleg route (doglegEnabled: true) — segments A/B/C
+//   - custom route (non-empty customRouteSegments) — raked turn segments
+//   - manual path mode (topRailPathMode === 'manual') — user-defined forward/turn segments
+// Bottom/middle rails are unaffected — callers use the dedicated functions for those.
+export function resolveTopRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn = 0, railUpperExtensionIn = 0, topRailPathMode = 'standard') {
+  if (topRailPathMode === 'manual') {
+    return getManualTopRailManualSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run);
+  }
+  const dogleg = getManualTopRailDoglegSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn);
+  const custom = getCustomRouteSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run);
+  return [...dogleg, ...custom];
+}
+
 // Manual Top Rail path from user-defined segments starting at the first post.
 // Turns rotate the horizontal XZ direction; Forward advances in that direction at constant Y.
 export function getManualTopRailManualSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run) {
