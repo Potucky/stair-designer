@@ -380,7 +380,7 @@ export function resolveTopRailSegments(manualTopRails, manualPosts, treadPositio
     return getManualTopRailManualSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run);
   }
   const dogleg = getManualTopRailDoglegSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn);
-  const custom = getCustomRouteSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run);
+  const custom = getCustomRouteSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn);
   return [...dogleg, ...custom];
 }
 
@@ -452,16 +452,18 @@ export function getManualTopRailManualSegments(manualTopRails, manualPosts, trea
 // post top. Pitch is derived from the original start→end post tops so all pieces stay raked
 // at stair angle. Turns rotate plan direction only. Activated by any non-empty customRouteSegments
 // (no customRouteEnabled flag required). Start extension is rendered as a backwards segment before
-// the route. The caller is responsible for not passing rails that have empty customRouteSegments.
-export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run) {
+// the route; end extension as a forwards segment after. Global open-end extensions are also applied.
+// The caller is responsible for not passing rails that have empty customRouteSegments.
+export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn = 0, railUpperExtensionIn = 0) {
   const segments = [];
+  const normalizedRails = manualTopRails.map(normalizeRailEndpoints);
+  const flags = getOpenEndFlags(normalizedRails);
 
-  for (const rail of manualTopRails) {
-    const routeSegs = Array.isArray(rail.customRouteSegments) && rail.customRouteSegments.length > 0
-      ? rail.customRouteSegments : null;
+  for (const r of normalizedRails) {
+    const routeSegs = Array.isArray(r.customRouteSegments) && r.customRouteSegments.length > 0
+      ? r.customRouteSegments : null;
     if (!routeSegs) continue;
 
-    const r = normalizeRailEndpoints(rail);
     const startPt = resolveRailEndpoint(r.startEndpoint, manualPosts, treadPositions, riserHeight, run);
     if (!startPt) continue;
 
@@ -481,20 +483,27 @@ export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositio
       }
     }
 
-    // Render start extension as a backwards segment before the route
     const perRailStartExt = r.startEndpoint.extension?.type === 'straight'
       ? Math.max(0, Number(r.startEndpoint.extension.lengthIn) || 0) : 0;
-    if (perRailStartExt > 0 && (Math.abs(dirX) > 0.001 || Math.abs(dirZ) > 0.001)) {
+    const perRailEndExt = r.endEndpoint.extension?.type === 'straight'
+      ? Math.max(0, Number(r.endEndpoint.extension.lengthIn) || 0) : 0;
+    const globalStartExt = flags.isOpenStart(r.startEndpoint) ? Math.max(0, railLowerExtensionIn) : 0;
+    const globalEndExt = flags.isOpenEnd(r.endEndpoint) ? Math.max(0, railUpperExtensionIn) : 0;
+    const startExt = perRailStartExt + globalStartExt;
+    const endExt = perRailEndExt + globalEndExt;
+
+    // Start extension: backward along initial route direction before the first segment
+    if (startExt > 0 && (Math.abs(dirX) > 0.001 || Math.abs(dirZ) > 0.001)) {
       segments.push({
         rail: r,
         segKey: `${r.id}-cr-sx`,
         start: {
-          x: startPt.x - dirX * perRailStartExt * INtoU,
-          y: startPt.y - pitchPerHoriz * (perRailStartExt * INtoU),
-          z: startPt.z - dirZ * perRailStartExt * INtoU,
+          x: startPt.x - dirX * startExt * INtoU,
+          y: startPt.y - pitchPerHoriz * (startExt * INtoU),
+          z: startPt.z - dirZ * startExt * INtoU,
         },
         end: { x: startPt.x, y: startPt.y, z: startPt.z },
-        lengthIn: perRailStartExt,
+        lengthIn: startExt,
       });
     }
 
@@ -527,6 +536,21 @@ export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositio
         const nx = dirZ; const nz = -dirX;
         dirX = nx; dirZ = nz;
       }
+    }
+
+    // End extension: forward along final route direction after the last segment
+    if (endExt > 0 && (Math.abs(dirX) > 0.001 || Math.abs(dirZ) > 0.001)) {
+      segments.push({
+        rail: r,
+        segKey: `${r.id}-cr-ex`,
+        start: { x: curX, y: curY, z: curZ },
+        end: {
+          x: curX + dirX * endExt * INtoU,
+          y: curY + pitchPerHoriz * (endExt * INtoU),
+          z: curZ + dirZ * endExt * INtoU,
+        },
+        lengthIn: endExt,
+      });
     }
   }
 
