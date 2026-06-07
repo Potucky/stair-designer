@@ -107,8 +107,8 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     : handrailH;
   const totalVisualH = height + Math.max(handrailH, maxPostH) + riserHeight / 2;
 
-  const topPad = 8;   // pt gap above highest drawn element
-  const botPad = 46;  // pt gap below ground line for run-dimension labels
+  const topPad = 18;  // pt gap above highest drawn element — keeps top rail clear of header
+  const botPad = 36;  // pt gap below ground line
 
   const scaleX = (dAreaW * 0.80) / (run || 1);
   const scaleY = (safeH - topPad - botPad) / (totalVisualH || 1);
