@@ -320,6 +320,28 @@ export default function App() {
   const handleMoveRight = () => setStructureOffsetZIn(prev => prev + 6);
   const handleResetStructureOffset = () => { setStructureOffsetXIn(0); setStructureOffsetZIn(0); };
 
+  const handleNewProject = () => {
+    const hasObjects = manualPosts.length > 0 || manualTopRails.length > 0;
+    if (hasObjects && !window.confirm('Start a new project? Current unsaved changes will be cleared.')) return;
+    localStorage.removeItem(LS_KEY);
+    setProject(DEFAULT_PROJECT);
+    setStairConfig({ ...DEFAULT_STAIR, steps: 6, bottomLandingEnabled: true, topLandingEnabled: true });
+    setManualPosts([]);
+    setManualTopRails([]);
+    setSelectedManualPostId(null);
+    setSelectedManualTopRailId(null);
+    setTopRailFirstPostId(null);
+    setFastRailsPrevPostId(null);
+    setPostPlacementMode(false);
+    setTopRailMode(false);
+    setFastRailsMode(false);
+    setTopRailPathMode('standard');
+    setStructureMoveSelected(false);
+    setStructureOffsetXIn(0);
+    setStructureOffsetZIn(0);
+    setCurrentProjectId(null);
+  };
+
   const handleOpenJson = () =>
     openProjectJson(
       ({ project: p, stairConfig: sc, units: u, manualPosts: mp, manualTopRails: mtr, structureOffsetXIn: sox, structureOffsetZIn: soz, topRailPathMode: trpm }) => {
@@ -437,6 +459,7 @@ export default function App() {
         calc={calc}
         warnings={warnings}
         materials={materials}
+        onNewProject={handleNewProject}
         onSaveProject={handleSaveProject}
         onOpenProject={() => setOpenProjectModalOpen(true)}
         onExportPdf={handleExportPdf}

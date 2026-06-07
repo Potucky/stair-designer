@@ -238,8 +238,14 @@ html, body, #root {
 .save-project-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   margin-top: 4px;
+}
+.save-project-row .panel-btn {
+  flex: 1 1 0;
+  padding: 4px 4px;
+  font-size: 10px;
+  text-align: center;
 }
 
 .panel-btn {
