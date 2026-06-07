@@ -294,7 +294,7 @@ export function getManualTopRailDoglegSegments(manualTopRails, manualPosts, trea
       ? { x: start.x - ux * startExt * INtoU, y: start.y - uy * startExt * INtoU, z: start.z - uz * startExt * INtoU }
       : start;
 
-    if (r.customRouteEnabled) continue;
+    if (Array.isArray(rail.customRouteSegments) && rail.customRouteSegments.length > 0) continue;
 
     if (!r.doglegEnabled) {
       const extEnd = endExt > 0
@@ -433,13 +433,17 @@ export function getManualTopRailManualSegments(manualTopRails, manualPosts, trea
 
 // Custom route segments: walks customRouteSegments (straight/left90/right90) from the start
 // post top. Pitch is derived from the original start→end post tops so all pieces stay raked
-// at stair angle rather than running level. Turns rotate the plan direction only; no tube is
-// drawn for turn commands.
+// at stair angle. Turns rotate plan direction only. Activated by any non-empty customRouteSegments
+// (no customRouteEnabled flag required). Start extension is rendered as a backwards segment before
+// the route. The caller is responsible for not passing rails that have empty customRouteSegments.
 export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run) {
   const segments = [];
 
   for (const rail of manualTopRails) {
-    if (!rail.customRouteEnabled) continue;
+    const routeSegs = Array.isArray(rail.customRouteSegments) && rail.customRouteSegments.length > 0
+      ? rail.customRouteSegments : null;
+    if (!routeSegs) continue;
+
     const r = normalizeRailEndpoints(rail);
     const startPt = resolveRailEndpoint(r.startEndpoint, manualPosts, treadPositions, riserHeight, run);
     if (!startPt) continue;
@@ -460,9 +464,22 @@ export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositio
       }
     }
 
-    const routeSegs = Array.isArray(rail.customRouteSegments) && rail.customRouteSegments.length > 0
-      ? rail.customRouteSegments
-      : [{ type: 'straight', lengthIn: 24 }];
+    // Render start extension as a backwards segment before the route
+    const perRailStartExt = r.startEndpoint.extension?.type === 'straight'
+      ? Math.max(0, Number(r.startEndpoint.extension.lengthIn) || 0) : 0;
+    if (perRailStartExt > 0 && (Math.abs(dirX) > 0.001 || Math.abs(dirZ) > 0.001)) {
+      segments.push({
+        rail: r,
+        segKey: `${r.id}-cr-sx`,
+        start: {
+          x: startPt.x - dirX * perRailStartExt * INtoU,
+          y: startPt.y - pitchPerHoriz * (perRailStartExt * INtoU),
+          z: startPt.z - dirZ * perRailStartExt * INtoU,
+        },
+        end: { x: startPt.x, y: startPt.y, z: startPt.z },
+        lengthIn: perRailStartExt,
+      });
+    }
 
     let curX = startPt.x;
     let curY = startPt.y;
@@ -471,8 +488,7 @@ export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositio
     for (let i = 0; i < routeSegs.length; i++) {
       const seg = routeSegs[i];
       if (seg.type === 'straight') {
-        const len = Math.max(0, Number(seg.lengthIn) || 0);
-        if (len < 0.001) continue;
+        const len = Math.max(1, Math.min(240, Number(seg.lengthIn) || 24));
         const lenU = len * INtoU;
         const endX = curX + dirX * lenU;
         const endY = curY + pitchPerHoriz * lenU;
@@ -488,12 +504,10 @@ export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositio
         curY = endY;
         curZ = endZ;
       } else if (seg.type === 'left90') {
-        const nx = -dirZ;
-        const nz = dirX;
+        const nx = -dirZ; const nz = dirX;
         dirX = nx; dirZ = nz;
       } else if (seg.type === 'right90') {
-        const nx = dirZ;
-        const nz = -dirX;
+        const nx = dirZ; const nz = -dirX;
         dirX = nx; dirZ = nz;
       }
     }

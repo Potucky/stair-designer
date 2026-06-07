@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { TUBE_SIZES } from '../data/materialProfiles.js';
 import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
-import { normalizeRailEndpoints, DEFAULT_MANUAL_SEGMENTS } from '../geometry/railingGeometry.js';
+import { normalizeRailEndpoints, DEFAULT_MANUAL_SEGMENTS, getManualPostTop, INtoU } from '../geometry/railingGeometry.js';
 
 function NumericDraftInput({ value, onCommit, className, style, inputMode = 'decimal', integer = false, allowZero = false }) {
   const [focused, setFocused] = useState(false);
@@ -117,6 +117,8 @@ function ExtChips({ curLen, onSet }) {
 
 export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onSaveProject, onOpenProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode }) {
   const [saveStatus, setSaveStatus] = useState(null);
+  const [turnPosition, setTurnPosition] = useState('atEnd');
+  const [customTurnDistIn, setCustomTurnDistIn] = useState(12);
 
   const str = (field) => (e) => setProject((p) => ({ ...p, [field]: e.target.value }));
   const toggle = (field) => (e) => setStairConfig((s) => ({ ...s, [field]: e.target.checked }));
@@ -433,52 +435,136 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                   );
                 })}
 
-                {/* Endpoint extension controls for selected rail */}
+                {/* Compact Top Rail Route controls for selected rail */}
                 {topRailPathMode === 'standard' && selectedManualTopRailId && (() => {
                   const sel = manualTopRails.find(r => r.id === selectedManualTopRailId);
                   if (!sel) return null;
                   const r = normalizeRailEndpoints(sel);
+                  const routeSegs = Array.isArray(sel.customRouteSegments) ? sel.customRouteSegments : [];
+                  const updateRoute = (segs) => onUpdateManualTopRail(sel.id, { customRouteSegments: segs });
 
-                  const setExt = (which, lengthIn) => {
-                    const ep = r[`${which}Endpoint`];
-                    onUpdateManualTopRail(sel.id, {
-                      [`${which}Endpoint`]: {
-                        ...ep,
-                        extension: lengthIn === 0
-                          ? { type: 'none', lengthIn: 0 }
-                          : { type: 'straight', lengthIn },
-                      },
-                    });
+                  const startExtLen = r.startEndpoint.extension?.type === 'straight'
+                    ? Math.max(0, Number(r.startEndpoint.extension.lengthIn) || 0) : 0;
+                  const endExtLen = r.endEndpoint.extension?.type === 'straight'
+                    ? Math.max(0, Number(r.endEndpoint.extension.lengthIn) || 0) : 0;
+
+                  // Compute plan (XZ) distance between posts for turn position helpers
+                  let horizDistIn = 0;
+                  const startPost = r.startEndpoint.anchorType === 'post'
+                    ? manualPosts?.find(p => p.id === r.startEndpoint.postId) : null;
+                  const endPost = r.endEndpoint.anchorType === 'post'
+                    ? manualPosts?.find(p => p.id === r.endEndpoint.postId) : null;
+                  if (startPost && endPost) {
+                    const sp = getManualPostTop(startPost, calc.treadPositions, calc.riserHeight, stairConfig.run);
+                    const ep = getManualPostTop(endPost, calc.treadPositions, calc.riserHeight, stairConfig.run);
+                    if (sp && ep) {
+                      horizDistIn = Math.sqrt((ep.x - sp.x) ** 2 + (ep.z - sp.z) ** 2) / INtoU;
+                    }
+                  }
+
+                  const addTurn = (side) => {
+                    const turn = { type: side === 'left' ? 'left90' : 'right90' };
+                    if (routeSegs.length === 0 && turnPosition !== 'atEnd' && horizDistIn > 0) {
+                      let straightLen = Math.round(horizDistIn);
+                      if (turnPosition === 'beforePost') straightLen = Math.max(1, Math.round(horizDistIn) - 12);
+                      else if (turnPosition === 'atPost') straightLen = Math.round(horizDistIn);
+                      else if (turnPosition === 'afterPost') straightLen = Math.round(horizDistIn + endExtLen);
+                      else if (turnPosition === 'custom') straightLen = Math.max(1, Math.min(240, customTurnDistIn));
+                      updateRoute([{ type: 'straight', lengthIn: straightLen }, turn]);
+                    } else {
+                      updateRoute([...routeSegs, turn]);
+                    }
                   };
 
                   return (
                     <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-                      <div className="field-label-sm" style={{ marginBottom: 6 }}>Endpoint Extensions</div>
-                      {['start', 'end'].map(which => {
-                        const ep = r[`${which}Endpoint`];
-                        const isFixed = ep.anchorType === 'fixed';
-                        const curLen = ep.extension?.type === 'none' ? 0 : (Number(ep.extension?.lengthIn) || 0);
-                        return (
-                          <div key={which} style={{ marginBottom: 8 }}>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
-                              {which === 'start' ? 'Start' : 'End'}{isFixed ? ' — Fixed/Detached' : ''}
-                            </div>
-                            <ExtChips
-                              key={`${sel.id}-${which}`}
-                              curLen={curLen}
-                              onSet={(v) => setExt(which, v)}
-                            />
-                          </div>
-                        );
-                      })}
+                      <div className="field-label-sm" style={{ marginBottom: 6 }}>Top Rail Route</div>
+
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>Start Ext (in)</div>
+                      <ExtChips
+                        key={`${sel.id}-start`}
+                        curLen={startExtLen}
+                        onSet={v => onUpdateManualTopRail(sel.id, {
+                          startEndpoint: { ...r.startEndpoint, extension: v === 0 ? { type: 'none', lengthIn: 0 } : { type: 'straight', lengthIn: v } },
+                        })}
+                      />
+
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, marginTop: 6 }}>End Ext (in)</div>
+                      <ExtChips
+                        key={`${sel.id}-end`}
+                        curLen={endExtLen}
+                        onSet={v => onUpdateManualTopRail(sel.id, {
+                          endEndpoint: { ...r.endEndpoint, extension: v === 0 ? { type: 'none', lengthIn: 0 } : { type: 'straight', lengthIn: v } },
+                        })}
+                      />
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, marginBottom: 4 }}>
+                        <span className="field-label-sm" style={{ marginBottom: 0, flexShrink: 0 }}>Turn pos</span>
+                        <select
+                          className="field-input"
+                          style={{ flex: 1, fontSize: 10 }}
+                          value={turnPosition}
+                          onChange={e => setTurnPosition(e.target.value)}
+                        >
+                          <option value="atEnd">At end</option>
+                          <option value="beforePost">Before post</option>
+                          <option value="atPost">At post</option>
+                          <option value="afterPost">After post</option>
+                          <option value="custom">Custom (in)</option>
+                        </select>
+                        {turnPosition === 'custom' && (
+                          <NumericDraftInput
+                            className="field-input"
+                            style={{ width: 44, fontSize: 10 }}
+                            value={customTurnDistIn}
+                            onCommit={v => setCustomTurnDistIn(Math.max(1, Math.min(240, v)))}
+                          />
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: routeSegs.length > 0 ? 6 : 0 }}>
+                        <button className="panel-btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => addTurn('left')}>L 90°</button>
+                        <button className="panel-btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => addTurn('right')}>R 90°</button>
+                        <button className="panel-btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => updateRoute([...routeSegs, { type: 'straight', lengthIn: 24 }])}>+ Straight</button>
+                        {routeSegs.length > 0 && (
+                          <button className="panel-btn panel-btn-danger" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => updateRoute([])}>Reset</button>
+                        )}
+                      </div>
+
+                      {routeSegs.map((seg, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                          <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 14, flexShrink: 0 }}>{i + 1}.</span>
+                          <span style={{ fontSize: 10, color: 'var(--text)', flex: seg.type === 'straight' ? '0 0 48px' : 1 }}>
+                            {seg.type === 'straight' ? 'Straight' : seg.type === 'left90' ? 'L 90°' : 'R 90°'}
+                          </span>
+                          {seg.type === 'straight' && (
+                            <>
+                              <NumericDraftInput
+                                className="field-input"
+                                style={{ flex: 1, fontSize: 10 }}
+                                value={seg.lengthIn}
+                                onCommit={v => updateRoute(routeSegs.map((s, j) => j === i ? { ...s, lengthIn: Math.max(1, Math.min(240, v)) } : s))}
+                              />
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>in</span>
+                            </>
+                          )}
+                          <button
+                            className="panel-btn panel-btn-danger"
+                            style={{ padding: '2px 6px', fontSize: 10, flexShrink: 0 }}
+                            onClick={() => updateRoute(routeSegs.filter((_, j) => j !== i))}
+                          >×</button>
+                        </div>
+                      ))}
                     </div>
                   );
                 })()}
 
-                {/* Dogleg controls for selected Top Rail */}
+                {/* Dogleg controls — hidden when the route has any turn segments */}
                 {topRailPathMode === 'standard' && selectedManualTopRailId && (() => {
                   const sel = manualTopRails.find(r => r.id === selectedManualTopRailId);
                   if (!sel) return null;
+                  const routeSegs = Array.isArray(sel.customRouteSegments) ? sel.customRouteSegments : [];
+                  if (routeSegs.some(s => s.type === 'left90' || s.type === 'right90')) return null;
                   const doglegEnabled = !!sel.doglegEnabled;
                   return (
                     <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
@@ -540,85 +626,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                               allowZero
                               onCommit={v => onUpdateManualTopRail(sel.id, { doglegAfterIn: Math.max(0, v) })}
                             />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {/* Custom Route controls for selected Top Rail */}
-                {topRailPathMode === 'standard' && selectedManualTopRailId && (() => {
-                  const sel = manualTopRails.find(r => r.id === selectedManualTopRailId);
-                  if (!sel) return null;
-                  const routeEnabled = !!sel.customRouteEnabled;
-                  const routeSegs = Array.isArray(sel.customRouteSegments) ? sel.customRouteSegments : [];
-                  const updateRoute = (segs) => onUpdateManualTopRail(sel.id, { customRouteSegments: segs });
-                  return (
-                    <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginBottom: routeEnabled ? 8 : 0 }}>
-                        <input
-                          type="checkbox"
-                          checked={routeEnabled}
-                          onChange={e => {
-                            const enabled = e.target.checked;
-                            onUpdateManualTopRail(sel.id, {
-                              customRouteEnabled: enabled,
-                              customRouteSegments: enabled && (!sel.customRouteSegments || sel.customRouteSegments.length === 0)
-                                ? [{ type: 'straight', lengthIn: 24 }]
-                                : sel.customRouteSegments || [],
-                            });
-                          }}
-                        />
-                        <span className="field-label-sm" style={{ marginBottom: 0 }}>Enable Custom Route</span>
-                      </label>
-                      {routeEnabled && (
-                        <div>
-                          {routeSegs.map((seg, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
-                              <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 16, flexShrink: 0 }}>{i + 1}.</span>
-                              <span style={{ fontSize: 10, color: 'var(--text)', flex: seg.type === 'straight' ? '0 0 52px' : 1 }}>
-                                {seg.type === 'straight' ? 'Straight' : seg.type === 'left90' ? 'Left 90°' : 'Right 90°'}
-                              </span>
-                              {seg.type === 'straight' && (
-                                <>
-                                  <NumericDraftInput
-                                    className="field-input"
-                                    style={{ flex: 1, fontSize: 10 }}
-                                    value={seg.lengthIn}
-                                    onCommit={v => updateRoute(routeSegs.map((s, j) => j === i ? { ...s, lengthIn: v } : s))}
-                                  />
-                                  <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>in</span>
-                                </>
-                              )}
-                              <button
-                                className="panel-btn panel-btn-danger"
-                                style={{ padding: '2px 6px', fontSize: 10, flexShrink: 0 }}
-                                onClick={() => updateRoute(routeSegs.filter((_, j) => j !== i))}
-                              >×</button>
-                            </div>
-                          ))}
-                          <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
-                            <button
-                              className="panel-btn"
-                              style={{ fontSize: 10, padding: '2px 8px' }}
-                              onClick={() => updateRoute([...routeSegs, { type: 'straight', lengthIn: 24 }])}
-                            >+ Straight</button>
-                            <button
-                              className="panel-btn"
-                              style={{ fontSize: 10, padding: '2px 8px' }}
-                              onClick={() => updateRoute([...routeSegs, { type: 'left90' }])}
-                            >+ Left 90</button>
-                            <button
-                              className="panel-btn"
-                              style={{ fontSize: 10, padding: '2px 8px' }}
-                              onClick={() => updateRoute([...routeSegs, { type: 'right90' }])}
-                            >+ Right 90</button>
-                            <button
-                              className="panel-btn panel-btn-danger"
-                              style={{ fontSize: 10, padding: '2px 8px' }}
-                              onClick={() => updateRoute([])}
-                            >Clear</button>
                           </div>
                         </div>
                       )}
