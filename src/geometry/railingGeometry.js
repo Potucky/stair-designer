@@ -492,14 +492,20 @@ export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositio
     const startExt = perRailStartExt + globalStartExt;
     const endExt = perRailEndExt + globalEndExt;
 
-    // Start extension: backward along initial route direction before the first segment
+    // runPlan: the original P1→P2 plan direction (normalized). Only movement in this
+    // direction contributes Y rise; lateral (left/right) movement gets dy = 0.
+    const runPlanX = dirX;
+    const runPlanZ = dirZ;
+
+    // Start extension: backward along initial route direction before the first segment.
+    // Forward progress along runPlan = -startExt (going backward), so dy = -pitchPerHoriz * startExt * INtoU.
     if (startExt > 0 && (Math.abs(dirX) > 0.001 || Math.abs(dirZ) > 0.001)) {
       segments.push({
         rail: r,
         segKey: `${r.id}-cr-sx`,
         start: {
           x: startPt.x - dirX * startExt * INtoU,
-          y: startPt.y - pitchPerHoriz * (dirX * startExt * INtoU),
+          y: startPt.y - pitchPerHoriz * startExt * INtoU,
           z: startPt.z - dirZ * startExt * INtoU,
         },
         end: { x: startPt.x, y: startPt.y, z: startPt.z },
@@ -521,7 +527,10 @@ export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositio
           : (_valid ? Math.max(1, Math.min(240, _raw)) : 24);
         const lenU = len * INtoU;
         const endX = curX + dirX * lenU;
-        const endY = curY + pitchPerHoriz * (dirX * lenU);
+        // dy = pitchPerHoriz * forwardDistance; forwardDistance = dot(currentDir, runPlan) * lenU.
+        // Lateral segments (left/right 90° turns) have dot = 0, so dy = 0.
+        const fwd = dirX * runPlanX + dirZ * runPlanZ;
+        const endY = curY + pitchPerHoriz * fwd * lenU;
         const endZ = curZ + dirZ * lenU;
         segments.push({
           rail: r,
@@ -542,15 +551,17 @@ export function getCustomRouteSegments(manualTopRails, manualPosts, treadPositio
       }
     }
 
-    // End extension: forward along final route direction after the last segment
+    // End extension: forward along final route direction after the last segment.
+    // Forward progress = dot(finalDir, runPlan) * endExt * INtoU.
     if (endExt > 0 && (Math.abs(dirX) > 0.001 || Math.abs(dirZ) > 0.001)) {
+      const fwdEnd = dirX * runPlanX + dirZ * runPlanZ;
       segments.push({
         rail: r,
         segKey: `${r.id}-cr-ex`,
         start: { x: curX, y: curY, z: curZ },
         end: {
           x: curX + dirX * endExt * INtoU,
-          y: curY + pitchPerHoriz * (dirX * endExt * INtoU),
+          y: curY + pitchPerHoriz * fwdEnd * endExt * INtoU,
           z: curZ + dirZ * endExt * INtoU,
         },
         lengthIn: endExt,
