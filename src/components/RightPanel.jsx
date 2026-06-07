@@ -547,6 +547,17 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                   );
                 })()}
 
+                {/* Delete selected rail */}
+                {selectedManualTopRailId && (
+                  <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                    <button
+                      className="panel-btn panel-btn-danger"
+                      style={{ width: '100%' }}
+                      onClick={() => onDeleteManualTopRail(selectedManualTopRailId)}
+                    >Delete Rail</button>
+                  </div>
+                )}
+
                 {/* Manual Top Rail Path */}
                 {topRailPathMode === 'manual' && (
                   <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>

@@ -15,7 +15,7 @@ import { generatePdf } from './pdf/generatePdf.js';
 import { saveProject } from './lib/saveProject.js';
 import { loadProject } from './lib/loadProject.js';
 import { DEFAULT_STAIR, DEFAULT_PROJECT } from './constants/defaults.js';
-import { getManualPostTop, normalizeRailEndpoints, INtoU } from './geometry/railingGeometry.js';
+import { normalizeRailEndpoints } from './geometry/railingGeometry.js';
 
 const LS_KEY = 'stairDesigner_autosave';
 
@@ -62,6 +62,22 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  useEffect(() => {
+    const onDeleteKey = (e) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      const tag = e.target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+      if (selectedManualPostId) {
+        handleDeleteManualPost(selectedManualPostId);
+      } else if (selectedManualTopRailId) {
+        handleDeleteManualTopRail(selectedManualTopRailId);
+      }
+    };
+    window.addEventListener('keydown', onDeleteKey);
+    return () => window.removeEventListener('keydown', onDeleteKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedManualPostId, selectedManualTopRailId]);
 
   // Restore from localStorage on mount (runs once, before first user action)
   useEffect(() => {
@@ -164,40 +180,19 @@ export default function App() {
   };
 
   const handleDeleteManualPost = (id) => {
-    const post = manualPosts.find(p => p.id === id);
-    const postTop = post
-      ? getManualPostTop(post, calc.treadPositions, calc.riserHeight, stairConfig.run)
-      : null;
-
-    setManualTopRails(prev => prev.map(rail => {
-      const r = normalizeRailEndpoints(rail);
-      let { startEndpoint, endEndpoint } = r;
-      let changed = false;
-
-      if (startEndpoint.anchorType === 'post' && startEndpoint.postId === id) {
-        startEndpoint = {
-          ...startEndpoint,
-          anchorType: 'fixed',
-          pointIn: postTop
-            ? { xIn: postTop.x / INtoU, yIn: postTop.y / INtoU, zIn: postTop.z / INtoU }
-            : startEndpoint.pointIn,
-        };
-        changed = true;
+    setManualTopRails(prev => {
+      const next = prev.filter(rail => {
+        const r = normalizeRailEndpoints(rail);
+        const startConnected = r.startEndpoint.anchorType === 'post' && r.startEndpoint.postId === id;
+        const endConnected = r.endEndpoint.anchorType === 'post' && r.endEndpoint.postId === id;
+        return !startConnected && !endConnected;
+      });
+      const removedIds = new Set(prev.filter(r => !next.includes(r)).map(r => r.id));
+      if (removedIds.size > 0) {
+        setSelectedManualTopRailId(cur => (removedIds.has(cur) ? null : cur));
       }
-      if (endEndpoint.anchorType === 'post' && endEndpoint.postId === id) {
-        endEndpoint = {
-          ...endEndpoint,
-          anchorType: 'fixed',
-          pointIn: postTop
-            ? { xIn: postTop.x / INtoU, yIn: postTop.y / INtoU, zIn: postTop.z / INtoU }
-            : endEndpoint.pointIn,
-        };
-        changed = true;
-      }
-
-      return changed ? { ...r, startEndpoint, endEndpoint } : r;
-    }));
-
+      return next;
+    });
     setManualPosts(prev => prev.filter(p => p.id !== id));
     setSelectedManualPostId(null);
   };
