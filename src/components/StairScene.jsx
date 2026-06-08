@@ -675,7 +675,6 @@ function ManualDimTool({ active }) {
   const [pointA, setPointA] = useState(null);
   const [pointB, setPointB] = useState(null);
   const phaseRef = useRef('idle');
-  const rayRef = useRef(new THREE.Raycaster());
   const { camera, scene, gl } = useThree();
 
   useEffect(() => {
@@ -694,16 +693,21 @@ function ManualDimTool({ active }) {
     const onPointerDown = (e) => { downX = e.clientX; downY = e.clientY; };
 
     const onClick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
       const dx = e.clientX - downX;
       const dy = e.clientY - downY;
-      if (dx * dx + dy * dy > 64) return; // skip if moved > 8px (drag)
+      if (dx * dx + dy * dy > 64) return; // skip drag-end clicks
 
       const rect = canvas.getBoundingClientRect();
       const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       const ny = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
-      rayRef.current.setFromCamera({ x: nx, y: ny }, camera);
-      const hits = rayRef.current.intersectObjects(scene.children, true);
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera({ x: nx, y: ny }, camera);
+      const hits = ray.intersectObjects(scene.children, true);
       const solidHit = hits.find(h => {
         if (!h.object.isMesh) return false;
         if (h.object.userData.isDimMarker) return false;
@@ -716,10 +720,9 @@ function ManualDimTool({ active }) {
       if (solidHit) {
         pt = solidHit.point.clone();
       } else {
-        // Fall back to ground plane when clicking empty space
         const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
         pt = new THREE.Vector3();
-        if (!rayRef.current.ray.intersectPlane(groundPlane, pt)) return;
+        if (!ray.ray.intersectPlane(groundPlane, pt)) return;
       }
 
       if (phaseRef.current === 'idle') {
@@ -741,11 +744,11 @@ function ManualDimTool({ active }) {
     };
 
     canvas.addEventListener('pointerdown', onPointerDown);
-    canvas.addEventListener('click', onClick);
+    canvas.addEventListener('click', onClick, true); // capture phase: fires before Three.js events
     window.addEventListener('keydown', onKey);
     return () => {
       canvas.removeEventListener('pointerdown', onPointerDown);
-      canvas.removeEventListener('click', onClick);
+      canvas.removeEventListener('click', onClick, true);
       window.removeEventListener('keydown', onKey);
     };
   }, [active, camera, scene, gl]);
