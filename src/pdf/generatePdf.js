@@ -413,17 +413,22 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   }
 
   // ── Manual Dimensions (side view) ────────────────────────────────────────
+  // Uses the same syToPdf-compatible transform as posts/rails:
+  //   ax = ox + dw/2 + xIn*sc   (xIn is scene X in inches, centred at 0)
+  //   ay = oy - yIn*sc - rPx/2 + (TREAD_THICK/INtoU)*sc
+  // The Y correction aligns scene hit-point Y with the visual tread/post positions in the PDF.
   if (Array.isArray(manualDimensions) && manualDimensions.length > 0) {
     const MD_COLOR = '#1e3a5f';
     const TICK = 4; // half-tick length in pts
+    // Y correction: same offset used by syToPdf for rails/posts
+    const yAdj = -rPx / 2 + (TREAD_THICK / INtoU) * sc;
 
     manualDimensions.forEach((dim) => {
-      // Convert stored scene inches → stair-relative inches → PDF pts
-      // stored xIn = scene_x / INtoU; stair-rel xIn = stored_xIn + run/2
+      // xIn = scene_x / INtoU (centred at 0); add run/2 to make stair-relative, then scale.
       const axPdf = mx(ox + (dim.a.xIn + run / 2) * sc);
-      const ayPdf = oy - dim.a.yIn * sc;
+      const ayPdf = oy - dim.a.yIn * sc + yAdj;
       const bxPdf = mx(ox + (dim.b.xIn + run / 2) * sc);
-      const byPdf = oy - dim.b.yIn * sc;
+      const byPdf = oy - dim.b.yIn * sc + yAdj;
 
       doc.setDrawColor(MD_COLOR);
       doc.setLineWidth(1.2);
@@ -439,10 +444,11 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
       const mxPdf = (axPdf + bxPdf) / 2;
       const myPdf = (ayPdf + byPdf) / 2;
+      const dimLabel = dim.label != null ? String(dim.label) : fmtDim(dim.measuredValueIn != null ? dim.measuredValueIn : 0, 2);
       doc.setFontSize(7.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(MD_COLOR);
-      doc.text(dim.label, mxPdf, myPdf - 3, { align: 'center' });
+      doc.text(dimLabel, mxPdf, myPdf - 3, { align: 'center' });
     });
   }
 
