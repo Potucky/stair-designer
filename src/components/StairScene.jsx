@@ -755,23 +755,23 @@ function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDi
 
       const ray = new THREE.Raycaster();
       ray.setFromCamera({ x: nx, y: ny }, camera);
-      const hits = ray.intersectObjects(scene.children, true);
-      const solidHit = hits.find(h => {
-        if (!h.object.isMesh) return false;
-        if (h.object.userData.isDimMarker) return false;
-        const m = h.object.material;
-        if (!m || Array.isArray(m) || m.isShaderMaterial) return false;
-        return true;
+
+      // Only raycast against real model meshes — exclude grid, helpers, dim markers, and transparent planes.
+      // Using isMeshStandardMaterial as the positive filter: all stair/post/rail/landing geometry uses it;
+      // dimension markers (meshBasicMaterial), Grid (ShaderMaterial), and invisible planes are all excluded.
+      const targets = [];
+      scene.traverse(obj => {
+        if (!obj.isMesh || !obj.visible) return;
+        if (obj.userData.isDimMarker || obj.userData.isDimension || obj.userData.isHelper || obj.userData.ignoreDimensionPick) return;
+        const m = obj.material;
+        if (!m || !m.isMeshStandardMaterial) return;
+        targets.push(obj);
       });
 
-      let pt;
-      if (solidHit) {
-        pt = solidHit.point.clone();
-      } else {
-        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-        pt = new THREE.Vector3();
-        if (!ray.ray.intersectPlane(groundPlane, pt)) return;
-      }
+      const hits = ray.intersectObjects(targets, false);
+      if (hits.length === 0) return; // no valid model geometry hit — do nothing
+
+      const pt = hits[0].point.clone();
 
       if (phaseRef.current === 'idle') {
         setPending(pt);
