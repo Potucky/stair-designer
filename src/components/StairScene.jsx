@@ -124,7 +124,7 @@ function ArrowHead({ tip, wingA, wingB }) {
     [tip, wingA, wingB]
   );
   return (
-    <mesh>
+    <mesh userData={{ isDimMarker: true }}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" array={verts} count={3} itemSize={3} />
       </bufferGeometry>
@@ -671,19 +671,67 @@ function MeasureTool({ active, units }) {
   );
 }
 
-function ManualDimTool({ active }) {
-  const [pointA, setPointA] = useState(null);
-  const [pointB, setPointB] = useState(null);
+function PersistedDim({ dim }) {
+  const INtoU = 0.5;
+  const geom = useMemo(() => {
+    const aScene = new THREE.Vector3(dim.a.xIn * INtoU, dim.a.yIn * INtoU, dim.a.zIn * INtoU);
+    const bScene = new THREE.Vector3(dim.b.xIn * INtoU, dim.b.yIn * INtoU, dim.b.zIn * INtoU);
+    const dist = aScene.distanceTo(bScene);
+    if (dist < 2 * S + 0.5) return null;
+
+    const dir = bScene.clone().sub(aScene).normalize();
+    let perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0));
+    if (perp.lengthSq() < 0.0001) perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(1, 0, 0));
+    perp.normalize().multiplyScalar(AW);
+
+    const aInner = aScene.clone().add(dir.clone().multiplyScalar(S));
+    const bInner = bScene.clone().sub(dir.clone().multiplyScalar(S));
+    const mid = aScene.clone().lerp(bScene, 0.5);
+
+    return {
+      aScene, bScene, aInner, bInner, mid,
+      wingA1: aInner.clone().add(perp), wingA2: aInner.clone().sub(perp),
+      wingB1: bInner.clone().add(perp), wingB2: bInner.clone().sub(perp),
+    };
+  }, [dim.a.xIn, dim.a.yIn, dim.a.zIn, dim.b.xIn, dim.b.yIn, dim.b.zIn]);
+
+  if (!geom) return null;
+
+  return (
+    <>
+      <Line points={[geom.aInner.toArray(), geom.bInner.toArray()]} color={DIM_COLOR} lineWidth={1.5} />
+      <ArrowHead tip={geom.aScene.toArray()} wingA={geom.wingA1.toArray()} wingB={geom.wingA2.toArray()} />
+      <ArrowHead tip={geom.bScene.toArray()} wingA={geom.wingB1.toArray()} wingB={geom.wingB2.toArray()} />
+      <Html position={geom.mid.toArray()} center>
+        <div style={LABEL_STYLE}>{dim.label}</div>
+      </Html>
+    </>
+  );
+}
+
+function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDimension, units }) {
+  const [pendingPointA, setPendingPointA] = useState(null);
+  const pendingPointARef = useRef(null);
   const phaseRef = useRef('idle');
   const { camera, scene, gl } = useThree();
+  const INtoU = 0.5;
+
+  const unitsRef = useRef(units);
+  unitsRef.current = units;
+  const onAddRef = useRef(onAddManualDimension);
+  onAddRef.current = onAddManualDimension;
+
+  const setPending = (pt) => {
+    pendingPointARef.current = pt;
+    setPendingPointA(pt);
+  };
 
   useEffect(() => {
     if (!active) {
       phaseRef.current = 'idle';
-      setPointA(null);
-      setPointB(null);
+      setPending(null);
     }
-  }, [active]);
+  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!active) return;
@@ -699,7 +747,7 @@ function ManualDimTool({ active }) {
 
       const dx = e.clientX - downX;
       const dy = e.clientY - downY;
-      if (dx * dx + dy * dy > 64) return; // skip drag-end clicks
+      if (dx * dx + dy * dy > 64) return;
 
       const rect = canvas.getBoundingClientRect();
       const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -726,11 +774,22 @@ function ManualDimTool({ active }) {
       }
 
       if (phaseRef.current === 'idle') {
-        setPointA(pt);
-        setPointB(null);
+        setPending(pt);
         phaseRef.current = 'placing';
       } else {
-        setPointB(pt);
+        const a = pendingPointARef.current;
+        if (!a) { phaseRef.current = 'idle'; return; }
+        const measuredValueIn = a.distanceTo(pt) / INtoU;
+        const label = fmtUnit(measuredValueIn, unitsRef.current);
+        const id = `dim-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        onAddRef.current({
+          id,
+          a: { xIn: a.x / INtoU, yIn: a.y / INtoU, zIn: a.z / INtoU },
+          b: { xIn: pt.x / INtoU, yIn: pt.y / INtoU, zIn: pt.z / INtoU },
+          label,
+          measuredValueIn,
+        });
+        setPending(null);
         phaseRef.current = 'idle';
       }
     };
@@ -738,73 +797,44 @@ function ManualDimTool({ active }) {
     const onKey = (e) => {
       if (e.key === 'Escape') {
         phaseRef.current = 'idle';
-        setPointA(null);
-        setPointB(null);
+        setPending(null);
       }
     };
 
     canvas.addEventListener('pointerdown', onPointerDown);
-    canvas.addEventListener('click', onClick, true); // capture phase: fires before Three.js events
+    canvas.addEventListener('click', onClick, true);
     window.addEventListener('keydown', onKey);
     return () => {
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('click', onClick, true);
       window.removeEventListener('keydown', onKey);
     };
-  }, [active, camera, scene, gl]);
+  }, [active, camera, scene, gl]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const dimGeom = useMemo(() => {
-    if (!pointA || !pointB) return null;
-    const dist = pointA.distanceTo(pointB);
-    if (dist < 2 * S + 0.5) return null;
-
-    const dir = pointB.clone().sub(pointA).normalize();
-    let perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0));
-    if (perp.lengthSq() < 0.0001) perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(1, 0, 0));
-    perp.normalize().multiplyScalar(AW);
-
-    const aInner = pointA.clone().add(dir.clone().multiplyScalar(S));
-    const bInner = pointB.clone().sub(dir.clone().multiplyScalar(S));
-
-    return {
-      aInner, bInner, perp,
-      mid: pointA.clone().lerp(pointB, 0.5),
-      wingA1: aInner.clone().add(perp), wingA2: aInner.clone().sub(perp),
-      wingB1: bInner.clone().add(perp), wingB2: bInner.clone().sub(perp),
-    };
-  }, [pointA, pointB]);
-
-  if (!active) return null;
+  const showPersistedDims = showDimensions || active;
 
   return (
     <>
-      {pointA && !pointB && (
-        <mesh position={pointA.toArray()} userData={{ isDimMarker: true }}>
+      {showPersistedDims && (manualDimensions || []).map(dim => (
+        <PersistedDim key={dim.id} dim={dim} />
+      ))}
+      {active && pendingPointA && (
+        <mesh position={pendingPointA.toArray()} userData={{ isDimMarker: true }}>
           <sphereGeometry args={[0.5, 10, 10]} />
           <meshBasicMaterial color={DIM_COLOR} />
         </mesh>
-      )}
-      {dimGeom && (
-        <>
-          <Line points={[dimGeom.aInner.toArray(), dimGeom.bInner.toArray()]} color={DIM_COLOR} lineWidth={1.5} />
-          <ArrowHead tip={pointA.toArray()} wingA={dimGeom.wingA1.toArray()} wingB={dimGeom.wingA2.toArray()} />
-          <ArrowHead tip={pointB.toArray()} wingA={dimGeom.wingB1.toArray()} wingB={dimGeom.wingB2.toArray()} />
-          <Html position={dimGeom.mid.toArray()} center>
-            <div style={LABEL_STYLE}>DIM</div>
-          </Html>
-        </>
       )}
     </>
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, modalOpen = false, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect }) {
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, modalOpen = false, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension }) {
   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'work';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
-  const isDims = activeTool === 'dims';
+  const isDims = activeTool === 'dimension';
   const activeCursor = isMeasure || isDims || postPlacementMode || topRailMode || fastRailsMode ? 'crosshair' : undefined;
 
   return (
@@ -915,7 +945,13 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
         </group>
 
         <MeasureTool active={isMeasure} units={units} />
-        <ManualDimTool active={isDims} />
+        <ManualDimTool
+          active={isDims}
+          showDimensions={showDimensions}
+          manualDimensions={manualDimensions}
+          onAddManualDimension={onAddManualDimension}
+          units={units}
+        />
 
         <OrbitControls
           ref={orbitRef}

@@ -32,6 +32,8 @@ export default function App() {
   const [currentProjectId, setCurrentProjectId] = useState(null);
   const [openProjectModalOpen, setOpenProjectModalOpen] = useState(false);
 
+  const [manualDimensions, setManualDimensions] = useState([]);
+
   const [manualPosts, setManualPosts] = useState([]);
   const [postPlacementMode, setPostPlacementMode] = useState(false);
   const [selectedManualPostId, setSelectedManualPostId] = useState(null);
@@ -89,6 +91,7 @@ export default function App() {
       if (data.project) setProject((p) => ({ ...p, ...data.project }));
       if (data.stairConfig) setStairConfig((s) => ({ ...DEFAULT_STAIR, ...s, ...data.stairConfig }));
       if (data.units === 'mm' || data.units === 'in') setUnits(data.units);
+      if (Array.isArray(data.manualDimensions)) setManualDimensions(data.manualDimensions);
       if (Array.isArray(data.manualPosts)) setManualPosts(data.manualPosts);
       if (Array.isArray(data.manualTopRails)) setManualTopRails(data.manualTopRails.map(normalizeRailEndpoints));
       if (typeof data.structureOffsetXIn === 'number') setStructureOffsetXIn(data.structureOffsetXIn);
@@ -110,6 +113,7 @@ export default function App() {
           project,
           stairConfig,
           units,
+          manualDimensions,
           manualPosts,
           manualTopRails,
           structureOffsetXIn,
@@ -123,7 +127,7 @@ export default function App() {
       }
     }, 500);
     return () => clearTimeout(id);
-  }, [project, stairConfig, units, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode, currentProjectId]);
+  }, [project, stairConfig, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode, currentProjectId]);
 
   const calc = useMemo(() => calcStair(stairConfig), [stairConfig]);
 
@@ -169,6 +173,18 @@ export default function App() {
     railUpperExtensionIn: stairConfig.railUpperExtensionIn ?? 0,
     topRailPathMode,
   }), [stairConfig, calc, manualPosts, manualTopRails, topRailPathMode]);
+
+  const handleAddManualDimension = (dimData) => {
+    setManualDimensions(prev => [...prev, dimData]);
+  };
+
+  const handleUpdateManualDimension = (id, changes) => {
+    setManualDimensions(prev => prev.map(d => d.id === id ? { ...d, ...changes } : d));
+  };
+
+  const handleDeleteManualDimension = (id) => {
+    setManualDimensions(prev => prev.filter(d => d.id !== id));
+  };
 
   const handleAddManualPost = (postData) => {
     const id = `post-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -321,11 +337,12 @@ export default function App() {
   const handleResetStructureOffset = () => { setStructureOffsetXIn(0); setStructureOffsetZIn(0); };
 
   const handleNewProject = () => {
-    const hasObjects = manualPosts.length > 0 || manualTopRails.length > 0;
+    const hasObjects = manualPosts.length > 0 || manualTopRails.length > 0 || manualDimensions.length > 0;
     if (hasObjects && !window.confirm('Start a new project? Current unsaved changes will be cleared.')) return;
     localStorage.removeItem(LS_KEY);
     setProject(DEFAULT_PROJECT);
     setStairConfig({ ...DEFAULT_STAIR, steps: 6, bottomLandingEnabled: true, topLandingEnabled: true });
+    setManualDimensions([]);
     setManualPosts([]);
     setManualTopRails([]);
     setSelectedManualPostId(null);
@@ -344,11 +361,12 @@ export default function App() {
 
   const handleOpenJson = () =>
     openProjectJson(
-      ({ project: p, stairConfig: sc, units: u, manualPosts: mp, manualTopRails: mtr, structureOffsetXIn: sox, structureOffsetZIn: soz, topRailPathMode: trpm }) => {
+      ({ project: p, stairConfig: sc, units: u, manualDimensions: mdi, manualPosts: mp, manualTopRails: mtr, structureOffsetXIn: sox, structureOffsetZIn: soz, topRailPathMode: trpm }) => {
         skipAutosaveRestoreRef.current = true;
         setProject({ ...DEFAULT_PROJECT, ...p });
         setStairConfig({ ...DEFAULT_STAIR, ...sc });
         if (u) setUnits(u);
+        setManualDimensions(Array.isArray(mdi) ? mdi : []);
         setManualPosts(Array.isArray(mp) ? mp : []);
         setManualTopRails(Array.isArray(mtr) ? mtr.map(normalizeRailEndpoints) : []);
         if (typeof sox === 'number') setStructureOffsetXIn(sox);
@@ -365,12 +383,12 @@ export default function App() {
       (msg) => alert(`Could not open file: ${msg}`),
     );
 
-  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode });
+  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode });
 
-  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualPosts, manualTopRails, structureOffsetZIn, topRailPathMode });
+  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, structureOffsetZIn, topRailPathMode });
 
   const handleSaveProject = async () => {
-    const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode, currentProjectId });
+    const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode, currentProjectId });
     if (result.ok && result.projectId) {
       setCurrentProjectId(result.projectId);
     }
@@ -389,6 +407,7 @@ export default function App() {
     skipAutosaveRestoreRef.current = true;
     setProject({ name: p.project_name ?? '', client: p.client_name ?? '' });
     setStairConfig({ ...DEFAULT_STAIR, ...sc });
+    setManualDimensions(Array.isArray(sc.manualDimensions) ? sc.manualDimensions : []);
     setManualPosts(Array.isArray(v.manual_posts) ? v.manual_posts : []);
     setManualTopRails(Array.isArray(v.manual_top_rails) ? v.manual_top_rails.map(normalizeRailEndpoints) : []);
     if (typeof sc.structureOffsetXIn === 'number') setStructureOffsetXIn(sc.structureOffsetXIn);
@@ -433,6 +452,8 @@ export default function App() {
         showDimensions={showDimensions}
         modalOpen={openProjectModalOpen}
         activeTool={activeTool}
+        manualDimensions={manualDimensions}
+        onAddManualDimension={handleAddManualDimension}
         manualPosts={manualPosts}
         postPlacementMode={postPlacementMode}
         onAddManualPost={handleAddManualPost}
@@ -464,6 +485,10 @@ export default function App() {
         onOpenProject={() => setOpenProjectModalOpen(true)}
         onExportPdf={handleExportPdf}
         units={units}
+        activeTool={activeTool}
+        manualDimensions={manualDimensions}
+        onUpdateManualDimension={handleUpdateManualDimension}
+        onDeleteManualDimension={handleDeleteManualDimension}
         manualPosts={manualPosts}
         postPlacementMode={postPlacementMode}
         onTogglePostPlacement={handleTogglePostPlacement}

@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { getTubeProfile, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
-export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [], structureOffsetZIn = 0, topRailPathMode = 'standard' }) {
+export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], structureOffsetZIn = 0, topRailPathMode = 'standard' }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [792, 612] });
   const INCH_TO_MM = 25.4;
   const fmtDim = (inchVal, dec = 2) =>
@@ -409,6 +409,40 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       } else {
         doc.text(label, pxX + postW / 2 + 2, topY + 7);
       }
+    });
+  }
+
+  // ── Manual Dimensions (side view) ────────────────────────────────────────
+  if (Array.isArray(manualDimensions) && manualDimensions.length > 0) {
+    const MD_COLOR = '#1e3a5f';
+    const TICK = 4; // half-tick length in pts
+
+    manualDimensions.forEach((dim) => {
+      // Convert stored scene inches → stair-relative inches → PDF pts
+      // stored xIn = scene_x / INtoU; stair-rel xIn = stored_xIn + run/2
+      const axPdf = mx(ox + (dim.a.xIn + run / 2) * sc);
+      const ayPdf = oy - dim.a.yIn * sc;
+      const bxPdf = mx(ox + (dim.b.xIn + run / 2) * sc);
+      const byPdf = oy - dim.b.yIn * sc;
+
+      doc.setDrawColor(MD_COLOR);
+      doc.setLineWidth(1.2);
+      doc.line(axPdf, ayPdf, bxPdf, byPdf);
+
+      const lineLen = Math.sqrt((bxPdf - axPdf) ** 2 + (byPdf - ayPdf) ** 2);
+      if (lineLen > 0) {
+        const px = (-(byPdf - ayPdf) / lineLen) * TICK;
+        const py = ((bxPdf - axPdf) / lineLen) * TICK;
+        doc.line(axPdf - px, ayPdf - py, axPdf + px, ayPdf + py);
+        doc.line(bxPdf - px, byPdf - py, bxPdf + px, byPdf + py);
+      }
+
+      const mxPdf = (axPdf + bxPdf) / 2;
+      const myPdf = (ayPdf + byPdf) / 2;
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(MD_COLOR);
+      doc.text(dim.label, mxPdf, myPdf - 3, { align: 'center' });
     });
   }
 

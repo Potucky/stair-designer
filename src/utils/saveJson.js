@@ -33,6 +33,13 @@ function isValidManualTopRail(r) {
   );
 }
 
+function isValidManualDimension(d) {
+  if (!d || typeof d !== 'object' || typeof d.id !== 'string') return false;
+  const aOk = d.a && isFinite(Number(d.a.xIn)) && isFinite(Number(d.a.yIn)) && isFinite(Number(d.a.zIn));
+  const bOk = d.b && isFinite(Number(d.b.xIn)) && isFinite(Number(d.b.yIn)) && isFinite(Number(d.b.zIn));
+  return aOk && bOk;
+}
+
 function isValidManualPost(p) {
   if (!p || typeof p !== 'object' || typeof p.id !== 'string') return false;
   if (typeof p.xIn !== 'number' || !Number.isFinite(p.xIn)) return false;
@@ -77,6 +84,16 @@ export function openProjectJson(onLoad, onError) {
           }
         }
         const units = data.units === 'mm' ? 'mm' : 'in';
+        // Load manualDimensions; old files without this field default to [].
+        // Accept top-level or stairConfig.manualDimensions fallback.
+        const rawDims = Array.isArray(data.manualDimensions)
+          ? data.manualDimensions
+          : Array.isArray(data.stairConfig?.manualDimensions)
+            ? data.stairConfig.manualDimensions
+            : [];
+        const manualDimensions = rawDims
+          .filter(isValidManualDimension)
+          .map(d => ({ ...d, label: typeof d.label === 'string' ? d.label : `${Number(d.measuredValueIn || 0).toFixed(2)}"` }));
         // Load manualPosts; old files without this field default to []
         const manualPosts = Array.isArray(data.manualPosts)
           ? data.manualPosts.filter(isValidManualPost)
@@ -112,7 +129,7 @@ export function openProjectJson(onLoad, onError) {
         const structureOffsetZIn = typeof data.structureOffsetZIn === 'number' && Number.isFinite(data.structureOffsetZIn)
           ? data.structureOffsetZIn : 0;
         const topRailPathMode = data.topRailPathMode === 'manual' ? 'manual' : 'standard';
-        onLoad({ project, stairConfig, units, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode });
+        onLoad({ project, stairConfig, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode });
       } catch (err) {
         onError(err.message || 'Invalid file');
       }
@@ -122,7 +139,7 @@ export function openProjectJson(onLoad, onError) {
   input.click();
 }
 
-export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualPosts = [], manualTopRails = [], structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard' }) {
+export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard' }) {
   const payload = {
     app: 'Stair Designer',
     version: 'v0.0.1 MVP',
@@ -130,6 +147,7 @@ export function saveProjectJson({ project, stairConfig, calc, warnings, material
     units,
     project,
     stairConfig,
+    manualDimensions,
     manualPosts,
     manualTopRails,
     structureOffsetXIn,

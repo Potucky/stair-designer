@@ -115,7 +115,7 @@ function ExtChips({ curLen, onSet }) {
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onNewProject, onSaveProject, onOpenProject, onExportPdf, units, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onNewProject, onSaveProject, onOpenProject, onExportPdf, units, activeTool, manualDimensions, onUpdateManualDimension, onDeleteManualDimension, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode }) {
   const [saveStatus, setSaveStatus] = useState(null);
   const [turnFromP1In, setTurnFromP1In] = useState(null);
 
@@ -810,6 +810,34 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           </>
         )}
       </section>
+
+      {/* Manual Dimensions */}
+      {(activeTool === 'dimension' || (manualDimensions && manualDimensions.length > 0)) && (
+        <section className="panel-section">
+          <h3 className="section-title">Manual Dimensions</h3>
+          {activeTool === 'dimension' && (
+            <div className="post-tool-hint">
+              Dimension tool active — click geometry for Point A, then Point B. ESC cancels.
+            </div>
+          )}
+          {manualDimensions && manualDimensions.map((dim, idx) => (
+            <div key={dim.id} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+              <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0, width: 22 }}>D{idx + 1}</span>
+              <input
+                className="field-input"
+                style={{ flex: 1, fontSize: 10 }}
+                value={dim.label}
+                onChange={(e) => onUpdateManualDimension(dim.id, { label: e.target.value })}
+              />
+              <button
+                className="panel-btn panel-btn-danger"
+                style={{ padding: '2px 6px', fontSize: 10, flexShrink: 0 }}
+                onClick={() => onDeleteManualDimension(dim.id)}
+              >×</button>
+            </div>
+          ))}
+        </section>
+      )}
 
       {/* Results */}
       <section className="panel-section">
