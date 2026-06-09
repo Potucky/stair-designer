@@ -178,6 +178,10 @@ export default function App() {
     setManualDimensions(prev => [...prev, dimData]);
   };
 
+  const handleUndoLastManualDimension = () => {
+    setManualDimensions(prev => prev.slice(0, -1));
+  };
+
   const handleUpdateManualDimension = (id, changes) => {
     setManualDimensions(prev => prev.map(d => d.id === id ? { ...d, ...changes } : d));
   };
@@ -442,7 +446,7 @@ export default function App() {
         onUnitsChange={setUnits}
         onOpenProject={() => setOpenProjectModalOpen(true)}
       />
-      <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} showDimensions={showDimensions} onToggleDimensions={() => setShowDimensions((v) => !v)} />
+      <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} showDimensions={showDimensions} onToggleDimensions={() => setShowDimensions((v) => !v)} manualDimensionsCount={manualDimensions.length} onUndoLastManualDimension={handleUndoLastManualDimension} />
       <StairScene
         stairConfig={stairConfig}
         calc={calc}

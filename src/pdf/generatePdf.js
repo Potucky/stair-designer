@@ -419,7 +419,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   // The Y correction aligns scene hit-point Y with the visual tread/post positions in the PDF.
   if (Array.isArray(manualDimensions) && manualDimensions.length > 0) {
     const MD_COLOR = '#1e3a5f';
-    const TICK = 4; // half-tick length in pts
+    const TICK = 8; // half-tick length in pts
     // Y correction: same offset used by syToPdf for rails/posts
     const yAdj = -rPx / 2 + (TREAD_THICK / INtoU) * sc;
 

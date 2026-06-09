@@ -1,6 +1,6 @@
 import ToolButton from './ToolButton.jsx';
 
-export default function Toolbar({ activeTool, onToolSelect, onViewChange, showDimensions, onToggleDimensions }) {
+export default function Toolbar({ activeTool, onToolSelect, onViewChange, showDimensions, onToggleDimensions, manualDimensionsCount = 0, onUndoLastManualDimension }) {
   const activeTools = [
     { id: 'select',       label: 'Select',       icon: '↖' },
     { id: 'measure',      label: 'Measure',      icon: '📏' },
@@ -56,6 +56,13 @@ export default function Toolbar({ activeTool, onToolSelect, onViewChange, showDi
           icon="👁"
           active={showDimensions}
           onClick={onToggleDimensions}
+        />
+        <ToolButton
+          label="Undo Dim"
+          icon="↩"
+          active={false}
+          disabled={manualDimensionsCount === 0}
+          onClick={onUndoLastManualDimension}
         />
       </div>
 

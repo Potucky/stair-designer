@@ -115,8 +115,10 @@ const LABEL_STYLE = {
   userSelect: 'none',
 };
 
-const S = 1.4;  // arrowhead length (scene units)
-const AW = S * 0.28; // arrowhead half-width
+const S = 1.4;  // arrowhead length (scene units) — standard stair dims
+const AW = S * 0.28; // arrowhead half-width — standard stair dims
+const MANUAL_S = 2.5;  // arrowhead length for manual 3D dimensions
+const MANUAL_AW = MANUAL_S * 0.32; // arrowhead half-width for manual 3D dimensions
 
 function ArrowHead({ tip, wingA, wingB }) {
   const verts = useMemo(
@@ -677,15 +679,15 @@ function PersistedDim({ dim }) {
     const aScene = new THREE.Vector3(dim.a.xIn * INtoU, dim.a.yIn * INtoU, dim.a.zIn * INtoU);
     const bScene = new THREE.Vector3(dim.b.xIn * INtoU, dim.b.yIn * INtoU, dim.b.zIn * INtoU);
     const dist = aScene.distanceTo(bScene);
-    if (dist < 2 * S + 0.5) return null;
+    if (dist < 2 * MANUAL_S + 0.5) return null;
 
     const dir = bScene.clone().sub(aScene).normalize();
     let perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0));
     if (perp.lengthSq() < 0.0001) perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(1, 0, 0));
-    perp.normalize().multiplyScalar(AW);
+    perp.normalize().multiplyScalar(MANUAL_AW);
 
-    const aInner = aScene.clone().add(dir.clone().multiplyScalar(S));
-    const bInner = bScene.clone().sub(dir.clone().multiplyScalar(S));
+    const aInner = aScene.clone().add(dir.clone().multiplyScalar(MANUAL_S));
+    const bInner = bScene.clone().sub(dir.clone().multiplyScalar(MANUAL_S));
     const mid = aScene.clone().lerp(bScene, 0.5);
 
     return {
