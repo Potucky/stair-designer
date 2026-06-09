@@ -448,7 +448,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       doc.setFontSize(7.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(MD_COLOR);
-      doc.text(dimLabel, mxPdf, myPdf - 3, { align: 'center' });
+      if (dimLabel) doc.text(dimLabel, mxPdf, myPdf - 3, { align: 'center' });
     });
   }
 

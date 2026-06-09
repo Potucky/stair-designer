@@ -826,7 +826,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               <input
                 className="field-input"
                 style={{ flex: 1, fontSize: 10 }}
-                value={dim.label}
+                value={dim.label ?? ""}
                 onChange={(e) => onUpdateManualDimension(dim.id, { label: e.target.value })}
               />
               <button

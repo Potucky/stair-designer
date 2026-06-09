@@ -703,7 +703,7 @@ function PersistedDim({ dim }) {
       <ArrowHead tip={geom.aScene.toArray()} wingA={geom.wingA1.toArray()} wingB={geom.wingA2.toArray()} />
       <ArrowHead tip={geom.bScene.toArray()} wingA={geom.wingB1.toArray()} wingB={geom.wingB2.toArray()} />
       <Html position={geom.mid.toArray()} center>
-        <div style={LABEL_STYLE}>{dim.label}</div>
+        <div style={LABEL_STYLE}>{String(dim.label ?? "")}</div>
       </Html>
     </>
   );
