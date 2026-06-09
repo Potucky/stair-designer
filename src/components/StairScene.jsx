@@ -709,7 +709,7 @@ function PersistedDim({ dim }) {
   );
 }
 
-function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDimension, units }) {
+function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDimension, units, stairHeight }) {
   const [pendingPointA, setPendingPointA] = useState(null);
   const pendingPointARef = useRef(null);
   const phaseRef = useRef('idle');
@@ -720,6 +720,8 @@ function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDi
   unitsRef.current = units;
   const onAddRef = useRef(onAddManualDimension);
   onAddRef.current = onAddManualDimension;
+  const stairHeightRef = useRef(stairHeight);
+  stairHeightRef.current = stairHeight;
 
   const setPending = (pt) => {
     pendingPointARef.current = pt;
@@ -737,42 +739,17 @@ function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDi
     if (!active) return;
     const canvas = gl.domElement;
     let downX = 0, downY = 0;
+    let clickTimer = null;
 
-    const onPointerDown = (e) => { downX = e.clientX; downY = e.clientY; };
-
-    const onClick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-
-      const dx = e.clientX - downX;
-      const dy = e.clientY - downY;
-      if (dx * dx + dy * dy > 64) return;
-
+    const getMouseNDC = (e) => {
       const rect = canvas.getBoundingClientRect();
-      const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      const ny = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      return {
+        x: ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        y: -((e.clientY - rect.top) / rect.height) * 2 + 1,
+      };
+    };
 
-      const ray = new THREE.Raycaster();
-      ray.setFromCamera({ x: nx, y: ny }, camera);
-
-      // Only raycast against real model meshes — exclude grid, helpers, dim markers, and transparent planes.
-      // Using isMeshStandardMaterial as the positive filter: all stair/post/rail/landing geometry uses it;
-      // dimension markers (meshBasicMaterial), Grid (ShaderMaterial), and invisible planes are all excluded.
-      const targets = [];
-      scene.traverse(obj => {
-        if (!obj.isMesh || !obj.visible) return;
-        if (obj.userData.isDimMarker || obj.userData.isDimension || obj.userData.isHelper || obj.userData.ignoreDimensionPick) return;
-        const m = obj.material;
-        if (!m || !m.isMeshStandardMaterial) return;
-        targets.push(obj);
-      });
-
-      const hits = ray.intersectObjects(targets, false);
-      if (hits.length === 0) return; // no valid model geometry hit — do nothing
-
-      const pt = hits[0].point.clone();
-
+    const commitPoint = (pt) => {
       if (phaseRef.current === 'idle') {
         setPending(pt);
         phaseRef.current = 'placing';
@@ -794,20 +771,100 @@ function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDi
       }
     };
 
+    const commitModelPick = (ev) => {
+      const { x: nx, y: ny } = getMouseNDC(ev);
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera({ x: nx, y: ny }, camera);
+
+      // Only raycast against real model meshes — exclude grid, helpers, dim markers, and transparent planes.
+      // Using isMeshStandardMaterial as the positive filter: all stair/post/rail/landing geometry uses it;
+      // dimension markers (meshBasicMaterial), Grid (ShaderMaterial), and invisible planes are all excluded.
+      const targets = [];
+      scene.traverse(obj => {
+        if (!obj.isMesh || !obj.visible) return;
+        if (obj.userData.isDimMarker || obj.userData.isDimension || obj.userData.isHelper || obj.userData.ignoreDimensionPick) return;
+        const m = obj.material;
+        if (!m || !m.isMeshStandardMaterial) return;
+        targets.push(obj);
+      });
+
+      const hits = ray.intersectObjects(targets, false);
+      if (hits.length === 0) return; // no valid model geometry hit — do nothing
+      commitPoint(hits[0].point.clone());
+    };
+
+    const commitFreePoint = (ev) => {
+      const { x: nx, y: ny } = getMouseNDC(ev);
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera({ x: nx, y: ny }, camera);
+
+      // Plane perpendicular to camera direction.
+      // If Point A is pending, the plane passes through it; otherwise through the stair center.
+      let planeCenter;
+      if (pendingPointARef.current) {
+        planeCenter = pendingPointARef.current.clone();
+      } else {
+        planeCenter = new THREE.Vector3(0, (stairHeightRef.current ?? 0) * INtoU / 2, 0);
+      }
+
+      const cameraDir = new THREE.Vector3();
+      camera.getWorldDirection(cameraDir);
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(cameraDir, planeCenter);
+
+      const pt = new THREE.Vector3();
+      if (!ray.ray.intersectPlane(plane, pt)) return; // ray parallel to plane — ignore
+      commitPoint(pt);
+    };
+
+    const onPointerDown = (e) => { downX = e.clientX; downY = e.clientY; };
+
+    const onClick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      const dx = e.clientX - downX;
+      const dy = e.clientY - downY;
+      if (dx * dx + dy * dy > 64) return;
+
+      // Delay 250 ms so a subsequent dblclick can cancel this timer before model-pick runs.
+      const snapshot = { clientX: e.clientX, clientY: e.clientY };
+      if (clickTimer) clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => {
+        clickTimer = null;
+        commitModelPick(snapshot);
+      }, 250);
+    };
+
+    const onDblClick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      // Cancel any pending single-click model-pick so it doesn't fire after the dblclick.
+      if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+
+      commitFreePoint(e);
+    };
+
     const onKey = (e) => {
       if (e.key === 'Escape') {
         phaseRef.current = 'idle';
         setPending(null);
+        if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
       }
     };
 
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('click', onClick, true);
+    canvas.addEventListener('dblclick', onDblClick, true);
     window.addEventListener('keydown', onKey);
     return () => {
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('click', onClick, true);
+      canvas.removeEventListener('dblclick', onDblClick, true);
       window.removeEventListener('keydown', onKey);
+      if (clickTimer) clearTimeout(clickTimer);
     };
   }, [active, camera, scene, gl]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -951,6 +1008,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           manualDimensions={manualDimensions}
           onAddManualDimension={onAddManualDimension}
           units={units}
+          stairHeight={height}
         />
 
         <OrbitControls
