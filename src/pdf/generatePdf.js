@@ -422,12 +422,43 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   if (sidePdfDims.length > 0) {
     const MD_COLOR = '#1e3a5f';
     const TICK = 8; // half-tick length in pts
-    const LABEL_OFFSET = 9; // pts — perpendicular clearance from dimension line
+    const LABEL_OFFSET = 16; // pts — perpendicular clearance from dimension line
     // Y correction: same offset used by syToPdf for rails/posts
     const yAdj = -rPx / 2 + (TREAD_THICK / INtoU) * sc;
 
-    // Draws label text parallel to the dimension line, offset to the "above" side.
-    // Safe: validates all coords, catches jsPDF angle failures, falls back to plain centered text.
+    // Draws white rect behind text then the text itself; handles horizontal and rotated (±90°) placement.
+    const drawLabelWithBg = (text, x, y, angleDeg = 0) => {
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(MD_COLOR);
+      try {
+        const textW = doc.getTextWidth(text);
+        const textH = 7.5 * 0.352778; // approx pt→mm height for a 7.5pt font
+        const pad = 1.2;
+        const isVert = Math.abs(Math.abs(angleDeg) - 90) < 20;
+        // For rotated text the visible bounding box is transposed
+        const rw = (isVert ? textH : textW) + pad * 2;
+        const rh = (isVert ? textW : textH) + pad * 2;
+        const rx = x - rw / 2;
+        const ry = isVert ? y - rh / 2 : y - rh * 0.75;
+        doc.saveGraphicsState();
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(255, 255, 255);
+        doc.rect(rx, ry, rw, rh, 'F');
+        doc.restoreGraphicsState();
+        doc.text(text, x, y, { align: 'center', angle: angleDeg });
+      } catch (_e) {
+        try {
+          doc.text(text, x, y, { align: 'center' });
+        } catch (_e2) { /* skip label entirely rather than crash PDF */ }
+      }
+    };
+
+    // Places the dimension label to avoid the stair geometry.
+    // Near-vertical: 6 pt horizontal offset; side chosen relative to stair drawing center so the
+    //   label lands outside (away from stair steps), never on the geometry.
+    // Near-horizontal: 6 pt vertical offset above the line, horizontal text.
+    // Diagonal: 16 pt perpendicular offset, text rotated parallel to line.
     const drawRotatedDimensionLabel = (text, ax, ay, bx, by) => {
       if (!text) return;
       if (!isFinite(ax) || !isFinite(ay) || !isFinite(bx) || !isFinite(by)) return;
@@ -446,25 +477,32 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       if (angleDeg > 90) angleDeg -= 180;
       if (angleDeg < -90) angleDeg += 180;
 
-      // perpendicular normal; choose direction that points "up" (negative y in PDF)
-      let nx = -dy / lineLen;
-      let ny = dx / lineLen;
-      if (ny > 0) { nx = -nx; ny = -ny; }
+      const nearVertical = Math.abs(dx) < Math.abs(dy) * 0.25;
+      const nearHorizontal = Math.abs(dy) < Math.abs(dx) * 0.25;
 
-      const labelX = midX + nx * LABEL_OFFSET;
-      const labelY = midY + ny * LABEL_OFFSET;
+      let labelX, labelY;
 
-      doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(MD_COLOR);
-      try {
-        doc.text(text, labelX, labelY, { align: 'center', angle: angleDeg });
-      } catch (_e) {
-        // angle option failed — draw plain centered text slightly above midpoint
-        try {
-          doc.text(text, midX, midY - LABEL_OFFSET, { align: 'center' });
-        } catch (_e2) { /* skip label entirely rather than crash PDF */ }
+      if (nearVertical) {
+        // Side = away from the stair drawing center → label never lands on stair geometry
+        const stairCenterX = ox + dw / 2;
+        const sideSign = midX <= stairCenterX ? -1 : 1;
+        labelX = midX + sideSign * 6;
+        labelY = midY;
+        // angleDeg ≈ ±90 from atan2; keeps text parallel to the vertical dimension line
+      } else if (nearHorizontal) {
+        labelX = midX;
+        labelY = midY - 6;
+        angleDeg = 0;
+      } else {
+        // Diagonal: perpendicular normal offset, text rotated parallel to line
+        let nx = -dy / lineLen;
+        let ny = dx / lineLen;
+        if (ny > 0) { nx = -nx; ny = -ny; }
+        labelX = midX + nx * 16;
+        labelY = midY + ny * 16;
       }
+
+      drawLabelWithBg(text, labelX, labelY, angleDeg);
     };
 
     sidePdfDims.forEach((dim) => {
