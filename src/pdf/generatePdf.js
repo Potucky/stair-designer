@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { getTubeProfile, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
-export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], structureOffsetZIn = 0, topRailPathMode = 'standard', mode = 'save' }) {
+export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], manualTextAnnotations = [], structureOffsetZIn = 0, topRailPathMode = 'standard', mode = 'save' }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [792, 612] });
   const INCH_TO_MM = 25.4;
   const fmtDim = (inchVal, dec = 2) =>
@@ -530,6 +530,104 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
       const dimLabel = dim.label != null ? String(dim.label) : fmtDim(dim.measuredValueIn != null ? dim.measuredValueIn : 0, 2);
       drawRotatedDimensionLabel(dimLabel, axPdf, ayPdf, bxPdf, byPdf);
+    });
+  }
+
+  // ── Manual Text Annotations (side view) ───────────────────────────────────
+  // Renders projection==='side', projection==='free3d', and legacy (no projection).
+  // projection==='top' is excluded until a top/plan PDF page exists.
+  const sideTextAnnotations = (Array.isArray(manualTextAnnotations) ? manualTextAnnotations : [])
+    .filter(a => !a.projection || a.projection === 'side' || a.projection === 'free3d');
+
+  if (sideTextAnnotations.length > 0) {
+    const yAdj = -rPx / 2 + (TREAD_THICK / INtoU) * sc;
+
+    // Canvas-based rendering so unicode/Cyrillic/special chars survive in the PDF.
+    // Returns { canvas, widthPt, heightPt } or null when text is empty.
+    const createTextAnnotationCanvas = (text, opts = {}) => {
+      const SCALE = 2;
+      const BOX_W_PT = opts.boxWidthPt || 140;
+      const FONT_SIZE_PT = opts.fontSizePt || 9;
+      const PAD_PT = opts.padPt || 5;
+
+      const boxWPx = BOX_W_PT * SCALE;
+      const fontSizePx = FONT_SIZE_PT * SCALE;
+      const padPx = PAD_PT * SCALE;
+      const lineHPx = fontSizePx * 1.4;
+      const maxTextWPx = boxWPx - padPx * 2;
+
+      const tmpCanvas = document.createElement('canvas');
+      tmpCanvas.width = boxWPx;
+      tmpCanvas.height = 10;
+      const tmpCtx = tmpCanvas.getContext('2d');
+      tmpCtx.font = `${fontSizePx}px sans-serif`;
+
+      const paragraphs = text.split(/\r?\n/);
+      const wrappedLines = [];
+      for (const para of paragraphs) {
+        if (!para) { wrappedLines.push(''); continue; }
+        const words = para.split(' ');
+        let cur = '';
+        for (const word of words) {
+          const test = cur ? `${cur} ${word}` : word;
+          if (tmpCtx.measureText(test).width > maxTextWPx && cur) {
+            wrappedLines.push(cur);
+            cur = word;
+          } else {
+            cur = test;
+          }
+        }
+        if (cur) wrappedLines.push(cur);
+      }
+
+      if (!wrappedLines.length) return null;
+
+      const boxHPx = Math.ceil(wrappedLines.length * lineHPx + padPx * 2);
+      const canvas = document.createElement('canvas');
+      canvas.width = boxWPx;
+      canvas.height = boxHPx;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, boxWPx, boxHPx);
+
+      ctx.strokeStyle = '#cccccc';
+      ctx.lineWidth = SCALE * 0.5;
+      ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, boxWPx - ctx.lineWidth, boxHPx - ctx.lineWidth);
+
+      ctx.font = `${fontSizePx}px sans-serif`;
+      ctx.fillStyle = '#1a1a2e';
+      ctx.textBaseline = 'top';
+      wrappedLines.forEach((line, i) => {
+        ctx.fillText(line, padPx, padPx + i * lineHPx);
+      });
+
+      return { canvas, widthPt: BOX_W_PT, heightPt: boxHPx / SCALE };
+    };
+
+    sideTextAnnotations.forEach((ann) => {
+      try {
+        if (!ann || typeof ann.xIn !== 'number' || typeof ann.yIn !== 'number') return;
+        if (!isFinite(ann.xIn) || !isFinite(ann.yIn)) return;
+
+        const rawText = typeof ann.text === 'string' ? ann.text : '';
+        if (!rawText) return;
+
+        const txPdf = mx(ox + (ann.xIn + run / 2) * sc);
+        const tyPdf = oy - ann.yIn * sc + yAdj;
+        if (!isFinite(txPdf) || !isFinite(tyPdf)) return;
+
+        const result = createTextAnnotationCanvas(rawText);
+        if (!result) return;
+
+        const { canvas, widthPt, heightPt } = result;
+        // Anchor slightly above/right of the clicked point so it doesn't cover it
+        const bx = txPdf + 4;
+        const by = tyPdf - heightPt - 4;
+        doc.addImage(canvas.toDataURL('image/png'), 'PNG', bx, by, widthPt, heightPt);
+      } catch (_e) {
+        // skip bad annotation — don't crash PDF export
+      }
     });
   }
 
