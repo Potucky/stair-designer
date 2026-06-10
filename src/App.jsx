@@ -468,7 +468,8 @@ export default function App() {
     setPdfMirrored(sc.pdfMirrored === true);
     if (sc.topRailPathMode === 'manual' || sc.topRailPathMode === 'standard') setTopRailPathMode(sc.topRailPathMode);
     else setTopRailPathMode('standard');
-    setUnits(sc.units === 'mm' ? 'mm' : 'in');
+    const validUnit = (u) => u === 'in' || u === 'mm';
+    setUnits(validUnit(sc.units) ? sc.units : validUnit(p.units) ? p.units : 'in');
     setSelectedManualPostId(null);
     setSelectedManualTopRailId(null);
     setPostPlacementMode(false);
