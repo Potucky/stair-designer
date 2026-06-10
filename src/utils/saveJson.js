@@ -135,10 +135,11 @@ export function openProjectJson(onLoad, onError) {
         const structureOffsetZIn = typeof data.structureOffsetZIn === 'number' && Number.isFinite(data.structureOffsetZIn)
           ? data.structureOffsetZIn : 0;
         const topRailPathMode = data.topRailPathMode === 'manual' ? 'manual' : 'standard';
+        const pdfMirrored = data.pdfMirrored === true;
         const manualTextAnnotations = Array.isArray(data.manualTextAnnotations)
           ? data.manualTextAnnotations.filter(isValidManualTextAnnotation)
           : [];
-        onLoad({ project, stairConfig, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode, manualTextAnnotations });
+        onLoad({ project, stairConfig, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, manualTextAnnotations });
       } catch (err) {
         onError(err.message || 'Invalid file');
       }
@@ -148,7 +149,7 @@ export function openProjectJson(onLoad, onError) {
   input.click();
 }
 
-export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', manualTextAnnotations = [] }) {
+export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], structureOffsetXIn = 0, structureOffsetZIn = 0, pdfMirrored = false, topRailPathMode = 'standard', manualTextAnnotations = [] }) {
   const payload = {
     app: 'Stair Designer',
     version: 'v0.0.1 MVP',
@@ -162,6 +163,7 @@ export function saveProjectJson({ project, stairConfig, calc, warnings, material
     manualTextAnnotations,
     structureOffsetXIn,
     structureOffsetZIn,
+    pdfMirrored,
     topRailPathMode,
     calculations: calc,
     warnings: warnings.map((w) => ({ level: w.level, message: w.msg })),

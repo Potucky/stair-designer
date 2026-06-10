@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { getTubeProfile, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
-export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], manualTextAnnotations = [], structureOffsetZIn = 0, topRailPathMode = 'standard', mode = 'save' }) {
+export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], manualTextAnnotations = [], pdfMirrored = false, topRailPathMode = 'standard', mode = 'save' }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [792, 612] });
   const INCH_TO_MM = 25.4;
   const fmtDim = (inchVal, dec = 2) =>
@@ -126,7 +126,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   const ox = dAreaX + (dAreaW - dw) / 2;
   const oy = groundY;
 
-  const mirrored = structureOffsetZIn > 0;
+  const mirrored = Boolean(pdfMirrored);
   const mx = mirrored ? (x) => 2 * ox + dw - x : (x) => x;
 
   // Ground line

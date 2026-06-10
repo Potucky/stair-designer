@@ -97,6 +97,10 @@ export default function App() {
     const d = loadInitialDraft();
     return typeof d?.structureOffsetZIn === 'number' ? d.structureOffsetZIn : 0;
   });
+  const [pdfMirrored, setPdfMirrored] = useState(() => {
+    const d = loadInitialDraft();
+    return d?.pdfMirrored === true;
+  });
   const [structureMoveSelected, setStructureMoveSelected] = useState(false);
 
   useEffect(() => {
@@ -165,6 +169,7 @@ export default function App() {
           manualTopRails,
           structureOffsetXIn,
           structureOffsetZIn,
+          pdfMirrored,
           topRailPathMode,
           currentProjectId,
         };
@@ -174,7 +179,7 @@ export default function App() {
       }
     }, 500);
     return () => clearTimeout(id);
-  }, [project, stairConfig, units, manualDimensions, manualTextAnnotations, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode, currentProjectId]);
+  }, [project, stairConfig, units, manualDimensions, manualTextAnnotations, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, currentProjectId]);
 
   const calc = useMemo(() => calcStair(stairConfig), [stairConfig]);
 
@@ -369,6 +374,7 @@ export default function App() {
     setManualTopRails(prev => prev.map(r => r.id === id ? { ...r, ...changes } : r));
   };
 
+  const handleTogglePdfMirrored = () => setPdfMirrored(prev => !prev);
   const handleToggleStructureMove = () => setStructureMoveSelected(prev => !prev);
   const handleMoveForward = () => setStructureOffsetXIn(prev => prev + 6);
   const handleMoveBack = () => setStructureOffsetXIn(prev => prev - 6);
@@ -397,12 +403,13 @@ export default function App() {
     setStructureMoveSelected(false);
     setStructureOffsetXIn(0);
     setStructureOffsetZIn(0);
+    setPdfMirrored(false);
     setCurrentProjectId(null);
   };
 
   const handleOpenJson = () =>
     openProjectJson(
-      ({ project: p, stairConfig: sc, units: u, manualDimensions: mdi, manualPosts: mp, manualTopRails: mtr, structureOffsetXIn: sox, structureOffsetZIn: soz, topRailPathMode: trpm, manualTextAnnotations: mta }) => {
+      ({ project: p, stairConfig: sc, units: u, manualDimensions: mdi, manualPosts: mp, manualTopRails: mtr, structureOffsetXIn: sox, structureOffsetZIn: soz, pdfMirrored: pm, topRailPathMode: trpm, manualTextAnnotations: mta }) => {
         skipAutosaveRestoreRef.current = true;
         setProject({ ...DEFAULT_PROJECT, ...p });
         setStairConfig({ ...DEFAULT_STAIR, ...sc });
@@ -413,6 +420,7 @@ export default function App() {
         setManualTopRails(Array.isArray(mtr) ? mtr.map(normalizeRailEndpoints) : []);
         if (typeof sox === 'number') setStructureOffsetXIn(sox);
         if (typeof soz === 'number') setStructureOffsetZIn(soz);
+        setPdfMirrored(pm === true);
         if (trpm) setTopRailPathMode(trpm);
         setSelectedManualPostId(null);
         setSelectedManualTopRailId(null);
@@ -425,12 +433,12 @@ export default function App() {
       (msg) => alert(`Could not open file: ${msg}`),
     );
 
-  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode, manualTextAnnotations });
+  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, manualTextAnnotations });
 
-  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, structureOffsetZIn, topRailPathMode, manualTextAnnotations });
+  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, pdfMirrored, topRailPathMode, manualTextAnnotations });
 
   const handleSaveProject = async () => {
-    const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualDimensions, manualPosts, manualTopRails, manualTextAnnotations, structureOffsetXIn, structureOffsetZIn, topRailPathMode, units, currentProjectId });
+    const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualDimensions, manualPosts, manualTopRails, manualTextAnnotations, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, units, currentProjectId });
     if (result.ok && result.projectId) {
       setCurrentProjectId(result.projectId);
     }
@@ -457,6 +465,7 @@ export default function App() {
     else setStructureOffsetXIn(0);
     if (typeof sc.structureOffsetZIn === 'number') setStructureOffsetZIn(sc.structureOffsetZIn);
     else setStructureOffsetZIn(0);
+    setPdfMirrored(sc.pdfMirrored === true);
     if (sc.topRailPathMode === 'manual' || sc.topRailPathMode === 'standard') setTopRailPathMode(sc.topRailPathMode);
     else setTopRailPathMode('standard');
     setUnits(sc.units === 'mm' ? 'mm' : 'in');
@@ -568,6 +577,8 @@ export default function App() {
         fastRailsMode={fastRailsMode}
         fastRailsPrevPostId={fastRailsPrevPostId}
         onToggleFastRailsMode={handleToggleFastRailsMode}
+        pdfMirrored={pdfMirrored}
+        onTogglePdfMirrored={handleTogglePdfMirrored}
       />
       <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} units={units} />
       {openProjectModalOpen && (

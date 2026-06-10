@@ -115,7 +115,7 @@ function ExtChips({ curLen, onSet }) {
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onNewProject, onSaveProject, onOpenProject, onExportPdf, units, activeTool, manualDimensions, onUpdateManualDimension, onDeleteManualDimension, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode, manualTextAnnotations, onUpdateManualTextAnnotation, onDeleteManualTextAnnotation }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onNewProject, onSaveProject, onOpenProject, onExportPdf, units, activeTool, manualDimensions, onUpdateManualDimension, onDeleteManualDimension, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode, manualTextAnnotations, onUpdateManualTextAnnotation, onDeleteManualTextAnnotation, pdfMirrored, onTogglePdfMirrored }) {
   const [saveStatus, setSaveStatus] = useState(null);
   const [turnFromP1In, setTurnFromP1In] = useState(null);
 
@@ -967,6 +967,9 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center' }}>
               Offset: X {structureOffsetXIn} in / Z {structureOffsetZIn} in
             </div>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 6, lineHeight: '1.4' }}>
+              3D move affects 3D/Print only. Export PDF stays normalized.
+            </div>
           </div>
         )}
       </section>
@@ -977,6 +980,10 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         <p className="field-label" style={{ marginBottom: 8, lineHeight: '1.4' }}>
           Includes stair views, dimensions, and results.
         </p>
+        <label className="field-label field-checkbox" style={{ marginBottom: 8 }}>
+          <input type="checkbox" checked={!!pdfMirrored} onChange={onTogglePdfMirrored} />
+          <span>Mirror PDF side view</span>
+        </label>
         <button className="panel-btn panel-btn-primary" style={{ width: '100%' }} onClick={onExportPdf}>
           Export PDF
         </button>
