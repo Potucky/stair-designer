@@ -430,7 +430,7 @@ export default function App() {
   const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, structureOffsetZIn, topRailPathMode, manualTextAnnotations });
 
   const handleSaveProject = async () => {
-    const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualDimensions, manualPosts, manualTopRails, manualTextAnnotations, structureOffsetXIn, structureOffsetZIn, topRailPathMode, currentProjectId });
+    const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualDimensions, manualPosts, manualTopRails, manualTextAnnotations, structureOffsetXIn, structureOffsetZIn, topRailPathMode, units, currentProjectId });
     if (result.ok && result.projectId) {
       setCurrentProjectId(result.projectId);
     }
@@ -459,6 +459,7 @@ export default function App() {
     else setStructureOffsetZIn(0);
     if (sc.topRailPathMode === 'manual' || sc.topRailPathMode === 'standard') setTopRailPathMode(sc.topRailPathMode);
     else setTopRailPathMode('standard');
+    setUnits(sc.units === 'mm' ? 'mm' : 'in');
     setSelectedManualPostId(null);
     setSelectedManualTopRailId(null);
     setPostPlacementMode(false);

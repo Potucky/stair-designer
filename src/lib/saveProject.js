@@ -13,6 +13,7 @@ export async function saveProject({
   structureOffsetXIn = 0,
   structureOffsetZIn = 0,
   topRailPathMode = 'standard',
+  units = 'in',
   currentProjectId = null,
 }) {
   if (!supabase) {
@@ -29,6 +30,7 @@ export async function saveProject({
         .update({
           project_name: project.name || 'Untitled',
           client_name: project.client || null,
+          units,
         })
         .eq('id', projectId);
       if (updateError) return { ok: false, error: updateError.message };
@@ -41,7 +43,7 @@ export async function saveProject({
           id: projectId,
           project_name: project.name || 'Untitled',
           client_name: project.client || null,
-          units: 'inches',
+          units,
           notes: null,
         });
       if (projectError) return { ok: false, error: projectError.message };
@@ -61,6 +63,7 @@ export async function saveProject({
       structureOffsetXIn,
       structureOffsetZIn,
       topRailPathMode,
+      units,
       manualDimensions,
       manualTextAnnotations,
     };
