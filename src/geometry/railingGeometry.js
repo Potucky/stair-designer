@@ -304,7 +304,6 @@ export function getManualTopRailDoglegSegments(manualTopRails, manualPosts, trea
     } else {
       const doglegStartIn = Math.max(0, Number(r.doglegStartIn) || 0);
       const doglegOffsetIn = Math.max(0, Number(r.doglegOffsetIn) || 0);
-      const doglegAfterIn = Math.max(0, Number(r.doglegAfterIn) || 0);
       const coreLengthIn = coreScene / INtoU;
       const doglegStartClampedIn = Math.min(doglegStartIn, coreLengthIn);
 

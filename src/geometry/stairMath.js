@@ -92,7 +92,7 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
   };
 }
 
-export function buildMaterialList({ width, steps, stringerLength, railingEnabled, handrailHeight, tubeSize, manualPosts = [], manualTopRails = [], treadPositions = [], riserHeight = 0, run = 0, bottomLandingEnabled = false, bottomLandingLength = 36, topLandingEnabled = false, topLandingLength = 36, bottomRailEnabled = false, bottomRailHeight = 1, middleRailEnabled = false, middleRailHeights = [], middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, topRailPathMode = 'standard' }) {
+export function buildMaterialList({ width, steps, stringerLength, tubeSize, manualPosts = [], manualTopRails = [], treadPositions = [], riserHeight = 0, run = 0, bottomLandingEnabled = false, bottomLandingLength = 36, topLandingEnabled = false, topLandingLength = 36, bottomRailEnabled = false, bottomRailHeight = 1, middleRailEnabled = false, middleRailHeights = [], middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, topRailPathMode = 'standard' }) {
   const items = [];
 
   if (bottomLandingEnabled) {

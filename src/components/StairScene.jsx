@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useMemo, useState } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
@@ -53,9 +53,11 @@ function CameraController({ view, viewResetToken, controlsRef, height, run, widt
   const heightRef = useRef(height);
   const runRef = useRef(run);
   const widthRef = useRef(width);
-  heightRef.current = height;
-  runRef.current = run;
-  widthRef.current = width;
+  useLayoutEffect(() => {
+    heightRef.current = height;
+    runRef.current = run;
+    widthRef.current = width;
+  }, [height, run, width]);
 
   useEffect(() => {
     const INtoU = 0.5;
@@ -101,6 +103,7 @@ const MEASURE_LABEL_STYLE = {
   letterSpacing: '0.02em',
 };
 
+const SHOW_INLINE_DIMS = false;
 const DIM_COLOR = '#1e3a5f';
 const EXT_COLOR = '#4a7fad';
 const LABEL_STYLE = {
@@ -449,7 +452,7 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
 
   return (
     <>
-      {segments.map(({ rail, segKey, start, end }) => {
+      {segments.map(({ segKey, start, end }) => {
         const startV = new THREE.Vector3(start.x, start.y, start.z);
         const endV = new THREE.Vector3(end.x, end.y, end.z);
         const length = startV.distanceTo(endV);
@@ -721,7 +724,9 @@ function PersistedDim({ dim }) {
     };
   }, [dim.a.xIn, dim.a.yIn, dim.a.zIn, dim.b.xIn, dim.b.yIn, dim.b.zIn, dim.projection]);
 
-  geomRef.current = geom;
+  useLayoutEffect(() => {
+    geomRef.current = geom;
+  }, [geom]);
 
   useFrame(() => {
     const g = geomRef.current;
@@ -762,25 +767,35 @@ function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDi
   const INtoU = 0.5;
 
   const unitsRef = useRef(units);
-  unitsRef.current = units;
   const onAddRef = useRef(onAddManualDimension);
-  onAddRef.current = onAddManualDimension;
   const stairHeightRef = useRef(stairHeight);
-  stairHeightRef.current = stairHeight;
   const viewRef = useRef(view);
-  viewRef.current = view;
+  useLayoutEffect(() => {
+    unitsRef.current = units;
+    onAddRef.current = onAddManualDimension;
+    stairHeightRef.current = stairHeight;
+    viewRef.current = view;
+  }, [units, onAddManualDimension, stairHeight, view]);
+
+  // Derived state: clear pending point when tool deactivates (avoids setState in effect)
+  const [prevActive, setPrevActive] = useState(active);
+  if (prevActive !== active) {
+    setPrevActive(active);
+    if (!active) setPendingPointA(null);
+  }
 
   const setPending = (pt) => {
     pendingPointARef.current = pt;
     setPendingPointA(pt);
   };
 
-  useEffect(() => {
+  // Reset refs when tool deactivates (no setState needed here)
+  useLayoutEffect(() => {
     if (!active) {
       phaseRef.current = 'idle';
-      setPending(null);
+      pendingPointARef.current = null;
     }
-  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [active]);
 
   useEffect(() => {
     if (!active) return;
@@ -927,7 +942,7 @@ function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDi
       window.removeEventListener('keydown', onKey);
       if (clickTimer) clearTimeout(clickTimer);
     };
-  }, [active, camera, scene, gl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [active, camera, scene, gl]);
 
   const showPersistedDims = showDimensions || active;
 
@@ -996,11 +1011,13 @@ function ManualTextTool({ active, onAddManualTextAnnotation, stairHeight, view }
   const { camera, scene, gl } = useThree();
   const INtoU = 0.5;
   const viewRef = useRef(view);
-  viewRef.current = view;
   const onAddRef = useRef(onAddManualTextAnnotation);
-  onAddRef.current = onAddManualTextAnnotation;
   const stairHeightRef = useRef(stairHeight);
-  stairHeightRef.current = stairHeight;
+  useLayoutEffect(() => {
+    viewRef.current = view;
+    onAddRef.current = onAddManualTextAnnotation;
+    stairHeightRef.current = stairHeight;
+  }, [view, onAddManualTextAnnotation, stairHeight]);
 
   useEffect(() => {
     if (!active) return;
@@ -1059,12 +1076,12 @@ function ManualTextTool({ active, onAddManualTextAnnotation, stairHeight, view }
 
     canvas.addEventListener('dblclick', onDblClick, true);
     return () => canvas.removeEventListener('dblclick', onDblClick, true);
-  }, [active, camera, scene, gl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [active, camera, scene, gl]);
 
   return null;
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, modalOpen = false, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation }) {
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation }) {
   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'work';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
@@ -1124,7 +1141,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           onFastRailsPost={onFastRailsPost}
         />
 
-        {false && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
+        {SHOW_INLINE_DIMS && <DimensionLabels stairConfig={stairConfig} calc={calc} units={units} />}
 
         <group position={[structureOffsetXIn * 0.5, 0, structureOffsetZIn * 0.5]}>
           <ManualPostsRenderer

@@ -59,7 +59,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     return y + 13;
   };
 
-  const pageHeader = (num, title, pw = PW, ph = PH) => {
+  const pageHeader = (num, title, pw = PW) => {
     txt('STAIR DESIGNER', M, 40, { bold: true, size: 14, color: '#1a1a2e' });
     txt('v0.0.2', pw - M, 40, { size: 9, color: '#888888', align: 'right' });
     txt(title, M, 54, { size: 9, color: '#666666' });
@@ -83,7 +83,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   const { height, run, steps } = stairConfig;
   const railLowerExtensionIn = stairConfig.railLowerExtensionIn ?? 0;
   const railUpperExtensionIn = stairConfig.railUpperExtensionIn ?? 0;
-  const { riserHeight, treadDepth, angleDeg, stringerLength } = calc;
+  const { riserHeight, treadDepth } = calc;
 
   const isBlackRailing = stairConfig.railingColorMode === 'black';
   const railColors = isBlackRailing
@@ -224,7 +224,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       : (sx) => ox + dw / 2 + (sx / INtoU) * sc;
     const syToPdf = (sy) => oy - (sy / INtoU) * sc - rPx / 2 + (TREAD_THICK / INtoU) * sc;
 
-    brSegs.forEach((seg, idx) => {
+    brSegs.forEach((seg) => {
       const sx = sxToPdf(seg.start.x);
       const sy = syToPdf(seg.start.y);
       const ex = sxToPdf(seg.end.x);
@@ -422,7 +422,6 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   if (sidePdfDims.length > 0) {
     const MD_COLOR = '#1e3a5f';
     const TICK = 8; // half-tick length in pts
-    const LABEL_OFFSET = 16; // pts — perpendicular clearance from dimension line
     // Y correction: same offset used by syToPdf for rails/posts
     const yAdj = -rPx / 2 + (TREAD_THICK / INtoU) * sc;
 
@@ -447,10 +446,10 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
         doc.rect(rx, ry, rw, rh, 'F');
         doc.restoreGraphicsState();
         doc.text(text, x, y, { align: 'center', angle: angleDeg });
-      } catch (_e) {
+      } catch {
         try {
           doc.text(text, x, y, { align: 'center' });
-        } catch (_e2) { /* skip label entirely rather than crash PDF */ }
+        } catch { /* skip label entirely rather than crash PDF */ }
       }
     };
 
@@ -625,7 +624,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
         const bx = txPdf + 4;
         const by = tyPdf - heightPt - 4;
         doc.addImage(canvas.toDataURL('image/png'), 'PNG', bx, by, widthPt, heightPt);
-      } catch (_e) {
+      } catch {
         // skip bad annotation — don't crash PDF export
       }
     });

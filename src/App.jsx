@@ -20,37 +20,83 @@ import { normalizeRailEndpoints } from './geometry/railingGeometry.js';
 
 const LS_KEY = 'stairDesigner_autosave';
 
+let _cachedDraft;
+function loadInitialDraft() {
+  if (_cachedDraft !== undefined) return _cachedDraft;
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    _cachedDraft = raw ? JSON.parse(raw) : null;
+  } catch {
+    _cachedDraft = null;
+  }
+  return _cachedDraft;
+}
+
 export default function App() {
-  const [project, setProject] = useState(DEFAULT_PROJECT);
-  const [stairConfig, setStairConfig] = useState(DEFAULT_STAIR);
-  const [units, setUnits] = useState('in');
+  const [project, setProject] = useState(() => {
+    const d = loadInitialDraft();
+    return d?.project ? { ...DEFAULT_PROJECT, ...d.project } : DEFAULT_PROJECT;
+  });
+  const [stairConfig, setStairConfig] = useState(() => {
+    const d = loadInitialDraft();
+    return d?.stairConfig ? { ...DEFAULT_STAIR, ...d.stairConfig } : DEFAULT_STAIR;
+  });
+  const [units, setUnits] = useState(() => {
+    const d = loadInitialDraft();
+    const u = d?.units;
+    return u === 'mm' || u === 'in' ? u : 'in';
+  });
   const [activeTool, setActiveTool] = useState('select');
   const [view, setView] = useState('3d');
   const [showDimensions, setShowDimensions] = useState(true);
   const [viewResetToken, setViewResetToken] = useState(0);
   const skipAutosaveRestoreRef = useRef(false);
 
-  const [currentProjectId, setCurrentProjectId] = useState(null);
+  const [currentProjectId, setCurrentProjectId] = useState(() => {
+    const d = loadInitialDraft();
+    return typeof d?.currentProjectId === 'string' && d.currentProjectId ? d.currentProjectId : null;
+  });
   const [openProjectModalOpen, setOpenProjectModalOpen] = useState(false);
 
-  const [manualDimensions, setManualDimensions] = useState([]);
-  const [manualTextAnnotations, setManualTextAnnotations] = useState([]);
+  const [manualDimensions, setManualDimensions] = useState(() => {
+    const d = loadInitialDraft();
+    return Array.isArray(d?.manualDimensions) ? d.manualDimensions : [];
+  });
+  const [manualTextAnnotations, setManualTextAnnotations] = useState(() => {
+    const d = loadInitialDraft();
+    return Array.isArray(d?.manualTextAnnotations) ? d.manualTextAnnotations : [];
+  });
 
-  const [manualPosts, setManualPosts] = useState([]);
+  const [manualPosts, setManualPosts] = useState(() => {
+    const d = loadInitialDraft();
+    return Array.isArray(d?.manualPosts) ? d.manualPosts : [];
+  });
   const [postPlacementMode, setPostPlacementMode] = useState(false);
   const [selectedManualPostId, setSelectedManualPostId] = useState(null);
 
-  const [manualTopRails, setManualTopRails] = useState([]);
+  const [manualTopRails, setManualTopRails] = useState(() => {
+    const d = loadInitialDraft();
+    return Array.isArray(d?.manualTopRails) ? d.manualTopRails.map(normalizeRailEndpoints) : [];
+  });
   const [topRailMode, setTopRailMode] = useState(false);
   const [topRailFirstPostId, setTopRailFirstPostId] = useState(null);
   const [selectedManualTopRailId, setSelectedManualTopRailId] = useState(null);
-  const [topRailPathMode, setTopRailPathMode] = useState('standard');
+  const [topRailPathMode, setTopRailPathMode] = useState(() => {
+    const d = loadInitialDraft();
+    return d?.topRailPathMode === 'manual' || d?.topRailPathMode === 'standard' ? d.topRailPathMode : 'standard';
+  });
 
   const [fastRailsMode, setFastRailsMode] = useState(false);
   const [fastRailsPrevPostId, setFastRailsPrevPostId] = useState(null);
 
-  const [structureOffsetXIn, setStructureOffsetXIn] = useState(0);
-  const [structureOffsetZIn, setStructureOffsetZIn] = useState(0);
+  const [structureOffsetXIn, setStructureOffsetXIn] = useState(() => {
+    const d = loadInitialDraft();
+    return typeof d?.structureOffsetXIn === 'number' ? d.structureOffsetXIn : 0;
+  });
+  const [structureOffsetZIn, setStructureOffsetZIn] = useState(() => {
+    const d = loadInitialDraft();
+    return typeof d?.structureOffsetZIn === 'number' ? d.structureOffsetZIn : 0;
+  });
   const [structureMoveSelected, setStructureMoveSelected] = useState(false);
 
   useEffect(() => {
@@ -67,6 +113,29 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const handleDeleteManualPost = (id) => {
+    setManualTopRails(prev => {
+      const next = prev.filter(rail => {
+        const r = normalizeRailEndpoints(rail);
+        const startConnected = r.startEndpoint.anchorType === 'post' && r.startEndpoint.postId === id;
+        const endConnected = r.endEndpoint.anchorType === 'post' && r.endEndpoint.postId === id;
+        return !startConnected && !endConnected;
+      });
+      const removedIds = new Set(prev.filter(r => !next.includes(r)).map(r => r.id));
+      if (removedIds.size > 0) {
+        setSelectedManualTopRailId(cur => (removedIds.has(cur) ? null : cur));
+      }
+      return next;
+    });
+    setManualPosts(prev => prev.filter(p => p.id !== id));
+    setSelectedManualPostId(null);
+  };
+
+  const handleDeleteManualTopRail = (id) => {
+    setManualTopRails(prev => prev.filter(r => r.id !== id));
+    setSelectedManualTopRailId(prev => (prev === id ? null : prev));
+  };
+
   useEffect(() => {
     const onDeleteKey = (e) => {
       if (e.key !== 'Delete' && e.key !== 'Backspace') return;
@@ -80,33 +149,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onDeleteKey);
     return () => window.removeEventListener('keydown', onDeleteKey);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedManualPostId, selectedManualTopRailId]);
-
-  // Restore from localStorage on mount (runs once, before first user action)
-  useEffect(() => {
-    if (skipAutosaveRestoreRef.current) return;
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (!raw) return;
-      const data = JSON.parse(raw);
-      if (data.project) setProject((p) => ({ ...p, ...data.project }));
-      if (data.stairConfig) setStairConfig((s) => ({ ...DEFAULT_STAIR, ...s, ...data.stairConfig }));
-      if (data.units === 'mm' || data.units === 'in') setUnits(data.units);
-      if (Array.isArray(data.manualDimensions)) setManualDimensions(data.manualDimensions);
-      if (Array.isArray(data.manualTextAnnotations)) setManualTextAnnotations(data.manualTextAnnotations);
-      if (Array.isArray(data.manualPosts)) setManualPosts(data.manualPosts);
-      if (Array.isArray(data.manualTopRails)) setManualTopRails(data.manualTopRails.map(normalizeRailEndpoints));
-      if (typeof data.structureOffsetXIn === 'number') setStructureOffsetXIn(data.structureOffsetXIn);
-      if (typeof data.structureOffsetZIn === 'number') setStructureOffsetZIn(data.structureOffsetZIn);
-      if (data.topRailPathMode === 'manual' || data.topRailPathMode === 'standard') setTopRailPathMode(data.topRailPathMode);
-      if (typeof data.currentProjectId === 'string' && data.currentProjectId) {
-        setCurrentProjectId(data.currentProjectId);
-      }
-    } catch {
-      // Corrupt localStorage — ignore
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Autosave current project state to localStorage after every change (debounced)
   useEffect(() => {
@@ -215,24 +258,6 @@ export default function App() {
     setManualPosts(prev => prev.map(p => p.id === id ? { ...p, ...changes } : p));
   };
 
-  const handleDeleteManualPost = (id) => {
-    setManualTopRails(prev => {
-      const next = prev.filter(rail => {
-        const r = normalizeRailEndpoints(rail);
-        const startConnected = r.startEndpoint.anchorType === 'post' && r.startEndpoint.postId === id;
-        const endConnected = r.endEndpoint.anchorType === 'post' && r.endEndpoint.postId === id;
-        return !startConnected && !endConnected;
-      });
-      const removedIds = new Set(prev.filter(r => !next.includes(r)).map(r => r.id));
-      if (removedIds.size > 0) {
-        setSelectedManualTopRailId(cur => (removedIds.has(cur) ? null : cur));
-      }
-      return next;
-    });
-    setManualPosts(prev => prev.filter(p => p.id !== id));
-    setSelectedManualPostId(null);
-  };
-
   const handleSelectManualPost = (id) => {
     setSelectedManualPostId(prev => prev === id ? null : id);
   };
@@ -334,11 +359,6 @@ export default function App() {
       }
       setTopRailFirstPostId(null);
     }
-  };
-
-  const handleDeleteManualTopRail = (id) => {
-    setManualTopRails(prev => prev.filter(r => r.id !== id));
-    setSelectedManualTopRailId(prev => (prev === id ? null : prev));
   };
 
   const handleSelectManualTopRail = (id) => {
