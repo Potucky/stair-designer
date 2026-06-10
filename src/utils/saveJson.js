@@ -33,6 +33,12 @@ function isValidManualTopRail(r) {
   );
 }
 
+function isValidManualTextAnnotation(a) {
+  if (!a || typeof a !== 'object' || typeof a.id !== 'string') return false;
+  if (typeof a.text !== 'string') return false;
+  return isFinite(Number(a.xIn)) && isFinite(Number(a.yIn));
+}
+
 function isValidManualDimension(d) {
   if (!d || typeof d !== 'object' || typeof d.id !== 'string') return false;
   const aOk = d.a && isFinite(Number(d.a.xIn)) && isFinite(Number(d.a.yIn)) && isFinite(Number(d.a.zIn));
@@ -129,7 +135,10 @@ export function openProjectJson(onLoad, onError) {
         const structureOffsetZIn = typeof data.structureOffsetZIn === 'number' && Number.isFinite(data.structureOffsetZIn)
           ? data.structureOffsetZIn : 0;
         const topRailPathMode = data.topRailPathMode === 'manual' ? 'manual' : 'standard';
-        onLoad({ project, stairConfig, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode });
+        const manualTextAnnotations = Array.isArray(data.manualTextAnnotations)
+          ? data.manualTextAnnotations.filter(isValidManualTextAnnotation)
+          : [];
+        onLoad({ project, stairConfig, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, topRailPathMode, manualTextAnnotations });
       } catch (err) {
         onError(err.message || 'Invalid file');
       }
@@ -139,7 +148,7 @@ export function openProjectJson(onLoad, onError) {
   input.click();
 }
 
-export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard' }) {
+export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', manualTextAnnotations = [] }) {
   const payload = {
     app: 'Stair Designer',
     version: 'v0.0.1 MVP',
@@ -150,6 +159,7 @@ export function saveProjectJson({ project, stairConfig, calc, warnings, material
     manualDimensions,
     manualPosts,
     manualTopRails,
+    manualTextAnnotations,
     structureOffsetXIn,
     structureOffsetZIn,
     topRailPathMode,

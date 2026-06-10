@@ -953,14 +953,126 @@ function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDi
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, modalOpen = false, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension }) {
+const TEXT_ANNOTATION_STYLE = {
+  background: 'rgba(255, 255, 255, 0.93)',
+  color: '#1a1a2e',
+  fontSize: '10px',
+  fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+  padding: '3px 7px',
+  borderRadius: '3px',
+  border: '1px solid rgba(30,58,92,0.25)',
+  pointerEvents: 'none',
+  userSelect: 'none',
+  maxWidth: '200px',
+  whiteSpace: 'pre-wrap',
+  lineHeight: '1.45',
+};
+
+function ManualTextAnnotationsRenderer({ annotations }) {
+  const INtoU = 0.5;
+  if (!annotations || annotations.length === 0) return null;
+  return (
+    <>
+      {annotations.map((ann) => {
+        let pos;
+        if (ann.projection === 'side') {
+          pos = [ann.xIn * INtoU, ann.yIn * INtoU, 0];
+        } else if (ann.projection === 'top') {
+          pos = [ann.xIn * INtoU, 0, ann.zIn * INtoU];
+        } else {
+          pos = [ann.xIn * INtoU, ann.yIn * INtoU, ann.zIn * INtoU];
+        }
+        return (
+          <Html key={ann.id} position={pos} center>
+            <div style={TEXT_ANNOTATION_STYLE}>{ann.text}</div>
+          </Html>
+        );
+      })}
+    </>
+  );
+}
+
+function ManualTextTool({ active, onAddManualTextAnnotation, stairHeight, view }) {
+  const { camera, scene, gl } = useThree();
+  const INtoU = 0.5;
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const onAddRef = useRef(onAddManualTextAnnotation);
+  onAddRef.current = onAddManualTextAnnotation;
+  const stairHeightRef = useRef(stairHeight);
+  stairHeightRef.current = stairHeight;
+
+  useEffect(() => {
+    if (!active) return;
+    const canvas = gl.domElement;
+
+    const getMouseNDC = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        y: -((e.clientY - rect.top) / rect.height) * 2 + 1,
+      };
+    };
+
+    const placeAnnotation = (pt) => {
+      const projection = viewRef.current === 'side' ? 'side' : viewRef.current === 'top' ? 'top' : 'free3d';
+      const id = `text-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      onAddRef.current({ id, text: 'Text', xIn: pt.x / INtoU, yIn: pt.y / INtoU, zIn: pt.z / INtoU, projection });
+    };
+
+    const tryModelPick = (ev) => {
+      const { x: nx, y: ny } = getMouseNDC(ev);
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera({ x: nx, y: ny }, camera);
+      const targets = [];
+      scene.traverse(obj => {
+        if (!obj.isMesh || !obj.visible) return;
+        if (obj.userData.isDimMarker || obj.userData.isHelper || obj.userData.ignoreDimensionPick) return;
+        const m = obj.material;
+        if (!m || !m.isMeshStandardMaterial) return;
+        targets.push(obj);
+      });
+      const hits = ray.intersectObjects(targets, false);
+      if (hits.length > 0) { placeAnnotation(hits[0].point.clone()); return true; }
+      return false;
+    };
+
+    const tryFreePick = (ev) => {
+      const { x: nx, y: ny } = getMouseNDC(ev);
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera({ x: nx, y: ny }, camera);
+      const planeCenter = new THREE.Vector3(0, (stairHeightRef.current ?? 0) * INtoU / 2, 0);
+      const cameraDir = new THREE.Vector3();
+      camera.getWorldDirection(cameraDir);
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(cameraDir, planeCenter);
+      const pt = new THREE.Vector3();
+      if (!ray.ray.intersectPlane(plane, pt)) return;
+      placeAnnotation(pt);
+    };
+
+    const onDblClick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      if (!tryModelPick(e)) tryFreePick(e);
+    };
+
+    canvas.addEventListener('dblclick', onDblClick, true);
+    return () => canvas.removeEventListener('dblclick', onDblClick, true);
+  }, [active, camera, scene, gl]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null;
+}
+
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, modalOpen = false, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation }) {
   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'work';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
   const isDims = activeTool === 'dimension';
-  const activeCursor = isMeasure || isDims || postPlacementMode || topRailMode || fastRailsMode ? 'crosshair' : undefined;
+  const isText = activeTool === 'text';
+  const activeCursor = isMeasure || isDims || isText || postPlacementMode || topRailMode || fastRailsMode ? 'crosshair' : undefined;
 
   return (
     <div className="scene-container" style={activeCursor ? { cursor: activeCursor } : undefined}>
@@ -1079,6 +1191,14 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           stairHeight={height}
           view={view}
         />
+
+        <ManualTextTool
+          active={isText}
+          onAddManualTextAnnotation={onAddManualTextAnnotation}
+          stairHeight={height}
+          view={view}
+        />
+        <ManualTextAnnotationsRenderer annotations={manualTextAnnotations} />
 
         <OrbitControls
           ref={orbitRef}

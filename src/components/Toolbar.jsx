@@ -7,6 +7,7 @@ export default function Toolbar({ activeTool, onToolSelect, onViewChange, showDi
     { id: 'stair',        label: 'Straight Stair', icon: '🪜' },
     { id: 'railing',      label: 'Railing',      icon: '⊟' },
     { id: 'dimension',    label: 'Dimension',    icon: '↔' },
+    { id: 'text',         label: 'Text',         icon: 'T' },
   ];
 
   const viewTools = [

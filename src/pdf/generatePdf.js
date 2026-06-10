@@ -199,7 +199,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor('#666666');
-      doc.text(String(i + 1), mirrored ? mx(sx + tPx) + 3 : sx + 3, sy - rPx + 7);
+      doc.text(String(i + 1), mirrored ? mx(sx) - 3 : sx + 3, sy - rPx + 7, mirrored ? { align: 'right' } : {});
       sx += tPx;
       sy -= rPx;
     }

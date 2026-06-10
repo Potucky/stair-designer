@@ -115,7 +115,7 @@ function ExtChips({ curLen, onSet }) {
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onNewProject, onSaveProject, onOpenProject, onExportPdf, units, activeTool, manualDimensions, onUpdateManualDimension, onDeleteManualDimension, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onNewProject, onSaveProject, onOpenProject, onExportPdf, units, activeTool, manualDimensions, onUpdateManualDimension, onDeleteManualDimension, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode, manualTextAnnotations, onUpdateManualTextAnnotation, onDeleteManualTextAnnotation }) {
   const [saveStatus, setSaveStatus] = useState(null);
   const [turnFromP1In, setTurnFromP1In] = useState(null);
 
@@ -841,6 +841,37 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               </div>
             );
           })}
+        </section>
+      )}
+
+      {/* Manual Text */}
+      {(activeTool === 'text' || (manualTextAnnotations && manualTextAnnotations.length > 0)) && (
+        <section className="panel-section">
+          <h3 className="section-title">Manual Text</h3>
+          {activeTool === 'text' && (
+            <div className="post-tool-hint">Text tool active — double-click canvas to place text. ESC to cancel.</div>
+          )}
+          {manualTextAnnotations && manualTextAnnotations.map((ann, idx) => (
+            <div key={ann.id} style={{ marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0, width: 22 }}>T{idx + 1}</span>
+                <span style={{ fontSize: 9, color: '#fff', background: '#1d4ed8', borderRadius: 2, padding: '0 3px', flexShrink: 0 }}>
+                  {ann.projection === 'top' ? 'TOP' : ann.projection === 'free3d' ? '3D' : 'SIDE'}
+                </span>
+                <button
+                  className="panel-btn panel-btn-danger"
+                  style={{ padding: '2px 6px', fontSize: 10, flexShrink: 0, marginLeft: 'auto' }}
+                  onClick={() => onDeleteManualTextAnnotation(ann.id)}
+                >×</button>
+              </div>
+              <textarea
+                className="field-input"
+                style={{ width: '100%', fontSize: 10, resize: 'vertical', minHeight: 48, boxSizing: 'border-box' }}
+                value={ann.text}
+                onChange={(e) => onUpdateManualTextAnnotation(ann.id, { text: e.target.value })}
+              />
+            </div>
+          ))}
         </section>
       )}
 

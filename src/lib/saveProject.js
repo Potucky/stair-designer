@@ -9,6 +9,7 @@ export async function saveProject({
   manualDimensions = [],
   manualPosts = [],
   manualTopRails = [],
+  manualTextAnnotations = [],
   structureOffsetXIn = 0,
   structureOffsetZIn = 0,
   topRailPathMode = 'standard',
@@ -61,6 +62,7 @@ export async function saveProject({
       structureOffsetZIn,
       topRailPathMode,
       manualDimensions,
+      manualTextAnnotations,
     };
 
     const { error: versionError } = await supabase
