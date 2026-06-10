@@ -428,7 +428,10 @@ export default function App() {
     setCurrentProjectId(p.id);
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    const blobUrl = generatePdf({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, structureOffsetZIn, topRailPathMode, mode: 'print' });
+    if (blobUrl) window.open(blobUrl, '_blank');
+  };
 
   const handleViewChange = (v) => {
     setView(v);

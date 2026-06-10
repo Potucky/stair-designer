@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { getTubeProfile, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
-export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], structureOffsetZIn = 0, topRailPathMode = 'standard' }) {
+export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], structureOffsetZIn = 0, topRailPathMode = 'standard', mode = 'save' }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [792, 612] });
   const INCH_TO_MM = 25.4;
   const fmtDim = (inchVal, dec = 2) =>
@@ -413,17 +413,65 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   }
 
   // ── Manual Dimensions (side view) ────────────────────────────────────────
-  // Uses the same syToPdf-compatible transform as posts/rails:
-  //   ax = ox + dw/2 + xIn*sc   (xIn is scene X in inches, centred at 0)
-  //   ay = oy - yIn*sc - rPx/2 + (TREAD_THICK/INtoU)*sc
-  // The Y correction aligns scene hit-point Y with the visual tread/post positions in the PDF.
-  if (Array.isArray(manualDimensions) && manualDimensions.length > 0) {
+  // Renders: projection === 'side', projection === 'free3d', and legacy dims with no projection field.
+  // free3d dims are projected into side/elevation view using xIn and yIn; zIn/depth is ignored for PDF.
+  // This prevents visible 3D-view dimensions from being silently omitted from the PDF.
+  // TODO: projection === 'top' is excluded until a top/plan PDF page exists.
+  const sidePdfDims = (Array.isArray(manualDimensions) ? manualDimensions : [])
+    .filter(d => !d.projection || d.projection === 'side' || d.projection === 'free3d');
+  if (sidePdfDims.length > 0) {
     const MD_COLOR = '#1e3a5f';
     const TICK = 8; // half-tick length in pts
+    const LABEL_OFFSET = 9; // pts — perpendicular clearance from dimension line
     // Y correction: same offset used by syToPdf for rails/posts
     const yAdj = -rPx / 2 + (TREAD_THICK / INtoU) * sc;
 
-    manualDimensions.forEach((dim) => {
+    // Draws label text parallel to the dimension line, offset to the "above" side.
+    // Safe: validates all coords, catches jsPDF angle failures, falls back to plain centered text.
+    const drawRotatedDimensionLabel = (text, ax, ay, bx, by) => {
+      if (!text) return;
+      if (!isFinite(ax) || !isFinite(ay) || !isFinite(bx) || !isFinite(by)) return;
+
+      const dx = bx - ax;
+      const dy = by - ay;
+      const lineLen = Math.sqrt(dx * dx + dy * dy);
+      if (!isFinite(lineLen) || lineLen === 0) return;
+
+      const midX = (ax + bx) / 2;
+      const midY = (ay + by) / 2;
+
+      // negate dy because PDF y-axis points down (opposite to screen math convention)
+      let angleDeg = Math.atan2(-dy, dx) * (180 / Math.PI);
+      // keep text readable: normalize into (-90, 90]
+      if (angleDeg > 90) angleDeg -= 180;
+      if (angleDeg < -90) angleDeg += 180;
+
+      // perpendicular normal; choose direction that points "up" (negative y in PDF)
+      let nx = -dy / lineLen;
+      let ny = dx / lineLen;
+      if (ny > 0) { nx = -nx; ny = -ny; }
+
+      const labelX = midX + nx * LABEL_OFFSET;
+      const labelY = midY + ny * LABEL_OFFSET;
+
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(MD_COLOR);
+      try {
+        doc.text(text, labelX, labelY, { align: 'center', angle: angleDeg });
+      } catch (_e) {
+        // angle option failed — draw plain centered text slightly above midpoint
+        try {
+          doc.text(text, midX, midY - LABEL_OFFSET, { align: 'center' });
+        } catch (_e2) { /* skip label entirely rather than crash PDF */ }
+      }
+    };
+
+    sidePdfDims.forEach((dim) => {
+      // Skip dims with missing or invalid coordinates — don't let one bad dim crash the PDF.
+      if (!dim.a || !dim.b) return;
+      if (!isFinite(dim.a.xIn) || !isFinite(dim.a.yIn) || !isFinite(dim.b.xIn) || !isFinite(dim.b.yIn)) return;
+
       // xIn = scene_x / INtoU (centred at 0); add run/2 to make stair-relative, then scale.
       const axPdf = mx(ox + (dim.a.xIn + run / 2) * sc);
       const ayPdf = oy - dim.a.yIn * sc + yAdj;
@@ -442,13 +490,8 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
         doc.line(bxPdf - px, byPdf - py, bxPdf + px, byPdf + py);
       }
 
-      const mxPdf = (axPdf + bxPdf) / 2;
-      const myPdf = (ayPdf + byPdf) / 2;
       const dimLabel = dim.label != null ? String(dim.label) : fmtDim(dim.measuredValueIn != null ? dim.measuredValueIn : 0, 2);
-      doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(MD_COLOR);
-      if (dimLabel) doc.text(dimLabel, mxPdf, myPdf - 3, { align: 'center' });
+      drawRotatedDimensionLabel(dimLabel, axPdf, ayPdf, bxPdf, byPdf);
     });
   }
 
@@ -855,5 +898,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   pageFooter();
 
+  if (mode === 'print') {
+    doc.autoPrint();
+    return doc.output('bloburl');
+  }
   doc.save(`${(project.name || 'project').replace(/[^a-z0-9_-]/gi, '_')}_stair_designer.pdf`);
 }

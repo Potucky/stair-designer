@@ -1,5 +1,5 @@
 import { useEffect, useRef, useMemo, useState } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { fmtUnit } from '../utils/format.js';
@@ -675,15 +675,39 @@ function MeasureTool({ active, units }) {
 
 function PersistedDim({ dim }) {
   const INtoU = 0.5;
+  const { camera, gl } = useThree();
+  const labelRef = useRef(null);
+  const geomRef = useRef(null);
+
   const geom = useMemo(() => {
-    const aScene = new THREE.Vector3(dim.a.xIn * INtoU, dim.a.yIn * INtoU, dim.a.zIn * INtoU);
-    const bScene = new THREE.Vector3(dim.b.xIn * INtoU, dim.b.yIn * INtoU, dim.b.zIn * INtoU);
+    let aScene, bScene;
+    if (dim.projection === 'side') {
+      // Side/elevation view: project to Z=0 plane (XY)
+      aScene = new THREE.Vector3(dim.a.xIn * INtoU, dim.a.yIn * INtoU, 0);
+      bScene = new THREE.Vector3(dim.b.xIn * INtoU, dim.b.yIn * INtoU, 0);
+    } else if (dim.projection === 'top') {
+      // Top/plan view: project to Y=0 plane (XZ)
+      aScene = new THREE.Vector3(dim.a.xIn * INtoU, 0, dim.a.zIn * INtoU);
+      bScene = new THREE.Vector3(dim.b.xIn * INtoU, 0, dim.b.zIn * INtoU);
+    } else {
+      // free3d or legacy (no projection): full 3D coords
+      aScene = new THREE.Vector3(dim.a.xIn * INtoU, dim.a.yIn * INtoU, dim.a.zIn * INtoU);
+      bScene = new THREE.Vector3(dim.b.xIn * INtoU, dim.b.yIn * INtoU, dim.b.zIn * INtoU);
+    }
+
     const dist = aScene.distanceTo(bScene);
     if (dist < 2 * MANUAL_S + 0.5) return null;
 
     const dir = bScene.clone().sub(aScene).normalize();
-    let perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0));
-    if (perp.lengthSq() < 0.0001) perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(1, 0, 0));
+    let perp;
+    if (dim.projection === 'side') {
+      // XY plane: wings perpendicular using Z axis as the up-direction
+      perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 0, 1));
+      if (perp.lengthSq() < 0.0001) perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(1, 0, 0));
+    } else {
+      perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0));
+      if (perp.lengthSq() < 0.0001) perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(1, 0, 0));
+    }
     perp.normalize().multiplyScalar(MANUAL_AW);
 
     const aInner = aScene.clone().add(dir.clone().multiplyScalar(MANUAL_S));
@@ -695,7 +719,26 @@ function PersistedDim({ dim }) {
       wingA1: aInner.clone().add(perp), wingA2: aInner.clone().sub(perp),
       wingB1: bInner.clone().add(perp), wingB2: bInner.clone().sub(perp),
     };
-  }, [dim.a.xIn, dim.a.yIn, dim.a.zIn, dim.b.xIn, dim.b.yIn, dim.b.zIn]);
+  }, [dim.a.xIn, dim.a.yIn, dim.a.zIn, dim.b.xIn, dim.b.yIn, dim.b.zIn, dim.projection]);
+
+  geomRef.current = geom;
+
+  useFrame(() => {
+    const g = geomRef.current;
+    if (!g || !labelRef.current) return;
+    const w = gl.domElement.clientWidth;
+    const h = gl.domElement.clientHeight;
+    const toScreen = (v) => {
+      const c = v.clone().project(camera);
+      return { x: (c.x + 1) * 0.5 * w, y: (1 - c.y) * 0.5 * h };
+    };
+    const sa = toScreen(g.aScene);
+    const sb = toScreen(g.bScene);
+    let angleDeg = Math.atan2(sb.y - sa.y, sb.x - sa.x) * (180 / Math.PI);
+    if (angleDeg > 90) angleDeg -= 180;
+    else if (angleDeg < -90) angleDeg += 180;
+    labelRef.current.style.transform = `rotate(${angleDeg.toFixed(2)}deg) translateY(-8px)`;
+  });
 
   if (!geom) return null;
 
@@ -705,13 +748,13 @@ function PersistedDim({ dim }) {
       <ArrowHead tip={geom.aScene.toArray()} wingA={geom.wingA1.toArray()} wingB={geom.wingA2.toArray()} />
       <ArrowHead tip={geom.bScene.toArray()} wingA={geom.wingB1.toArray()} wingB={geom.wingB2.toArray()} />
       <Html position={geom.mid.toArray()} center>
-        <div style={LABEL_STYLE}>{String(dim.label ?? "")}</div>
+        <div ref={labelRef} style={LABEL_STYLE}>{String(dim.label ?? "")}</div>
       </Html>
     </>
   );
 }
 
-function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDimension, units, stairHeight }) {
+function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDimension, units, stairHeight, view }) {
   const [pendingPointA, setPendingPointA] = useState(null);
   const pendingPointARef = useRef(null);
   const phaseRef = useRef('idle');
@@ -724,6 +767,8 @@ function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDi
   onAddRef.current = onAddManualDimension;
   const stairHeightRef = useRef(stairHeight);
   stairHeightRef.current = stairHeight;
+  const viewRef = useRef(view);
+  viewRef.current = view;
 
   const setPending = (pt) => {
     pendingPointARef.current = pt;
@@ -758,7 +803,20 @@ function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDi
       } else {
         const a = pendingPointARef.current;
         if (!a) { phaseRef.current = 'idle'; return; }
-        const measuredValueIn = a.distanceTo(pt) / INtoU;
+
+        const projection = viewRef.current === 'side' ? 'side' : viewRef.current === 'top' ? 'top' : 'free3d';
+        const dxIn = (pt.x - a.x) / INtoU;
+        const dyIn = (pt.y - a.y) / INtoU;
+        const dzIn = (pt.z - a.z) / INtoU;
+        let measuredValueIn;
+        if (projection === 'side') {
+          measuredValueIn = Math.sqrt(dxIn * dxIn + dyIn * dyIn);
+        } else if (projection === 'top') {
+          measuredValueIn = Math.sqrt(dxIn * dxIn + dzIn * dzIn);
+        } else {
+          measuredValueIn = Math.sqrt(dxIn * dxIn + dyIn * dyIn + dzIn * dzIn);
+        }
+
         const label = fmtUnit(measuredValueIn, unitsRef.current);
         const id = `dim-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         onAddRef.current({
@@ -767,6 +825,7 @@ function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDi
           b: { xIn: pt.x / INtoU, yIn: pt.y / INtoU, zIn: pt.z / INtoU },
           label,
           measuredValueIn,
+          projection,
         });
         setPending(null);
         phaseRef.current = 'idle';
@@ -877,12 +936,19 @@ function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDi
       {showPersistedDims && (manualDimensions || []).map(dim => (
         <PersistedDim key={dim.id} dim={dim} />
       ))}
-      {active && pendingPointA && (
-        <mesh position={pendingPointA.toArray()} userData={{ isDimMarker: true }}>
-          <sphereGeometry args={[0.5, 10, 10]} />
-          <meshBasicMaterial color={DIM_COLOR} />
-        </mesh>
-      )}
+      {active && pendingPointA && (() => {
+        const pos = view === 'side'
+          ? [pendingPointA.x, pendingPointA.y, 0]
+          : view === 'top'
+            ? [pendingPointA.x, 0, pendingPointA.z]
+            : pendingPointA.toArray();
+        return (
+          <mesh position={pos} userData={{ isDimMarker: true }}>
+            <sphereGeometry args={[0.5, 10, 10]} />
+            <meshBasicMaterial color={DIM_COLOR} />
+          </mesh>
+        );
+      })()}
     </>
   );
 }
@@ -1011,6 +1077,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           onAddManualDimension={onAddManualDimension}
           units={units}
           stairHeight={height}
+          view={view}
         />
 
         <OrbitControls

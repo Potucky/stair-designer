@@ -820,22 +820,27 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               Dimension tool active — click geometry for Point A, then Point B. ESC cancels.
             </div>
           )}
-          {manualDimensions && manualDimensions.map((dim, idx) => (
-            <div key={dim.id} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-              <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0, width: 22 }}>D{idx + 1}</span>
-              <input
-                className="field-input"
-                style={{ flex: 1, fontSize: 10 }}
-                value={dim.label ?? ""}
-                onChange={(e) => onUpdateManualDimension(dim.id, { label: e.target.value })}
-              />
-              <button
-                className="panel-btn panel-btn-danger"
-                style={{ padding: '2px 6px', fontSize: 10, flexShrink: 0 }}
-                onClick={() => onDeleteManualDimension(dim.id)}
-              >×</button>
-            </div>
-          ))}
+          {manualDimensions && manualDimensions.map((dim, idx) => {
+            const typeLabel = dim.projection === 'top' ? 'TOP' : dim.projection === 'free3d' ? '3D' : 'SIDE';
+            const typeBg = dim.projection === 'top' ? '#0e7490' : dim.projection === 'free3d' ? '#7c3aed' : '#1d4ed8';
+            return (
+              <div key={dim.id} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0, width: 22 }}>D{idx + 1}</span>
+                <span style={{ fontSize: 9, color: '#fff', background: typeBg, borderRadius: 2, padding: '0 3px', flexShrink: 0, letterSpacing: '0.02em' }}>{typeLabel}</span>
+                <input
+                  className="field-input"
+                  style={{ flex: 1, fontSize: 10 }}
+                  value={dim.label ?? ""}
+                  onChange={(e) => onUpdateManualDimension(dim.id, { label: e.target.value })}
+                />
+                <button
+                  className="panel-btn panel-btn-danger"
+                  style={{ padding: '2px 6px', fontSize: 10, flexShrink: 0 }}
+                  onClick={() => onDeleteManualDimension(dim.id)}
+                >×</button>
+              </div>
+            );
+          })}
         </section>
       )}
 
