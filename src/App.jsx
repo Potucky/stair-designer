@@ -12,6 +12,7 @@ import { calcStair, buildMaterialList } from './geometry/stairMath.js';
 import { validateStair } from './geometry/validation.js';
 import { saveProjectJson, openProjectJson } from './utils/saveJson.js';
 import { generatePdf } from './pdf/generatePdf.js';
+import { printViewportPdf } from './pdf/printViewport.js';
 import { saveProject } from './lib/saveProject.js';
 import { loadProject } from './lib/loadProject.js';
 import { DEFAULT_STAIR, DEFAULT_PROJECT } from './constants/defaults.js';
@@ -447,8 +448,7 @@ export default function App() {
   };
 
   const handlePrint = () => {
-    const blobUrl = generatePdf({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, structureOffsetZIn, topRailPathMode, manualTextAnnotations, mode: 'print' });
-    if (blobUrl) window.open(blobUrl, '_blank');
+    printViewportPdf();
   };
 
   const handleViewChange = (v) => {

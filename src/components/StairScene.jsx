@@ -1075,10 +1075,11 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
   const activeCursor = isMeasure || isDims || isText || postPlacementMode || topRailMode || fastRailsMode ? 'crosshair' : undefined;
 
   return (
-    <div className="scene-container" style={activeCursor ? { cursor: activeCursor } : undefined}>
+    <div id="print-viewport" className="scene-container" style={activeCursor ? { cursor: activeCursor } : undefined}>
       <Canvas
         camera={{ position: [80, 55, 110], fov: 45, near: 0.1, far: 5000 }}
         shadows
+        gl={{ preserveDrawingBuffer: true }}
       >
         <color attach="background" args={['#edf2f7']} />
 
