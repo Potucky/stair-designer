@@ -115,7 +115,7 @@ function ExtChips({ curLen, onSet }) {
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onNewProject, onSaveProject, onOpenProject, onExportPdf, units, activeTool, manualDimensions, onUpdateManualDimension, onDeleteManualDimension, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode, manualTextAnnotations, onUpdateManualTextAnnotation, onDeleteManualTextAnnotation, pdfMirrored, onTogglePdfMirrored }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onNewProject, onSaveProject, onOpenProject, onExportPdf, units, activeTool, manualDimensions, onUpdateManualDimension, onDeleteManualDimension, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode, manualTextAnnotations, onUpdateManualTextAnnotation, onDeleteManualTextAnnotation, pdfMirrored, onTogglePdfMirrored, activePdfDraftMode, pdfDrafts, selectedPdfDraftDimensionId, onUpdatePdfDraftDimension, onDeletePdfDraftDimension, onDeleteLastPdfDraftDimension, onClearAllPdfDraftDimensions }) {
   const [saveStatus, setSaveStatus] = useState(null);
   const [turnFromP1In, setTurnFromP1In] = useState(null);
 
@@ -132,8 +132,70 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
   const errorWarnings = warnings.filter((w) => w.level === 'error');
   const warnWarnings = warnings.filter((w) => w.level === 'warning');
 
+  const threeDDims = pdfDrafts?.threeD?.dimensions ?? [];
+  const selectedDim = selectedPdfDraftDimensionId
+    ? threeDDims.find(d => d.id === selectedPdfDraftDimensionId)
+    : null;
+
   return (
     <aside className="right-panel">
+
+      {/* 3D PDF Annotations — visible only while 3D PDF mode is active */}
+      {activePdfDraftMode === '3d' && (
+        <section className="panel-section" style={{ borderBottom: '2px solid #2563eb', background: '#f0f5ff' }}>
+          <h3 className="section-title" style={{ color: '#1d4ed8' }}>3D PDF Annotations</h3>
+
+          {selectedDim ? (
+            <>
+              <label className="field-label" style={{ marginBottom: 6 }}>
+                <span style={{ fontWeight: 600, color: '#1e3a5f' }}>Label / Value</span>
+                <input
+                  className="field-input"
+                  value={selectedDim.label ?? ''}
+                  onChange={e => onUpdatePdfDraftDimension(selectedDim.id, { label: e.target.value })}
+                  placeholder='e.g. 36" or 72 1/2"'
+                  autoFocus
+                />
+              </label>
+              <button
+                className="panel-btn panel-btn-danger"
+                style={{ width: '100%', marginBottom: 6 }}
+                onClick={() => onDeletePdfDraftDimension(selectedDim.id)}
+              >
+                Delete Selected Dimension
+              </button>
+            </>
+          ) : (
+            <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 8, lineHeight: '1.4' }}>
+              {threeDDims.length > 0
+                ? 'Click a dimension line to select it and edit its label.'
+                : 'Double-click point A, then point B to add a dimension.'}
+            </p>
+          )}
+
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button
+              className="panel-btn"
+              onClick={onDeleteLastPdfDraftDimension}
+              disabled={threeDDims.length === 0}
+            >
+              Delete Last
+            </button>
+            <button
+              className="panel-btn panel-btn-danger"
+              onClick={onClearAllPdfDraftDimensions}
+              disabled={threeDDims.length === 0}
+            >
+              Clear All
+            </button>
+          </div>
+          {threeDDims.length > 0 && (
+            <div style={{ fontSize: 10, color: '#6b7280', marginTop: 5 }}>
+              {threeDDims.length} dimension{threeDDims.length !== 1 ? 's' : ''}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Project */}
       <section className="panel-section">

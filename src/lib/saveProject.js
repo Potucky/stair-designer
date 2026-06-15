@@ -16,6 +16,7 @@ export async function saveProject({
   topRailPathMode = 'standard',
   units = 'in',
   currentProjectId = null,
+  pdfDrafts = null,
 }) {
   if (!supabase) {
     return { ok: false, error: 'Supabase is not configured.' };
@@ -68,6 +69,7 @@ export async function saveProject({
       units,
       manualDimensions,
       manualTextAnnotations,
+      pdfDrafts,
     };
 
     const { error: versionError } = await supabase

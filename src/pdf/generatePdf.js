@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { getTubeProfile, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
 
-export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], manualTextAnnotations = [], pdfMirrored = false, topRailPathMode = 'standard', mode = 'save' }) {
+export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], manualTextAnnotations = [], pdfMirrored = false, topRailPathMode = 'standard', mode = 'save', pdfDrafts = null, primaryPageType = 'side' }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [792, 612] });
   const INCH_TO_MM = 25.4;
   const fmtDim = (inchVal, dec = 2) =>
@@ -78,7 +78,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // ── PAGE 1 — Side View Dimensioned Drawing ─────────────────────────────────
 
-  let y = pageHeader(1, 'Side View — Dimensioned Drawing', LW, LH);
+  let y = 0;
 
   const { height, run, steps } = stairConfig;
   const railLowerExtensionIn = stairConfig.railLowerExtensionIn ?? 0;
@@ -128,6 +128,101 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   const mirrored = Boolean(pdfMirrored);
   const mx = mirrored ? (x) => 2 * ox + dw - x : (x) => x;
+
+  if (primaryPageType === 'threeD') {
+    // ── PAGE 1 — 3D View Dimensioned Drawing ──────────────────────────────
+    // Full-page white fill, then 3D capture image at 0,0,LW,LH so normalized
+    // annotation coords (captured relative to overlay) align exactly.
+    const _td = pdfDrafts?.threeD;
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, LW, LH, 'F');
+    if (_td?.backgroundImage) {
+      // eslint-disable-next-line no-empty
+      try { doc.addImage(_td.backgroundImage, 'PNG', 0, 0, LW, LH); } catch {}
+    }
+    // White header band drawn on top of image
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, LW, 64, 'F');
+    pageHeader(1, '3D View — Dimensioned Drawing', LW);
+    // Dimensions — normalized 0..1 → full-page pt coords
+    const _DC = '#1e3a5f';
+    (Array.isArray(_td?.dimensions) ? _td.dimensions : []).forEach(dim => {
+      if (!dim || !isFinite(dim.ax) || !isFinite(dim.ay) || !isFinite(dim.bx) || !isFinite(dim.by)) return;
+      const ax = dim.ax * LW, ay = dim.ay * LH, bx = dim.bx * LW, by = dim.by * LH;
+      const len = Math.sqrt((bx - ax) ** 2 + (by - ay) ** 2);
+      if (len < 5) return;
+      const midX = (ax + bx) / 2, midY = (ay + by) / 2;
+
+      // Unit direction A→B and perpendicular
+      const oux = (bx - ax) / len, ouy = (by - ay) / len;
+      const apx = -ouy, apy = oux;
+
+      // Main dimension line
+      doc.setDrawColor(_DC); doc.setLineWidth(1.2);
+      doc.line(ax, ay, bx, by);
+
+      // Filled arrowhead triangles at both ends
+      doc.setFillColor(30, 58, 95);
+      const _AL = 10, _AW = 4;
+      doc.triangle(ax, ay,
+        ax + oux * _AL + apx * _AW, ay + ouy * _AL + apy * _AW,
+        ax + oux * _AL - apx * _AW, ay + ouy * _AL - apy * _AW, 'F');
+      doc.triangle(bx, by,
+        bx - oux * _AL + apx * _AW, by - ouy * _AL + apy * _AW,
+        bx - oux * _AL - apx * _AW, by - ouy * _AL - apy * _AW, 'F');
+
+      // Label position: offset perpendicular to line on the "above/left" side
+      // Normalize direction to rightward-or-upward so offset is always consistent
+      let nux = oux, nuy = ouy;
+      if (nux < 0 || (nux === 0 && nuy > 0)) { nux = -nux; nuy = -nuy; }
+      const lPerpX = nuy, lPerpY = -nux;
+      const _LOFF = 14;
+      const lx = midX + lPerpX * _LOFF;
+      const ly = midY + lPerpY * _LOFF;
+
+      // Angle: normalize to [-90, 90) so text reads left-to-right or bottom-to-top
+      // jsPDF text angle is CCW-positive (same visual effect as SVG rotate CW-positive
+      // when using the same sign, because jsPDF's y-down rendering matches SVG)
+      let _angleDeg = Math.atan2(by - ay, bx - ax) * 180 / Math.PI;
+      if (_angleDeg >= 90) _angleDeg -= 180;
+      else if (_angleDeg < -90) _angleDeg += 180;
+      const _jsPdfAngle = _angleDeg; // same sign: both refer to screen CW
+
+      const _lbl = String(dim.label ?? 'DIM');
+      doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+      const _tw = doc.getTextWidth(_lbl);
+      const _lpad = 3, _rw = _tw + _lpad * 2, _rh = 10;
+
+      // Rotated white background rect (two triangles)
+      const cosA = Math.cos(_angleDeg * Math.PI / 180);
+      const sinA = Math.sin(_angleDeg * Math.PI / 180);
+      // SVG CW rotation: x' = cx*cosA - cy*sinA + lx, y' = cx*sinA + cy*cosA + ly
+      const _rc = [[-_rw / 2, -_rh / 2], [_rw / 2, -_rh / 2], [_rw / 2, _rh / 2], [-_rw / 2, _rh / 2]]
+        .map(([cx, cy]) => [lx + cx * cosA - cy * sinA, ly + cx * sinA + cy * cosA]);
+      doc.setFillColor(255, 255, 255);
+      doc.triangle(_rc[0][0], _rc[0][1], _rc[1][0], _rc[1][1], _rc[2][0], _rc[2][1], 'F');
+      doc.triangle(_rc[0][0], _rc[0][1], _rc[2][0], _rc[2][1], _rc[3][0], _rc[3][1], 'F');
+
+      // Label text with rotation
+      doc.setTextColor(_DC); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+      doc.text(_lbl, lx, ly, { angle: _jsPdfAngle, align: 'center', baseline: 'middle' });
+    });
+    // Texts
+    (Array.isArray(_td?.texts) ? _td.texts : []).forEach(ann => {
+      if (!ann || !isFinite(ann.x) || !isFinite(ann.y) || !ann.text) return;
+      const _x = ann.x * LW, _y = ann.y * LH, _t = String(ann.text);
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+      const _tw = doc.getTextWidth(_t), _pad = 3;
+      doc.setFillColor(255, 255, 255); doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.4);
+      doc.rect(_x - _pad, _y - 8, _tw + _pad * 2, 11, 'FD');
+      doc.setTextColor('#1a1a2e'); doc.text(_t, _x, _y);
+    });
+    // White footer band
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, LH - 44, LW, 44, 'F');
+    pageFooter(LW, LH);
+  } else {
+    y = pageHeader(1, 'Side View — Dimensioned Drawing', LW);
 
   // Ground line
   doc.setDrawColor('#888888');
@@ -631,6 +726,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   }
 
   pageFooter(LW, LH);
+  } // end if/else primaryPageType
 
   // ── PAGE 2 — Project Summary ───────────────────────────────────────────────
 
@@ -1032,6 +1128,160 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   doc.text(dLines, M + 10, y + 5);
 
   pageFooter();
+
+  // ── Helper: render draft dimensions onto current page ─────────────────────
+  // dimData: array of { ax, ay, bx, by, label } with normalized 0..1 coords
+  // pageW, pageH: page dimensions in pts
+  const renderDraftDimensions = (dimData, pageW, pageH) => {
+    if (!Array.isArray(dimData) || dimData.length === 0) return;
+    const DC = '#1e3a5f';
+    const TICK = 8;
+    dimData.forEach(dim => {
+      if (!dim || !isFinite(dim.ax) || !isFinite(dim.ay) || !isFinite(dim.bx) || !isFinite(dim.by)) return;
+      const ax = dim.ax * pageW, ay = dim.ay * pageH;
+      const bx = dim.bx * pageW, by = dim.by * pageH;
+      const len = Math.sqrt((bx - ax) ** 2 + (by - ay) ** 2);
+      if (len < 5) return;
+      const midX = (ax + bx) / 2, midY = (ay + by) / 2;
+      const ux = (bx - ax) / len, uy = (by - ay) / len;
+      const perX = -uy, perY = ux;
+
+      doc.setDrawColor(DC);
+      doc.setLineWidth(1.2);
+      doc.line(ax, ay, bx, by);
+      doc.line(ax - perX * TICK, ay - perY * TICK, ax + perX * TICK, ay + perY * TICK);
+      doc.line(bx - perX * TICK, by - perY * TICK, bx + perX * TICK, by + perY * TICK);
+
+      const label = String(dim.label ?? 'DIM');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      const tw = doc.getTextWidth(label);
+      const lpad = 2.5;
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(255, 255, 255);
+      doc.rect(midX - tw / 2 - lpad, midY - 6.5, tw + lpad * 2, 9.5, 'F');
+      doc.setTextColor(DC);
+      doc.text(label, midX, midY + 1.5, { align: 'center' });
+    });
+  };
+
+  // ── Helper: render draft texts onto current page ──────────────────────────
+  const renderDraftTexts = (textData, pageW, pageH) => {
+    if (!Array.isArray(textData) || textData.length === 0) return;
+    textData.forEach(ann => {
+      if (!ann || !isFinite(ann.x) || !isFinite(ann.y) || !ann.text) return;
+      const x = ann.x * pageW;
+      const y = ann.y * pageH;
+      const text = String(ann.text);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      const tw = doc.getTextWidth(text);
+      const pad = 3;
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.4);
+      doc.rect(x - pad, y - 8, tw + pad * 2, 11, 'FD');
+      doc.setTextColor('#1a1a2e');
+      doc.text(text, x, y);
+    });
+  };
+
+  // ── Side PDF Draft page ───────────────────────────────────────────────────
+  const sideDims = pdfDrafts?.side?.dimensions ?? [];
+  const sideTxts = pdfDrafts?.side?.texts ?? [];
+  if (sideDims.length > 0 || sideTxts.length > 0) {
+    doc.addPage([792, 612]); // landscape
+
+    // Simple header
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor('#1a1a2e');
+    doc.text('SIDE PDF DRAFT', M, 40);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor('#666666');
+    doc.text('Side View — User-placed dimensions', M, 54);
+    hline(M, LW - M, 60, '#1a1a2e', 1);
+
+    // Re-draw stair side profile using the same layout variables as page 1
+    // (ox, oy, sc, rPx, tPx, dw, dh, mx, steps are all in scope from page 1)
+    doc.setDrawColor('#888888');
+    doc.setLineWidth(0.8);
+    doc.line(mx(ox - 28), oy, mx(ox + dw + 28), oy);
+
+    doc.setDrawColor('#1a1a2e');
+    doc.setLineWidth(1.5);
+    {
+      let ssx = ox, ssy = oy;
+      for (let i = 0; i < steps; i++) {
+        doc.line(mx(ssx), ssy, mx(ssx), ssy - rPx);
+        if (!(stairConfig.topLandingEnabled && i === steps - 1)) {
+          doc.line(mx(ssx), ssy - rPx, mx(ssx + tPx), ssy - rPx);
+        }
+        ssx += tPx;
+        ssy -= rPx;
+      }
+    }
+
+    renderDraftDimensions(sideDims, LW, LH);
+    renderDraftTexts(sideTxts, LW, LH);
+
+    hline(M, LW - M, LH - 36, '#cccccc');
+    txt(
+      `${project.name || 'Untitled Project'} — Side PDF Draft — Generated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+      LW / 2, LH - 22, { size: 8, color: '#888888', align: 'center' }
+    );
+  }
+
+  // ── 3D PDF Draft extra page (omitted when primaryPageType==='threeD'; content is already on page 1) ─
+  const threeDDraft = pdfDrafts?.threeD;
+  const has3dDraft = primaryPageType !== 'threeD' && (threeDDraft?.backgroundImage ||
+    (Array.isArray(threeDDraft?.dimensions) && threeDDraft.dimensions.length > 0) ||
+    (Array.isArray(threeDDraft?.texts) && threeDDraft.texts.length > 0));
+  if (has3dDraft) {
+    doc.addPage([792, 612]); // landscape
+
+    // Fill page white before drawing 3D image so no colored canvas background bleeds through
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, LW, LH, 'F');
+
+    // Background: captured 3D canvas image
+    if (threeDDraft.backgroundImage) {
+      try {
+        doc.addImage(threeDDraft.backgroundImage, 'PNG', 0, 0, LW, LH);
+      } catch {
+        // Skip image if it fails — still render dimensions and header
+      }
+    }
+
+    // Overlay header (semi-transparent band)
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(255, 255, 255);
+    doc.rect(0, 0, LW, 64, 'F');
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor('#1a1a2e');
+    doc.text('3D PDF DRAFT', M, 40);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor('#666666');
+    doc.text('3D View — User-placed dimensions', M, 54);
+    hline(M, LW - M, 60, '#1a1a2e', 1);
+
+    if (Array.isArray(threeDDraft.dimensions)) {
+      renderDraftDimensions(threeDDraft.dimensions, LW, LH);
+    }
+    if (Array.isArray(threeDDraft.texts) && threeDDraft.texts.length > 0) {
+      renderDraftTexts(threeDDraft.texts, LW, LH);
+    }
+
+    hline(M, LW - M, LH - 36, '#cccccc');
+    txt(
+      `${project.name || 'Untitled Project'} — 3D PDF Draft — Generated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+      LW / 2, LH - 22, { size: 8, color: '#888888', align: 'center' }
+    );
+  }
 
   if (mode === 'print') {
     doc.autoPrint();

@@ -460,6 +460,99 @@ html, body, #root {
   color: var(--text-muted);
 }
 
+/* ─── PDF Draft Overlay (legacy — kept for reference) ───────────────── */
+.pdf-draft-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  background: #1a1f2e;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── PDF Mode Inline Overlay ─────────────────────────────────────── */
+.pdf-mode-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.pdf-print-frame {
+  position: absolute;
+  inset: 3px;
+  border: 2px solid #2563eb;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.pdf-mode-badge {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(10,18,28,0.88);
+  border: 1px solid rgba(37,99,235,0.45);
+  border-radius: 6px;
+  padding: 5px 11px;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  pointer-events: all;
+  -webkit-user-select: none;
+  user-select: none;
+  white-space: nowrap;
+  z-index: 20;
+}
+
+.pdf-mode-badge-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #60a5fa;
+  letter-spacing: 0.05em;
+}
+
+.pdf-draft-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  height: 44px;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pdf-draft-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.pdf-draft-hint {
+  flex: 1;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.pdf-draft-actions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.pdf-draft-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  cursor: crosshair;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* ─── Mobile ───────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   :root {

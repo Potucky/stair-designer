@@ -1,0 +1,1067 @@
+diff --git a/src/App.jsx b/src/App.jsx
+index 6b0a1cb..b4ca420 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -103,6 +103,23 @@ export default function App() {
+   });
+   const [structureMoveSelected, setStructureMoveSelected] = useState(false);
+ 
++  const [selectedPdfDraftDimensionId, setSelectedPdfDraftDimensionId] = useState(null);
++
++  const [pdfDrafts, setPdfDrafts] = useState(() => {
++    const d = loadInitialDraft();
++    const DEFAULT = {
++      side: { type: 'side', dimensions: [], texts: [] },
++      threeD: { type: '3d', backgroundImage: null, dimensions: [], texts: [] },
++    };
++    if (!d?.pdfDrafts || typeof d.pdfDrafts !== 'object') return DEFAULT;
++    return {
++      side: { ...DEFAULT.side, ...d.pdfDrafts.side },
++      threeD: { ...DEFAULT.threeD, ...d.pdfDrafts.threeD },
++    };
++  });
++  const [activePdfDraftMode, setActivePdfDraftMode] = useState(null); // null | 'side' | '3d'
++  const capture3dRef = useRef(null);
++
+   useEffect(() => {
+     const onKey = (e) => {
+       if (e.key === 'Escape') {
+@@ -172,6 +189,7 @@ export default function App() {
+           pdfMirrored,
+           topRailPathMode,
+           currentProjectId,
++          pdfDrafts,
+         };
+         localStorage.setItem(LS_KEY, JSON.stringify(snapshot));
+       } catch {
+@@ -179,7 +197,7 @@ export default function App() {
+       }
+     }, 500);
+     return () => clearTimeout(id);
+-  }, [project, stairConfig, units, manualDimensions, manualTextAnnotations, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, currentProjectId]);
++  }, [project, stairConfig, units, manualDimensions, manualTextAnnotations, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, currentProjectId, pdfDrafts]);
+ 
+   const calc = useMemo(() => calcStair(stairConfig), [stairConfig]);
+ 
+@@ -409,7 +427,7 @@ export default function App() {
+ 
+   const handleOpenJson = () =>
+     openProjectJson(
+-      ({ project: p, stairConfig: sc, units: u, manualDimensions: mdi, manualPosts: mp, manualTopRails: mtr, structureOffsetXIn: sox, structureOffsetZIn: soz, pdfMirrored: pm, topRailPathMode: trpm, manualTextAnnotations: mta }) => {
++      ({ project: p, stairConfig: sc, units: u, manualDimensions: mdi, manualPosts: mp, manualTopRails: mtr, structureOffsetXIn: sox, structureOffsetZIn: soz, pdfMirrored: pm, topRailPathMode: trpm, manualTextAnnotations: mta, pdfDrafts: pd }) => {
+         skipAutosaveRestoreRef.current = true;
+         setProject({ ...DEFAULT_PROJECT, ...p });
+         setStairConfig({ ...DEFAULT_STAIR, ...sc });
+@@ -422,6 +440,7 @@ export default function App() {
+         if (typeof soz === 'number') setStructureOffsetZIn(soz);
+         setPdfMirrored(pm === true);
+         if (trpm) setTopRailPathMode(trpm);
++        if (pd) setPdfDrafts(pd);
+         setSelectedManualPostId(null);
+         setSelectedManualTopRailId(null);
+         setPostPlacementMode(false);
+@@ -433,12 +452,23 @@ export default function App() {
+       (msg) => alert(`Could not open file: ${msg}`),
+     );
+ 
+-  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, manualTextAnnotations });
+-
+-  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, pdfMirrored, topRailPathMode, manualTextAnnotations });
++  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, manualTextAnnotations, pdfDrafts });
++
++  const handleExportPdf = () => {
++    let effectivePdfDrafts = pdfDrafts;
++    if (activePdfDraftMode === '3d') {
++      const fn = capture3dRef.current;
++      const freshImg = fn ? fn() : null;
++      effectivePdfDrafts = {
++        ...pdfDrafts,
++        threeD: { ...pdfDrafts.threeD, backgroundImage: freshImg },
++      };
++    }
++    generatePdf({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, pdfMirrored, topRailPathMode, manualTextAnnotations, pdfDrafts: effectivePdfDrafts, primaryPageType: activePdfDraftMode === '3d' ? 'threeD' : 'side' });
++  };
+ 
+   const handleSaveProject = async () => {
+-    const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualDimensions, manualPosts, manualTopRails, manualTextAnnotations, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, units, currentProjectId });
++    const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualDimensions, manualPosts, manualTopRails, manualTextAnnotations, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, units, currentProjectId, pdfDrafts });
+     if (result.ok && result.projectId) {
+       setCurrentProjectId(result.projectId);
+     }
+@@ -470,6 +500,18 @@ export default function App() {
+     else setTopRailPathMode('standard');
+     const validUnit = (u) => u === 'in' || u === 'mm';
+     setUnits(validUnit(sc.units) ? sc.units : validUnit(p.units) ? p.units : 'in');
++    const DEFAULT_PDF_DRAFTS = {
++      side: { type: 'side', dimensions: [], texts: [] },
++      threeD: { type: '3d', backgroundImage: null, dimensions: [], texts: [] },
++    };
++    if (sc.pdfDrafts && typeof sc.pdfDrafts === 'object') {
++      setPdfDrafts({
++        side: { ...DEFAULT_PDF_DRAFTS.side, ...sc.pdfDrafts.side },
++        threeD: { ...DEFAULT_PDF_DRAFTS.threeD, ...sc.pdfDrafts.threeD },
++      });
++    } else {
++      setPdfDrafts(DEFAULT_PDF_DRAFTS);
++    }
+     setSelectedManualPostId(null);
+     setSelectedManualTopRailId(null);
+     setPostPlacementMode(false);
+@@ -478,7 +520,91 @@ export default function App() {
+     setCurrentProjectId(p.id);
+   };
+ 
++  const handleOpenSidePdf = () => {
++    if (activePdfDraftMode === 'side') { setActivePdfDraftMode(null); return; }
++    setView('side');
++    setViewResetToken(t => t + 1);
++    setActivePdfDraftMode('side');
++  };
++
++  const handleOpen3dPdf = () => {
++    if (activePdfDraftMode === '3d') { setActivePdfDraftMode(null); setSelectedPdfDraftDimensionId(null); return; }
++    setActivePdfDraftMode('3d');
++    setSelectedPdfDraftDimensionId(null);
++  };
++
++  const handleAddPdfDimension = (dimData) => {
++    if (!activePdfDraftMode) return;
++    const key = activePdfDraftMode === 'side' ? 'side' : 'threeD';
++    setPdfDrafts(prev => ({ ...prev, [key]: { ...prev[key], dimensions: [...prev[key].dimensions, dimData] } }));
++    if (activePdfDraftMode === '3d') setSelectedPdfDraftDimensionId(dimData.id);
++  };
++
++  const handleAddPdfText = (textData) => {
++    if (!activePdfDraftMode) return;
++    const key = activePdfDraftMode === 'side' ? 'side' : 'threeD';
++    setPdfDrafts(prev => ({ ...prev, [key]: { ...prev[key], texts: [...(prev[key].texts ?? []), textData] } }));
++  };
++
++  const handleDeleteLastPdfAnnotation = () => {
++    if (!activePdfDraftMode) return;
++    const key = activePdfDraftMode === 'side' ? 'side' : 'threeD';
++    setPdfDrafts(prev => {
++      const draft = prev[key];
++      const texts = draft.texts ?? [];
++      const dims = draft.dimensions ?? [];
++      if (texts.length > 0) return { ...prev, [key]: { ...draft, texts: texts.slice(0, -1) } };
++      if (dims.length > 0) return { ...prev, [key]: { ...draft, dimensions: dims.slice(0, -1) } };
++      return prev;
++    });
++  };
++
++  const handleExitPdfMode = () => { setActivePdfDraftMode(null); setSelectedPdfDraftDimensionId(null); };
++
++  const handleSelectPdfDraftDimension = (id) => setSelectedPdfDraftDimensionId(id);
++
++  const handleUpdatePdfDraftDimension = (id, changes) => {
++    setPdfDrafts(prev => ({
++      ...prev,
++      threeD: { ...prev.threeD, dimensions: prev.threeD.dimensions.map(d => d.id === id ? { ...d, ...changes } : d) },
++    }));
++  };
++
++  const handleDeletePdfDraftDimension = (id) => {
++    setPdfDrafts(prev => ({
++      ...prev,
++      threeD: { ...prev.threeD, dimensions: prev.threeD.dimensions.filter(d => d.id !== id) },
++    }));
++    setSelectedPdfDraftDimensionId(cur => cur === id ? null : cur);
++  };
++
++  const handleDeleteLastPdfDraftDimension = () => {
++    setPdfDrafts(prev => {
++      const dims = prev.threeD.dimensions;
++      if (dims.length === 0) return prev;
++      const lastId = dims[dims.length - 1].id;
++      setSelectedPdfDraftDimensionId(cur => cur === lastId ? null : cur);
++      return { ...prev, threeD: { ...prev.threeD, dimensions: dims.slice(0, -1) } };
++    });
++  };
++
++  const handleClearAllPdfDraftDimensions = () => {
++    setPdfDrafts(prev => ({ ...prev, threeD: { ...prev.threeD, dimensions: [] } }));
++    setSelectedPdfDraftDimensionId(null);
++  };
++
+   const handlePrint = () => {
++    if (activePdfDraftMode === '3d') {
++      const fn = capture3dRef.current;
++      const freshImg = fn ? fn() : null;
++      const effectivePdfDrafts = {
++        ...pdfDrafts,
++        threeD: { ...pdfDrafts.threeD, backgroundImage: freshImg },
++      };
++      const blobUrl = generatePdf({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, pdfMirrored, topRailPathMode, manualTextAnnotations, pdfDrafts: effectivePdfDrafts, primaryPageType: 'threeD', mode: 'print' });
++      if (blobUrl) { const pw = window.open(blobUrl, '_blank'); if (!pw) window.location.href = blobUrl; }
++      return;
++    }
+     printViewportPdf();
+   };
+ 
+@@ -498,7 +624,7 @@ export default function App() {
+         onUnitsChange={setUnits}
+         onOpenProject={() => setOpenProjectModalOpen(true)}
+       />
+-      <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} showDimensions={showDimensions} onToggleDimensions={() => setShowDimensions((v) => !v)} manualDimensionsCount={manualDimensions.length} onUndoLastManualDimension={handleUndoLastManualDimension} />
++      <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} showDimensions={showDimensions} onToggleDimensions={() => setShowDimensions((v) => !v)} manualDimensionsCount={manualDimensions.length} onUndoLastManualDimension={handleUndoLastManualDimension} onOpenSidePdf={handleOpenSidePdf} onOpen3dPdf={handleOpen3dPdf} activePdfDraftMode={activePdfDraftMode} />
+       <StairScene
+         stairConfig={stairConfig}
+         calc={calc}
+@@ -529,6 +655,15 @@ export default function App() {
+         fastRailsPrevPostId={fastRailsPrevPostId}
+         onFastRailsPost={handleFastRailsPost}
+         onFastRailsPostSelect={handleFastRailsPostSelect}
++        capture3dRef={capture3dRef}
++        activePdfDraftMode={activePdfDraftMode}
++        pdfDrafts={pdfDrafts}
++        onAddPdfDimension={handleAddPdfDimension}
++        onAddPdfText={handleAddPdfText}
++        onDeleteLastPdfAnnotation={handleDeleteLastPdfAnnotation}
++        onExitPdfMode={handleExitPdfMode}
++        selectedPdfDraftDimensionId={selectedPdfDraftDimensionId}
++        onSelectPdfDraftDimension={handleSelectPdfDraftDimension}
+       />
+       <RightPanel
+         project={project}
+@@ -580,6 +715,14 @@ export default function App() {
+         onToggleFastRailsMode={handleToggleFastRailsMode}
+         pdfMirrored={pdfMirrored}
+         onTogglePdfMirrored={handleTogglePdfMirrored}
++        activePdfDraftMode={activePdfDraftMode}
++        pdfDrafts={pdfDrafts}
++        selectedPdfDraftDimensionId={selectedPdfDraftDimensionId}
++        onSelectPdfDraftDimension={handleSelectPdfDraftDimension}
++        onUpdatePdfDraftDimension={handleUpdatePdfDraftDimension}
++        onDeletePdfDraftDimension={handleDeletePdfDraftDimension}
++        onDeleteLastPdfDraftDimension={handleDeleteLastPdfDraftDimension}
++        onClearAllPdfDraftDimensions={handleClearAllPdfDraftDimensions}
+       />
+       <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} units={units} />
+       {openProjectModalOpen && (
+diff --git a/src/components/RightPanel.jsx b/src/components/RightPanel.jsx
+index e7b8f8f..fed3c2d 100644
+--- a/src/components/RightPanel.jsx
++++ b/src/components/RightPanel.jsx
+@@ -115,7 +115,7 @@ function ExtChips({ curLen, onSet }) {
+   );
+ }
+ 
+-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onNewProject, onSaveProject, onOpenProject, onExportPdf, units, activeTool, manualDimensions, onUpdateManualDimension, onDeleteManualDimension, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode, manualTextAnnotations, onUpdateManualTextAnnotation, onDeleteManualTextAnnotation, pdfMirrored, onTogglePdfMirrored }) {
++export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onNewProject, onSaveProject, onOpenProject, onExportPdf, units, activeTool, manualDimensions, onUpdateManualDimension, onDeleteManualDimension, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode, manualTextAnnotations, onUpdateManualTextAnnotation, onDeleteManualTextAnnotation, pdfMirrored, onTogglePdfMirrored, activePdfDraftMode, pdfDrafts, selectedPdfDraftDimensionId, onUpdatePdfDraftDimension, onDeletePdfDraftDimension, onDeleteLastPdfDraftDimension, onClearAllPdfDraftDimensions }) {
+   const [saveStatus, setSaveStatus] = useState(null);
+   const [turnFromP1In, setTurnFromP1In] = useState(null);
+ 
+@@ -132,9 +132,71 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
+   const errorWarnings = warnings.filter((w) => w.level === 'error');
+   const warnWarnings = warnings.filter((w) => w.level === 'warning');
+ 
++  const threeDDims = pdfDrafts?.threeD?.dimensions ?? [];
++  const selectedDim = selectedPdfDraftDimensionId
++    ? threeDDims.find(d => d.id === selectedPdfDraftDimensionId)
++    : null;
++
+   return (
+     <aside className="right-panel">
+ 
++      {/* 3D PDF Annotations — visible only while 3D PDF mode is active */}
++      {activePdfDraftMode === '3d' && (
++        <section className="panel-section" style={{ borderBottom: '2px solid #2563eb', background: '#f0f5ff' }}>
++          <h3 className="section-title" style={{ color: '#1d4ed8' }}>3D PDF Annotations</h3>
++
++          {selectedDim ? (
++            <>
++              <label className="field-label" style={{ marginBottom: 6 }}>
++                <span style={{ fontWeight: 600, color: '#1e3a5f' }}>Label / Value</span>
++                <input
++                  className="field-input"
++                  value={selectedDim.label ?? ''}
++                  onChange={e => onUpdatePdfDraftDimension(selectedDim.id, { label: e.target.value })}
++                  placeholder='e.g. 36" or 72 1/2"'
++                  autoFocus
++                />
++              </label>
++              <button
++                className="panel-btn panel-btn-danger"
++                style={{ width: '100%', marginBottom: 6 }}
++                onClick={() => onDeletePdfDraftDimension(selectedDim.id)}
++              >
++                Delete Selected Dimension
++              </button>
++            </>
++          ) : (
++            <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 8, lineHeight: '1.4' }}>
++              {threeDDims.length > 0
++                ? 'Click a dimension line to select it and edit its label.'
++                : 'Double-click point A, then point B to add a dimension.'}
++            </p>
++          )}
++
++          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
++            <button
++              className="panel-btn"
++              onClick={onDeleteLastPdfDraftDimension}
++              disabled={threeDDims.length === 0}
++            >
++              Delete Last
++            </button>
++            <button
++              className="panel-btn panel-btn-danger"
++              onClick={onClearAllPdfDraftDimensions}
++              disabled={threeDDims.length === 0}
++            >
++              Clear All
++            </button>
++          </div>
++          {threeDDims.length > 0 && (
++            <div style={{ fontSize: 10, color: '#6b7280', marginTop: 5 }}>
++              {threeDDims.length} dimension{threeDDims.length !== 1 ? 's' : ''}
++            </div>
++          )}
++        </section>
++      )}
++
+       {/* Project */}
+       <section className="panel-section">
+         <h3 className="section-title">Project</h3>
+diff --git a/src/components/StairScene.jsx b/src/components/StairScene.jsx
+index 60a2c46..9b5c153 100644
+--- a/src/components/StairScene.jsx
++++ b/src/components/StairScene.jsx
+@@ -11,6 +11,22 @@ const SCENE_CENTER_Y = 27;
+ // Visual tread thickness in scene units (shared by StairModel and ManualPostsRenderer)
+ const TREAD_THICK = 0.3;
+ 
++function CanvasCaptureHelper({ captureRef }) {
++  const { gl, scene, camera } = useThree();
++  useEffect(() => {
++    if (captureRef) captureRef.current = () => {
++      const origBg = scene.background;
++      scene.background = new THREE.Color('#ffffff');
++      gl.render(scene, camera);
++      const dataUrl = gl.domElement.toDataURL('image/png');
++      scene.background = origBg;
++      return dataUrl;
++    };
++    return () => { if (captureRef) captureRef.current = null; };
++  }, [gl, scene, camera, captureRef]);
++  return null;
++}
++
+ function KeyboardNudge({ controlsRef }) {
+   const { camera } = useThree();
+ 
+@@ -1081,15 +1097,179 @@ function ManualTextTool({ active, onAddManualTextAnnotation, stairHeight, view }
+   return null;
+ }
+ 
+-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation }) {
++function PdfModePanel({ mode, pdfDraft, activeTool, onAddPdfDimension, onAddPdfText, onDeleteLast, onExit, selectedDimId, onSelectDim }) {
++  const [pendingA, setPendingA] = useState(null);
++  const overlayRef = useRef(null);
++  const [sz, setSz] = useState({ w: 1, h: 1 });
++
++  useEffect(() => {
++    const el = overlayRef.current;
++    if (!el) return;
++    const sync = () => setSz({ w: el.clientWidth || 1, h: el.clientHeight || 1 });
++    sync();
++    const ro = new ResizeObserver(sync);
++    ro.observe(el);
++    return () => ro.disconnect();
++  }, []);
++
++  useEffect(() => {
++    const onKey = e => { if (e.key === 'Escape') setPendingA(null); };
++    window.addEventListener('keydown', onKey);
++    return () => window.removeEventListener('keydown', onKey);
++  }, []);
++
++  const getNorm = (e) => {
++    const r = overlayRef.current.getBoundingClientRect();
++    return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
++  };
++
++  const handleDblClick = (e) => {
++    e.preventDefault(); e.stopPropagation();
++    if (activeTool === 'dimension') {
++      const pt = getNorm(e);
++      if (!pendingA) {
++        setPendingA(pt);
++      } else {
++        onAddPdfDimension({ id: `pdim-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, ax: pendingA.x, ay: pendingA.y, bx: pt.x, by: pt.y, label: 'DIM' });
++        setPendingA(null);
++      }
++    } else if (activeTool === 'text') {
++      onAddPdfText({ id: `ptxt-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, ...getNorm(e), text: 'Text' });
++    }
++  };
++
++  const dims = pdfDraft?.dimensions ?? [];
++  const texts = pdfDraft?.texts ?? [];
++  const { w, h } = sz;
++  const isDimTool = activeTool === 'dimension';
++  const isTextTool = activeTool === 'text';
++
++  return (
++    <div ref={overlayRef} className="pdf-mode-overlay">
++      <div className="pdf-print-frame" />
++
++      {/* Capture layer: double-click to place dims/text, single click to deselect */}
++      <div
++        style={{ position: 'absolute', inset: 0, cursor: isDimTool || isTextTool ? 'crosshair' : 'default', pointerEvents: 'all', zIndex: 1 }}
++        onDoubleClick={isDimTool || isTextTool ? handleDblClick : undefined}
++        onClick={() => onSelectDim && onSelectDim(null)}
++      />
++
++      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none', zIndex: 2 }}>
++        {dims.map(dim => {
++          const ax = dim.ax * w, ay = dim.ay * h;
++          const bx = dim.bx * w, by = dim.by * h;
++          const len = Math.hypot(bx - ax, by - ay);
++          if (len < 4) return null;
++
++          const midX = (ax + bx) / 2, midY = (ay + by) / 2;
++
++          // Original direction unit vector (A→B)
++          const oux = (bx - ax) / len, ouy = (by - ay) / len;
++
++          // Normalize direction to "rightward or upward" so the label always sits
++          // on a consistent visual side (above horizontal, left of vertical)
++          let nux = oux, nuy = ouy;
++          if (nux < 0 || (nux === 0 && nuy > 0)) { nux = -nux; nuy = -nuy; }
++
++          // "Above" perpendicular in screen coords (y-down):
++          // Rotate normalized direction 90° CW-in-screen (mathematically: (nuy, -nux))
++          const perpX = nuy, perpY = -nux;
++          const LABEL_OFFSET = 14;
++          const lx = midX + perpX * LABEL_OFFSET;
++          const ly = midY + perpY * LABEL_OFFSET;
++
++          // SVG rotation angle (CW-positive), normalized to [-90, 90) so text is always readable
++          let angleDeg = Math.atan2(by - ay, bx - ax) * 180 / Math.PI;
++          if (angleDeg >= 90) angleDeg -= 180;
++          else if (angleDeg < -90) angleDeg += 180;
++
++          // Filled arrowheads at A and B
++          const ARROW_LEN = 10, ARROW_W = 4;
++          const apx = -ouy, apy = oux; // perpendicular (used for arrowhead wings)
++          const arrowA = `${ax},${ay} ${ax + oux * ARROW_LEN + apx * ARROW_W},${ay + ouy * ARROW_LEN + apy * ARROW_W} ${ax + oux * ARROW_LEN - apx * ARROW_W},${ay + ouy * ARROW_LEN - apy * ARROW_W}`;
++          const arrowB = `${bx},${by} ${bx - oux * ARROW_LEN + apx * ARROW_W},${by - ouy * ARROW_LEN + apy * ARROW_W} ${bx - oux * ARROW_LEN - apx * ARROW_W},${by - ouy * ARROW_LEN - apy * ARROW_W}`;
++
++          const lbl = String(dim.label ?? 'DIM');
++          const lblW = Math.max(32, lbl.length * 6.5 + 14);
++          const isSelected = selectedDimId === dim.id;
++          const dimColor = isSelected ? '#1565c0' : '#1e3a5f';
++          const borderColor = isSelected ? '#1565c0' : '#c0c8d5';
++
++          return (
++            <g
++              key={dim.id}
++              pointerEvents="all"
++              style={{ cursor: 'pointer' }}
++              onMouseDown={e => e.stopPropagation()}
++              onClick={e => { e.stopPropagation(); onSelectDim && onSelectDim(dim.id); }}
++            >
++              {/* Wide invisible hit area */}
++              <line x1={ax} y1={ay} x2={bx} y2={by} stroke="transparent" strokeWidth={14} />
++              {/* Dimension line */}
++              <line x1={ax} y1={ay} x2={bx} y2={by} stroke={dimColor} strokeWidth={isSelected ? 2 : 1.5} />
++              {/* Arrowheads */}
++              <polygon points={arrowA} fill={dimColor} />
++              <polygon points={arrowB} fill={dimColor} />
++              {/* Label rotated parallel to line, offset above/left */}
++              <g transform={`translate(${lx},${ly}) rotate(${angleDeg})`}>
++                <rect x={-lblW / 2} y={-8} width={lblW} height={14} fill="white" stroke={borderColor} strokeWidth={isSelected ? 1.5 : 0.7} rx={2} />
++                <text x={0} y={3.5} textAnchor="middle" fontSize={10} fill={dimColor} fontWeight="bold" fontFamily="ui-monospace,monospace">{lbl}</text>
++              </g>
++            </g>
++          );
++        })}
++        {texts.map(ann => {
++          const tx = ann.x * w, ty = ann.y * h;
++          const lbl = String(ann.text ?? '');
++          const lblW = Math.max(40, lbl.length * 6.5 + 14);
++          return (
++            <g key={ann.id}>
++              <rect x={tx} y={ty - 12} width={lblW} height={16} fill="rgba(255,255,255,0.93)" stroke="#c0c8d5" strokeWidth={0.7} rx={2} />
++              <text x={tx + 4} y={ty} fontSize={10} fill="#1a1a2e" fontFamily="ui-sans-serif,sans-serif">{lbl}</text>
++            </g>
++          );
++        })}
++        {pendingA && (
++          <circle cx={pendingA.x * w} cy={pendingA.y * h} r={5} fill="#1e3a5f" stroke="white" strokeWidth={1.5} />
++        )}
++      </svg>
++
++      <div className="pdf-mode-badge">
++        <span className="pdf-mode-badge-label">{mode === '3d' ? '3D PDF ACTIVE' : 'SIDE PDF ACTIVE'}</span>
++        {isDimTool && <span style={{ fontSize: '10px', color: '#94a3b8' }}>{pendingA ? '→ dbl-click pt B' : '→ dbl-click pt A'}</span>}
++        {isTextTool && <span style={{ fontSize: '10px', color: '#94a3b8' }}>→ dbl-click to place</span>}
++        <button
++          className="panel-btn panel-btn-danger"
++          style={{ fontSize: '10px', padding: '2px 7px' }}
++          onClick={e => { e.stopPropagation(); if (pendingA) { setPendingA(null); } else { onDeleteLast(); } }}
++          disabled={dims.length === 0 && texts.length === 0 && !pendingA}
++        >
++          Delete Last
++        </button>
++        <button
++          className="panel-btn panel-btn-primary"
++          style={{ fontSize: '10px', padding: '2px 7px' }}
++          onClick={e => { e.stopPropagation(); setPendingA(null); onExit(); }}
++        >
++          Exit PDF Mode
++        </button>
++      </div>
++    </div>
++  );
++}
++
++export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation, capture3dRef = null, activePdfDraftMode = null, pdfDrafts = null, onAddPdfDimension, onAddPdfText, onDeleteLastPdfAnnotation, onExitPdfMode, selectedPdfDraftDimensionId = null, onSelectPdfDraftDimension }) {
+   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 } = stairConfig;
+   const effectiveColorMode = railingColorMode ?? 'work';
+   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
+   const orbitRef = useRef();
+   const isMeasure = activeTool === 'measure';
+-  const isDims = activeTool === 'dimension';
+-  const isText = activeTool === 'text';
+-  const activeCursor = isMeasure || isDims || isText || postPlacementMode || topRailMode || fastRailsMode ? 'crosshair' : undefined;
++  // In PDF mode, disable 3D dim/text tools so PDF overlay handles annotation capture instead
++  const isDims = activeTool === 'dimension' && !activePdfDraftMode;
++  const isText = activeTool === 'text' && !activePdfDraftMode;
++  const isPdfAnnotationTool = !!activePdfDraftMode && (activeTool === 'dimension' || activeTool === 'text');
++  const activeCursor = isMeasure || isDims || isText || isPdfAnnotationTool || postPlacementMode || topRailMode || fastRailsMode ? 'crosshair' : undefined;
+ 
+   return (
+     <div id="print-viewport" className="scene-container" style={activeCursor ? { cursor: activeCursor } : undefined}>
+@@ -1100,6 +1280,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
+       >
+         <color attach="background" args={['#edf2f7']} />
+ 
++        <CanvasCaptureHelper captureRef={capture3dRef} />
+         <CameraController view={view} viewResetToken={viewResetToken} controlsRef={orbitRef} height={height} run={run} width={width} />
+         <KeyboardNudge controlsRef={orbitRef} />
+ 
+@@ -1221,13 +1402,26 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
+         <OrbitControls
+           ref={orbitRef}
+           makeDefault
+-          enabled={!isMeasure}
++          enabled={!isMeasure && !isPdfAnnotationTool}
+           enableDamping
+           dampingFactor={0.08}
+           screenSpacePanning
+           panSpeed={1.2}
+         />
+       </Canvas>
++      {activePdfDraftMode && (
++        <PdfModePanel
++          mode={activePdfDraftMode}
++          pdfDraft={activePdfDraftMode === 'side' ? pdfDrafts?.side : pdfDrafts?.threeD}
++          activeTool={activeTool}
++          onAddPdfDimension={onAddPdfDimension}
++          onAddPdfText={onAddPdfText}
++          onDeleteLast={onDeleteLastPdfAnnotation}
++          onExit={onExitPdfMode}
++          selectedDimId={activePdfDraftMode === '3d' ? selectedPdfDraftDimensionId : null}
++          onSelectDim={activePdfDraftMode === '3d' ? onSelectPdfDraftDimension : undefined}
++        />
++      )}
+     </div>
+   );
+ }
+diff --git a/src/components/Toolbar.jsx b/src/components/Toolbar.jsx
+index 67c16dd..41bcd5c 100644
+--- a/src/components/Toolbar.jsx
++++ b/src/components/Toolbar.jsx
+@@ -1,6 +1,6 @@
+ import ToolButton from './ToolButton.jsx';
+ 
+-export default function Toolbar({ activeTool, onToolSelect, onViewChange, showDimensions, onToggleDimensions, manualDimensionsCount = 0, onUndoLastManualDimension }) {
++export default function Toolbar({ activeTool, onToolSelect, onViewChange, showDimensions, onToggleDimensions, manualDimensionsCount = 0, onUndoLastManualDimension, onOpenSidePdf, onOpen3dPdf, activePdfDraftMode = null }) {
+   const activeTools = [
+     { id: 'select',       label: 'Select',       icon: '↖' },
+     { id: 'measure',      label: 'Measure',      icon: '📏' },
+@@ -67,6 +67,23 @@ export default function Toolbar({ activeTool, onToolSelect, onViewChange, showDi
+         />
+       </div>
+ 
++      <div className="tool-divider" />
++
++      <div className="tool-group">
++        <ToolButton
++          label="Side PDF"
++          icon="📄"
++          active={activePdfDraftMode === 'side'}
++          onClick={onOpenSidePdf}
++        />
++        <ToolButton
++          label="3D PDF"
++          icon="📐"
++          active={activePdfDraftMode === '3d'}
++          onClick={onOpen3dPdf}
++        />
++      </div>
++
+     </aside>
+   );
+ }
+diff --git a/src/lib/saveProject.js b/src/lib/saveProject.js
+index 5a5d133..28616d8 100644
+--- a/src/lib/saveProject.js
++++ b/src/lib/saveProject.js
+@@ -16,6 +16,7 @@ export async function saveProject({
+   topRailPathMode = 'standard',
+   units = 'in',
+   currentProjectId = null,
++  pdfDrafts = null,
+ }) {
+   if (!supabase) {
+     return { ok: false, error: 'Supabase is not configured.' };
+@@ -68,6 +69,7 @@ export async function saveProject({
+       units,
+       manualDimensions,
+       manualTextAnnotations,
++      pdfDrafts,
+     };
+ 
+     const { error: versionError } = await supabase
+diff --git a/src/pdf/generatePdf.js b/src/pdf/generatePdf.js
+index c6a58b0..d87a3df 100644
+--- a/src/pdf/generatePdf.js
++++ b/src/pdf/generatePdf.js
+@@ -1,7 +1,7 @@
+ import { jsPDF } from 'jspdf';
+ import { getTubeProfile, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
+ 
+-export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], manualTextAnnotations = [], pdfMirrored = false, topRailPathMode = 'standard', mode = 'save' }) {
++export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], manualTextAnnotations = [], pdfMirrored = false, topRailPathMode = 'standard', mode = 'save', pdfDrafts = null, primaryPageType = 'side' }) {
+   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [792, 612] });
+   const INCH_TO_MM = 25.4;
+   const fmtDim = (inchVal, dec = 2) =>
+@@ -78,7 +78,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
+ 
+   // ── PAGE 1 — Side View Dimensioned Drawing ─────────────────────────────────
+ 
+-  let y = pageHeader(1, 'Side View — Dimensioned Drawing', LW, LH);
++  let y = 0;
+ 
+   const { height, run, steps } = stairConfig;
+   const railLowerExtensionIn = stairConfig.railLowerExtensionIn ?? 0;
+@@ -129,6 +129,101 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
+   const mirrored = Boolean(pdfMirrored);
+   const mx = mirrored ? (x) => 2 * ox + dw - x : (x) => x;
+ 
++  if (primaryPageType === 'threeD') {
++    // ── PAGE 1 — 3D View Dimensioned Drawing ──────────────────────────────
++    // Full-page white fill, then 3D capture image at 0,0,LW,LH so normalized
++    // annotation coords (captured relative to overlay) align exactly.
++    const _td = pdfDrafts?.threeD;
++    doc.setFillColor(255, 255, 255);
++    doc.rect(0, 0, LW, LH, 'F');
++    if (_td?.backgroundImage) {
++      // eslint-disable-next-line no-empty
++      try { doc.addImage(_td.backgroundImage, 'PNG', 0, 0, LW, LH); } catch {}
++    }
++    // White header band drawn on top of image
++    doc.setFillColor(255, 255, 255);
++    doc.rect(0, 0, LW, 64, 'F');
++    pageHeader(1, '3D View — Dimensioned Drawing', LW);
++    // Dimensions — normalized 0..1 → full-page pt coords
++    const _DC = '#1e3a5f';
++    (Array.isArray(_td?.dimensions) ? _td.dimensions : []).forEach(dim => {
++      if (!dim || !isFinite(dim.ax) || !isFinite(dim.ay) || !isFinite(dim.bx) || !isFinite(dim.by)) return;
++      const ax = dim.ax * LW, ay = dim.ay * LH, bx = dim.bx * LW, by = dim.by * LH;
++      const len = Math.sqrt((bx - ax) ** 2 + (by - ay) ** 2);
++      if (len < 5) return;
++      const midX = (ax + bx) / 2, midY = (ay + by) / 2;
++
++      // Unit direction A→B and perpendicular
++      const oux = (bx - ax) / len, ouy = (by - ay) / len;
++      const apx = -ouy, apy = oux;
++
++      // Main dimension line
++      doc.setDrawColor(_DC); doc.setLineWidth(1.2);
++      doc.line(ax, ay, bx, by);
++
++      // Filled arrowhead triangles at both ends
++      doc.setFillColor(30, 58, 95);
++      const _AL = 10, _AW = 4;
++      doc.triangle(ax, ay,
++        ax + oux * _AL + apx * _AW, ay + ouy * _AL + apy * _AW,
++        ax + oux * _AL - apx * _AW, ay + ouy * _AL - apy * _AW, 'F');
++      doc.triangle(bx, by,
++        bx - oux * _AL + apx * _AW, by - ouy * _AL + apy * _AW,
++        bx - oux * _AL - apx * _AW, by - ouy * _AL - apy * _AW, 'F');
++
++      // Label position: offset perpendicular to line on the "above/left" side
++      // Normalize direction to rightward-or-upward so offset is always consistent
++      let nux = oux, nuy = ouy;
++      if (nux < 0 || (nux === 0 && nuy > 0)) { nux = -nux; nuy = -nuy; }
++      const lPerpX = nuy, lPerpY = -nux;
++      const _LOFF = 14;
++      const lx = midX + lPerpX * _LOFF;
++      const ly = midY + lPerpY * _LOFF;
++
++      // Angle: normalize to [-90, 90) so text reads left-to-right or bottom-to-top
++      // jsPDF text angle is CCW-positive (same visual effect as SVG rotate CW-positive
++      // when using the same sign, because jsPDF's y-down rendering matches SVG)
++      let _angleDeg = Math.atan2(by - ay, bx - ax) * 180 / Math.PI;
++      if (_angleDeg >= 90) _angleDeg -= 180;
++      else if (_angleDeg < -90) _angleDeg += 180;
++      const _jsPdfAngle = _angleDeg; // same sign: both refer to screen CW
++
++      const _lbl = String(dim.label ?? 'DIM');
++      doc.setFontSize(8); doc.setFont('helvetica', 'bold');
++      const _tw = doc.getTextWidth(_lbl);
++      const _lpad = 3, _rw = _tw + _lpad * 2, _rh = 10;
++
++      // Rotated white background rect (two triangles)
++      const cosA = Math.cos(_angleDeg * Math.PI / 180);
++      const sinA = Math.sin(_angleDeg * Math.PI / 180);
++      // SVG CW rotation: x' = cx*cosA - cy*sinA + lx, y' = cx*sinA + cy*cosA + ly
++      const _rc = [[-_rw / 2, -_rh / 2], [_rw / 2, -_rh / 2], [_rw / 2, _rh / 2], [-_rw / 2, _rh / 2]]
++        .map(([cx, cy]) => [lx + cx * cosA - cy * sinA, ly + cx * sinA + cy * cosA]);
++      doc.setFillColor(255, 255, 255);
++      doc.triangle(_rc[0][0], _rc[0][1], _rc[1][0], _rc[1][1], _rc[2][0], _rc[2][1], 'F');
++      doc.triangle(_rc[0][0], _rc[0][1], _rc[2][0], _rc[2][1], _rc[3][0], _rc[3][1], 'F');
++
++      // Label text with rotation
++      doc.setTextColor(_DC); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
++      doc.text(_lbl, lx, ly, { angle: _jsPdfAngle, align: 'center', baseline: 'middle' });
++    });
++    // Texts
++    (Array.isArray(_td?.texts) ? _td.texts : []).forEach(ann => {
++      if (!ann || !isFinite(ann.x) || !isFinite(ann.y) || !ann.text) return;
++      const _x = ann.x * LW, _y = ann.y * LH, _t = String(ann.text);
++      doc.setFontSize(9); doc.setFont('helvetica', 'normal');
++      const _tw = doc.getTextWidth(_t), _pad = 3;
++      doc.setFillColor(255, 255, 255); doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.4);
++      doc.rect(_x - _pad, _y - 8, _tw + _pad * 2, 11, 'FD');
++      doc.setTextColor('#1a1a2e'); doc.text(_t, _x, _y);
++    });
++    // White footer band
++    doc.setFillColor(255, 255, 255);
++    doc.rect(0, LH - 44, LW, 44, 'F');
++    pageFooter(LW, LH);
++  } else {
++    y = pageHeader(1, 'Side View — Dimensioned Drawing', LW);
++
+   // Ground line
+   doc.setDrawColor('#888888');
+   doc.setLineWidth(1);
+@@ -631,6 +726,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
+   }
+ 
+   pageFooter(LW, LH);
++  } // end if/else primaryPageType
+ 
+   // ── PAGE 2 — Project Summary ───────────────────────────────────────────────
+ 
+@@ -1033,6 +1129,160 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
+ 
+   pageFooter();
+ 
++  // ── Helper: render draft dimensions onto current page ─────────────────────
++  // dimData: array of { ax, ay, bx, by, label } with normalized 0..1 coords
++  // pageW, pageH: page dimensions in pts
++  const renderDraftDimensions = (dimData, pageW, pageH) => {
++    if (!Array.isArray(dimData) || dimData.length === 0) return;
++    const DC = '#1e3a5f';
++    const TICK = 8;
++    dimData.forEach(dim => {
++      if (!dim || !isFinite(dim.ax) || !isFinite(dim.ay) || !isFinite(dim.bx) || !isFinite(dim.by)) return;
++      const ax = dim.ax * pageW, ay = dim.ay * pageH;
++      const bx = dim.bx * pageW, by = dim.by * pageH;
++      const len = Math.sqrt((bx - ax) ** 2 + (by - ay) ** 2);
++      if (len < 5) return;
++      const midX = (ax + bx) / 2, midY = (ay + by) / 2;
++      const ux = (bx - ax) / len, uy = (by - ay) / len;
++      const perX = -uy, perY = ux;
++
++      doc.setDrawColor(DC);
++      doc.setLineWidth(1.2);
++      doc.line(ax, ay, bx, by);
++      doc.line(ax - perX * TICK, ay - perY * TICK, ax + perX * TICK, ay + perY * TICK);
++      doc.line(bx - perX * TICK, by - perY * TICK, bx + perX * TICK, by + perY * TICK);
++
++      const label = String(dim.label ?? 'DIM');
++      doc.setFontSize(8);
++      doc.setFont('helvetica', 'bold');
++      const tw = doc.getTextWidth(label);
++      const lpad = 2.5;
++      doc.setFillColor(255, 255, 255);
++      doc.setDrawColor(255, 255, 255);
++      doc.rect(midX - tw / 2 - lpad, midY - 6.5, tw + lpad * 2, 9.5, 'F');
++      doc.setTextColor(DC);
++      doc.text(label, midX, midY + 1.5, { align: 'center' });
++    });
++  };
++
++  // ── Helper: render draft texts onto current page ──────────────────────────
++  const renderDraftTexts = (textData, pageW, pageH) => {
++    if (!Array.isArray(textData) || textData.length === 0) return;
++    textData.forEach(ann => {
++      if (!ann || !isFinite(ann.x) || !isFinite(ann.y) || !ann.text) return;
++      const x = ann.x * pageW;
++      const y = ann.y * pageH;
++      const text = String(ann.text);
++      doc.setFontSize(9);
++      doc.setFont('helvetica', 'normal');
++      const tw = doc.getTextWidth(text);
++      const pad = 3;
++      doc.setFillColor(255, 255, 255);
++      doc.setDrawColor(200, 200, 200);
++      doc.setLineWidth(0.4);
++      doc.rect(x - pad, y - 8, tw + pad * 2, 11, 'FD');
++      doc.setTextColor('#1a1a2e');
++      doc.text(text, x, y);
++    });
++  };
++
++  // ── Side PDF Draft page ───────────────────────────────────────────────────
++  const sideDims = pdfDrafts?.side?.dimensions ?? [];
++  const sideTxts = pdfDrafts?.side?.texts ?? [];
++  if (sideDims.length > 0 || sideTxts.length > 0) {
++    doc.addPage([792, 612]); // landscape
++
++    // Simple header
++    doc.setFontSize(11);
++    doc.setFont('helvetica', 'bold');
++    doc.setTextColor('#1a1a2e');
++    doc.text('SIDE PDF DRAFT', M, 40);
++    doc.setFontSize(9);
++    doc.setFont('helvetica', 'normal');
++    doc.setTextColor('#666666');
++    doc.text('Side View — User-placed dimensions', M, 54);
++    hline(M, LW - M, 60, '#1a1a2e', 1);
++
++    // Re-draw stair side profile using the same layout variables as page 1
++    // (ox, oy, sc, rPx, tPx, dw, dh, mx, steps are all in scope from page 1)
++    doc.setDrawColor('#888888');
++    doc.setLineWidth(0.8);
++    doc.line(mx(ox - 28), oy, mx(ox + dw + 28), oy);
++
++    doc.setDrawColor('#1a1a2e');
++    doc.setLineWidth(1.5);
++    {
++      let ssx = ox, ssy = oy;
++      for (let i = 0; i < steps; i++) {
++        doc.line(mx(ssx), ssy, mx(ssx), ssy - rPx);
++        if (!(stairConfig.topLandingEnabled && i === steps - 1)) {
++          doc.line(mx(ssx), ssy - rPx, mx(ssx + tPx), ssy - rPx);
++        }
++        ssx += tPx;
++        ssy -= rPx;
++      }
++    }
++
++    renderDraftDimensions(sideDims, LW, LH);
++    renderDraftTexts(sideTxts, LW, LH);
++
++    hline(M, LW - M, LH - 36, '#cccccc');
++    txt(
++      `${project.name || 'Untitled Project'} — Side PDF Draft — Generated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
++      LW / 2, LH - 22, { size: 8, color: '#888888', align: 'center' }
++    );
++  }
++
++  // ── 3D PDF Draft extra page (omitted when primaryPageType==='threeD'; content is already on page 1) ─
++  const threeDDraft = pdfDrafts?.threeD;
++  const has3dDraft = primaryPageType !== 'threeD' && (threeDDraft?.backgroundImage ||
++    (Array.isArray(threeDDraft?.dimensions) && threeDDraft.dimensions.length > 0) ||
++    (Array.isArray(threeDDraft?.texts) && threeDDraft.texts.length > 0));
++  if (has3dDraft) {
++    doc.addPage([792, 612]); // landscape
++
++    // Fill page white before drawing 3D image so no colored canvas background bleeds through
++    doc.setFillColor(255, 255, 255);
++    doc.rect(0, 0, LW, LH, 'F');
++
++    // Background: captured 3D canvas image
++    if (threeDDraft.backgroundImage) {
++      try {
++        doc.addImage(threeDDraft.backgroundImage, 'PNG', 0, 0, LW, LH);
++      } catch {
++        // Skip image if it fails — still render dimensions and header
++      }
++    }
++
++    // Overlay header (semi-transparent band)
++    doc.setFillColor(255, 255, 255);
++    doc.setDrawColor(255, 255, 255);
++    doc.rect(0, 0, LW, 64, 'F');
++
++    doc.setFontSize(11);
++    doc.setFont('helvetica', 'bold');
++    doc.setTextColor('#1a1a2e');
++    doc.text('3D PDF DRAFT', M, 40);
++    doc.setFontSize(9);
++    doc.setFont('helvetica', 'normal');
++    doc.setTextColor('#666666');
++    doc.text('3D View — User-placed dimensions', M, 54);
++    hline(M, LW - M, 60, '#1a1a2e', 1);
++
++    if (Array.isArray(threeDDraft.dimensions)) {
++      renderDraftDimensions(threeDDraft.dimensions, LW, LH);
++    }
++    if (Array.isArray(threeDDraft.texts) && threeDDraft.texts.length > 0) {
++      renderDraftTexts(threeDDraft.texts, LW, LH);
++    }
++
++    hline(M, LW - M, LH - 36, '#cccccc');
++    txt(
++      `${project.name || 'Untitled Project'} — 3D PDF Draft — Generated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
++      LW / 2, LH - 22, { size: 8, color: '#888888', align: 'center' }
++    );
++  }
++
+   if (mode === 'print') {
+     doc.autoPrint();
+     return doc.output('bloburl');
+diff --git a/src/styles.css b/src/styles.css
+index a2a82a8..3cbdb32 100644
+--- a/src/styles.css
++++ b/src/styles.css
+@@ -460,6 +460,99 @@ html, body, #root {
+   color: var(--text-muted);
+ }
+ 
++/* ─── PDF Draft Overlay (legacy — kept for reference) ───────────────── */
++.pdf-draft-overlay {
++  position: fixed;
++  inset: 0;
++  z-index: 9500;
++  background: #1a1f2e;
++  display: flex;
++  flex-direction: column;
++}
++
++/* ─── PDF Mode Inline Overlay ─────────────────────────────────────── */
++.pdf-mode-overlay {
++  position: absolute;
++  inset: 0;
++  z-index: 10;
++  pointer-events: none;
++}
++
++.pdf-print-frame {
++  position: absolute;
++  inset: 3px;
++  border: 2px solid #2563eb;
++  border-radius: 3px;
++  pointer-events: none;
++}
++
++.pdf-mode-badge {
++  position: absolute;
++  top: 12px;
++  left: 50%;
++  transform: translateX(-50%);
++  display: flex;
++  align-items: center;
++  gap: 7px;
++  background: rgba(10,18,28,0.88);
++  border: 1px solid rgba(37,99,235,0.45);
++  border-radius: 6px;
++  padding: 5px 11px;
++  -webkit-backdrop-filter: blur(6px);
++  backdrop-filter: blur(6px);
++  pointer-events: all;
++  -webkit-user-select: none;
++  user-select: none;
++  white-space: nowrap;
++  z-index: 20;
++}
++
++.pdf-mode-badge-label {
++  font-size: 11px;
++  font-weight: 700;
++  color: #60a5fa;
++  letter-spacing: 0.05em;
++}
++
++.pdf-draft-header {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  padding: 0 14px;
++  height: 44px;
++  background: var(--bg-header);
++  border-bottom: 1px solid var(--border);
++  flex-shrink: 0;
++}
++
++.pdf-draft-title {
++  font-size: 12px;
++  font-weight: 700;
++  color: var(--text);
++  white-space: nowrap;
++}
++
++.pdf-draft-hint {
++  flex: 1;
++  font-size: 11px;
++  color: var(--accent);
++}
++
++.pdf-draft-actions {
++  display: flex;
++  gap: 5px;
++  align-items: center;
++}
++
++.pdf-draft-content {
++  flex: 1;
++  position: relative;
++  overflow: hidden;
++  cursor: crosshair;
++  -webkit-user-select: none;
++  user-select: none;
++}
++
+ /* ─── Mobile ───────────────────────────────────────────────────────── */
+ @media (max-width: 768px) {
+   :root {
+diff --git a/src/utils/saveJson.js b/src/utils/saveJson.js
+index 3f6e69e..1023171 100644
+--- a/src/utils/saveJson.js
++++ b/src/utils/saveJson.js
+@@ -139,7 +139,18 @@ export function openProjectJson(onLoad, onError) {
+         const manualTextAnnotations = Array.isArray(data.manualTextAnnotations)
+           ? data.manualTextAnnotations.filter(isValidManualTextAnnotation)
+           : [];
+-        onLoad({ project, stairConfig, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, manualTextAnnotations });
++        const DEFAULT_PDF_DRAFTS = {
++          side: { type: 'side', dimensions: [], texts: [] },
++          threeD: { type: '3d', backgroundImage: null, dimensions: [], texts: [] },
++        };
++        let pdfDrafts = DEFAULT_PDF_DRAFTS;
++        if (data.pdfDrafts && typeof data.pdfDrafts === 'object') {
++          pdfDrafts = {
++            side: { ...DEFAULT_PDF_DRAFTS.side, ...data.pdfDrafts.side },
++            threeD: { ...DEFAULT_PDF_DRAFTS.threeD, ...data.pdfDrafts.threeD },
++          };
++        }
++        onLoad({ project, stairConfig, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, manualTextAnnotations, pdfDrafts });
+       } catch (err) {
+         onError(err.message || 'Invalid file');
+       }
+@@ -149,7 +160,7 @@ export function openProjectJson(onLoad, onError) {
+   input.click();
+ }
+ 
+-export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], structureOffsetXIn = 0, structureOffsetZIn = 0, pdfMirrored = false, topRailPathMode = 'standard', manualTextAnnotations = [] }) {
++export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], structureOffsetXIn = 0, structureOffsetZIn = 0, pdfMirrored = false, topRailPathMode = 'standard', manualTextAnnotations = [], pdfDrafts = null }) {
+   const payload = {
+     app: 'Stair Designer',
+     version: 'v0.0.1 MVP',
+@@ -165,6 +176,7 @@ export function saveProjectJson({ project, stairConfig, calc, warnings, material
+     structureOffsetZIn,
+     pdfMirrored,
+     topRailPathMode,
++    pdfDrafts,
+     calculations: calc,
+     warnings: warnings.map((w) => ({ level: w.level, message: w.msg })),
+     materialList: materials,

@@ -11,6 +11,22 @@ const SCENE_CENTER_Y = 27;
 // Visual tread thickness in scene units (shared by StairModel and ManualPostsRenderer)
 const TREAD_THICK = 0.3;
 
+function CanvasCaptureHelper({ captureRef }) {
+  const { gl, scene, camera } = useThree();
+  useEffect(() => {
+    if (captureRef) captureRef.current = () => {
+      const origBg = scene.background;
+      scene.background = new THREE.Color('#ffffff');
+      gl.render(scene, camera);
+      const dataUrl = gl.domElement.toDataURL('image/png');
+      scene.background = origBg;
+      return dataUrl;
+    };
+    return () => { if (captureRef) captureRef.current = null; };
+  }, [gl, scene, camera, captureRef]);
+  return null;
+}
+
 function KeyboardNudge({ controlsRef }) {
   const { camera } = useThree();
 
@@ -1081,15 +1097,179 @@ function ManualTextTool({ active, onAddManualTextAnnotation, stairHeight, view }
   return null;
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation }) {
+function PdfModePanel({ mode, pdfDraft, activeTool, onAddPdfDimension, onAddPdfText, onDeleteLast, onExit, selectedDimId, onSelectDim }) {
+  const [pendingA, setPendingA] = useState(null);
+  const overlayRef = useRef(null);
+  const [sz, setSz] = useState({ w: 1, h: 1 });
+
+  useEffect(() => {
+    const el = overlayRef.current;
+    if (!el) return;
+    const sync = () => setSz({ w: el.clientWidth || 1, h: el.clientHeight || 1 });
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') setPendingA(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const getNorm = (e) => {
+    const r = overlayRef.current.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+  };
+
+  const handleDblClick = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (activeTool === 'dimension') {
+      const pt = getNorm(e);
+      if (!pendingA) {
+        setPendingA(pt);
+      } else {
+        onAddPdfDimension({ id: `pdim-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, ax: pendingA.x, ay: pendingA.y, bx: pt.x, by: pt.y, label: 'DIM' });
+        setPendingA(null);
+      }
+    } else if (activeTool === 'text') {
+      onAddPdfText({ id: `ptxt-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, ...getNorm(e), text: 'Text' });
+    }
+  };
+
+  const dims = pdfDraft?.dimensions ?? [];
+  const texts = pdfDraft?.texts ?? [];
+  const { w, h } = sz;
+  const isDimTool = activeTool === 'dimension';
+  const isTextTool = activeTool === 'text';
+
+  return (
+    <div ref={overlayRef} className="pdf-mode-overlay">
+      <div className="pdf-print-frame" />
+
+      {/* Capture layer: double-click to place dims/text, single click to deselect */}
+      <div
+        style={{ position: 'absolute', inset: 0, cursor: isDimTool || isTextTool ? 'crosshair' : 'default', pointerEvents: 'all', zIndex: 1 }}
+        onDoubleClick={isDimTool || isTextTool ? handleDblClick : undefined}
+        onClick={() => onSelectDim && onSelectDim(null)}
+      />
+
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none', zIndex: 2 }}>
+        {dims.map(dim => {
+          const ax = dim.ax * w, ay = dim.ay * h;
+          const bx = dim.bx * w, by = dim.by * h;
+          const len = Math.hypot(bx - ax, by - ay);
+          if (len < 4) return null;
+
+          const midX = (ax + bx) / 2, midY = (ay + by) / 2;
+
+          // Original direction unit vector (A→B)
+          const oux = (bx - ax) / len, ouy = (by - ay) / len;
+
+          // Normalize direction to "rightward or upward" so the label always sits
+          // on a consistent visual side (above horizontal, left of vertical)
+          let nux = oux, nuy = ouy;
+          if (nux < 0 || (nux === 0 && nuy > 0)) { nux = -nux; nuy = -nuy; }
+
+          // "Above" perpendicular in screen coords (y-down):
+          // Rotate normalized direction 90° CW-in-screen (mathematically: (nuy, -nux))
+          const perpX = nuy, perpY = -nux;
+          const LABEL_OFFSET = 14;
+          const lx = midX + perpX * LABEL_OFFSET;
+          const ly = midY + perpY * LABEL_OFFSET;
+
+          // SVG rotation angle (CW-positive), normalized to [-90, 90) so text is always readable
+          let angleDeg = Math.atan2(by - ay, bx - ax) * 180 / Math.PI;
+          if (angleDeg >= 90) angleDeg -= 180;
+          else if (angleDeg < -90) angleDeg += 180;
+
+          // Filled arrowheads at A and B
+          const ARROW_LEN = 10, ARROW_W = 4;
+          const apx = -ouy, apy = oux; // perpendicular (used for arrowhead wings)
+          const arrowA = `${ax},${ay} ${ax + oux * ARROW_LEN + apx * ARROW_W},${ay + ouy * ARROW_LEN + apy * ARROW_W} ${ax + oux * ARROW_LEN - apx * ARROW_W},${ay + ouy * ARROW_LEN - apy * ARROW_W}`;
+          const arrowB = `${bx},${by} ${bx - oux * ARROW_LEN + apx * ARROW_W},${by - ouy * ARROW_LEN + apy * ARROW_W} ${bx - oux * ARROW_LEN - apx * ARROW_W},${by - ouy * ARROW_LEN - apy * ARROW_W}`;
+
+          const lbl = String(dim.label ?? 'DIM');
+          const lblW = Math.max(32, lbl.length * 6.5 + 14);
+          const isSelected = selectedDimId === dim.id;
+          const dimColor = isSelected ? '#1565c0' : '#1e3a5f';
+          const borderColor = isSelected ? '#1565c0' : '#c0c8d5';
+
+          return (
+            <g
+              key={dim.id}
+              pointerEvents="all"
+              style={{ cursor: 'pointer' }}
+              onMouseDown={e => e.stopPropagation()}
+              onClick={e => { e.stopPropagation(); onSelectDim && onSelectDim(dim.id); }}
+            >
+              {/* Wide invisible hit area */}
+              <line x1={ax} y1={ay} x2={bx} y2={by} stroke="transparent" strokeWidth={14} />
+              {/* Dimension line */}
+              <line x1={ax} y1={ay} x2={bx} y2={by} stroke={dimColor} strokeWidth={isSelected ? 2 : 1.5} />
+              {/* Arrowheads */}
+              <polygon points={arrowA} fill={dimColor} />
+              <polygon points={arrowB} fill={dimColor} />
+              {/* Label rotated parallel to line, offset above/left */}
+              <g transform={`translate(${lx},${ly}) rotate(${angleDeg})`}>
+                <rect x={-lblW / 2} y={-8} width={lblW} height={14} fill="white" stroke={borderColor} strokeWidth={isSelected ? 1.5 : 0.7} rx={2} />
+                <text x={0} y={3.5} textAnchor="middle" fontSize={10} fill={dimColor} fontWeight="bold" fontFamily="ui-monospace,monospace">{lbl}</text>
+              </g>
+            </g>
+          );
+        })}
+        {texts.map(ann => {
+          const tx = ann.x * w, ty = ann.y * h;
+          const lbl = String(ann.text ?? '');
+          const lblW = Math.max(40, lbl.length * 6.5 + 14);
+          return (
+            <g key={ann.id}>
+              <rect x={tx} y={ty - 12} width={lblW} height={16} fill="rgba(255,255,255,0.93)" stroke="#c0c8d5" strokeWidth={0.7} rx={2} />
+              <text x={tx + 4} y={ty} fontSize={10} fill="#1a1a2e" fontFamily="ui-sans-serif,sans-serif">{lbl}</text>
+            </g>
+          );
+        })}
+        {pendingA && (
+          <circle cx={pendingA.x * w} cy={pendingA.y * h} r={5} fill="#1e3a5f" stroke="white" strokeWidth={1.5} />
+        )}
+      </svg>
+
+      <div className="pdf-mode-badge">
+        <span className="pdf-mode-badge-label">{mode === '3d' ? '3D PDF ACTIVE' : 'SIDE PDF ACTIVE'}</span>
+        {isDimTool && <span style={{ fontSize: '10px', color: '#94a3b8' }}>{pendingA ? '→ dbl-click pt B' : '→ dbl-click pt A'}</span>}
+        {isTextTool && <span style={{ fontSize: '10px', color: '#94a3b8' }}>→ dbl-click to place</span>}
+        <button
+          className="panel-btn panel-btn-danger"
+          style={{ fontSize: '10px', padding: '2px 7px' }}
+          onClick={e => { e.stopPropagation(); if (pendingA) { setPendingA(null); } else { onDeleteLast(); } }}
+          disabled={dims.length === 0 && texts.length === 0 && !pendingA}
+        >
+          Delete Last
+        </button>
+        <button
+          className="panel-btn panel-btn-primary"
+          style={{ fontSize: '10px', padding: '2px 7px' }}
+          onClick={e => { e.stopPropagation(); setPendingA(null); onExit(); }}
+        >
+          Exit PDF Mode
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation, capture3dRef = null, activePdfDraftMode = null, pdfDrafts = null, onAddPdfDimension, onAddPdfText, onDeleteLastPdfAnnotation, onExitPdfMode, selectedPdfDraftDimensionId = null, onSelectPdfDraftDimension }) {
   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'work';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
-  const isDims = activeTool === 'dimension';
-  const isText = activeTool === 'text';
-  const activeCursor = isMeasure || isDims || isText || postPlacementMode || topRailMode || fastRailsMode ? 'crosshair' : undefined;
+  // In PDF mode, disable 3D dim/text tools so PDF overlay handles annotation capture instead
+  const isDims = activeTool === 'dimension' && !activePdfDraftMode;
+  const isText = activeTool === 'text' && !activePdfDraftMode;
+  const isPdfAnnotationTool = !!activePdfDraftMode && (activeTool === 'dimension' || activeTool === 'text');
+  const activeCursor = isMeasure || isDims || isText || isPdfAnnotationTool || postPlacementMode || topRailMode || fastRailsMode ? 'crosshair' : undefined;
 
   return (
     <div id="print-viewport" className="scene-container" style={activeCursor ? { cursor: activeCursor } : undefined}>
@@ -1100,6 +1280,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
       >
         <color attach="background" args={['#edf2f7']} />
 
+        <CanvasCaptureHelper captureRef={capture3dRef} />
         <CameraController view={view} viewResetToken={viewResetToken} controlsRef={orbitRef} height={height} run={run} width={width} />
         <KeyboardNudge controlsRef={orbitRef} />
 
@@ -1221,13 +1402,26 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
         <OrbitControls
           ref={orbitRef}
           makeDefault
-          enabled={!isMeasure}
+          enabled={!isMeasure && !isPdfAnnotationTool}
           enableDamping
           dampingFactor={0.08}
           screenSpacePanning
           panSpeed={1.2}
         />
       </Canvas>
+      {activePdfDraftMode && (
+        <PdfModePanel
+          mode={activePdfDraftMode}
+          pdfDraft={activePdfDraftMode === 'side' ? pdfDrafts?.side : pdfDrafts?.threeD}
+          activeTool={activeTool}
+          onAddPdfDimension={onAddPdfDimension}
+          onAddPdfText={onAddPdfText}
+          onDeleteLast={onDeleteLastPdfAnnotation}
+          onExit={onExitPdfMode}
+          selectedDimId={activePdfDraftMode === '3d' ? selectedPdfDraftDimensionId : null}
+          onSelectDim={activePdfDraftMode === '3d' ? onSelectPdfDraftDimension : undefined}
+        />
+      )}
     </div>
   );
 }

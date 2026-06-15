@@ -1,6 +1,6 @@
 import ToolButton from './ToolButton.jsx';
 
-export default function Toolbar({ activeTool, onToolSelect, onViewChange, showDimensions, onToggleDimensions, manualDimensionsCount = 0, onUndoLastManualDimension }) {
+export default function Toolbar({ activeTool, onToolSelect, onViewChange, showDimensions, onToggleDimensions, manualDimensionsCount = 0, onUndoLastManualDimension, onOpenSidePdf, onOpen3dPdf, activePdfDraftMode = null }) {
   const activeTools = [
     { id: 'select',       label: 'Select',       icon: '↖' },
     { id: 'measure',      label: 'Measure',      icon: '📏' },
@@ -64,6 +64,23 @@ export default function Toolbar({ activeTool, onToolSelect, onViewChange, showDi
           active={false}
           disabled={manualDimensionsCount === 0}
           onClick={onUndoLastManualDimension}
+        />
+      </div>
+
+      <div className="tool-divider" />
+
+      <div className="tool-group">
+        <ToolButton
+          label="Side PDF"
+          icon="📄"
+          active={activePdfDraftMode === 'side'}
+          onClick={onOpenSidePdf}
+        />
+        <ToolButton
+          label="3D PDF"
+          icon="📐"
+          active={activePdfDraftMode === '3d'}
+          onClick={onOpen3dPdf}
         />
       </div>
 

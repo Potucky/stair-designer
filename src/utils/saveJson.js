@@ -139,7 +139,18 @@ export function openProjectJson(onLoad, onError) {
         const manualTextAnnotations = Array.isArray(data.manualTextAnnotations)
           ? data.manualTextAnnotations.filter(isValidManualTextAnnotation)
           : [];
-        onLoad({ project, stairConfig, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, manualTextAnnotations });
+        const DEFAULT_PDF_DRAFTS = {
+          side: { type: 'side', dimensions: [], texts: [] },
+          threeD: { type: '3d', backgroundImage: null, dimensions: [], texts: [] },
+        };
+        let pdfDrafts = DEFAULT_PDF_DRAFTS;
+        if (data.pdfDrafts && typeof data.pdfDrafts === 'object') {
+          pdfDrafts = {
+            side: { ...DEFAULT_PDF_DRAFTS.side, ...data.pdfDrafts.side },
+            threeD: { ...DEFAULT_PDF_DRAFTS.threeD, ...data.pdfDrafts.threeD },
+          };
+        }
+        onLoad({ project, stairConfig, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, manualTextAnnotations, pdfDrafts });
       } catch (err) {
         onError(err.message || 'Invalid file');
       }
@@ -149,7 +160,7 @@ export function openProjectJson(onLoad, onError) {
   input.click();
 }
 
-export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], structureOffsetXIn = 0, structureOffsetZIn = 0, pdfMirrored = false, topRailPathMode = 'standard', manualTextAnnotations = [] }) {
+export function saveProjectJson({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], structureOffsetXIn = 0, structureOffsetZIn = 0, pdfMirrored = false, topRailPathMode = 'standard', manualTextAnnotations = [], pdfDrafts = null }) {
   const payload = {
     app: 'Stair Designer',
     version: 'v0.0.1 MVP',
@@ -165,6 +176,7 @@ export function saveProjectJson({ project, stairConfig, calc, warnings, material
     structureOffsetZIn,
     pdfMirrored,
     topRailPathMode,
+    pdfDrafts,
     calculations: calc,
     warnings: warnings.map((w) => ({ level: w.level, message: w.msg })),
     materialList: materials,

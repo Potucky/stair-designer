@@ -103,6 +103,23 @@ export default function App() {
   });
   const [structureMoveSelected, setStructureMoveSelected] = useState(false);
 
+  const [selectedPdfDraftDimensionId, setSelectedPdfDraftDimensionId] = useState(null);
+
+  const [pdfDrafts, setPdfDrafts] = useState(() => {
+    const d = loadInitialDraft();
+    const DEFAULT = {
+      side: { type: 'side', dimensions: [], texts: [] },
+      threeD: { type: '3d', backgroundImage: null, dimensions: [], texts: [] },
+    };
+    if (!d?.pdfDrafts || typeof d.pdfDrafts !== 'object') return DEFAULT;
+    return {
+      side: { ...DEFAULT.side, ...d.pdfDrafts.side },
+      threeD: { ...DEFAULT.threeD, ...d.pdfDrafts.threeD },
+    };
+  });
+  const [activePdfDraftMode, setActivePdfDraftMode] = useState(null); // null | 'side' | '3d'
+  const capture3dRef = useRef(null);
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
@@ -172,6 +189,7 @@ export default function App() {
           pdfMirrored,
           topRailPathMode,
           currentProjectId,
+          pdfDrafts,
         };
         localStorage.setItem(LS_KEY, JSON.stringify(snapshot));
       } catch {
@@ -179,7 +197,7 @@ export default function App() {
       }
     }, 500);
     return () => clearTimeout(id);
-  }, [project, stairConfig, units, manualDimensions, manualTextAnnotations, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, currentProjectId]);
+  }, [project, stairConfig, units, manualDimensions, manualTextAnnotations, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, currentProjectId, pdfDrafts]);
 
   const calc = useMemo(() => calcStair(stairConfig), [stairConfig]);
 
@@ -409,7 +427,7 @@ export default function App() {
 
   const handleOpenJson = () =>
     openProjectJson(
-      ({ project: p, stairConfig: sc, units: u, manualDimensions: mdi, manualPosts: mp, manualTopRails: mtr, structureOffsetXIn: sox, structureOffsetZIn: soz, pdfMirrored: pm, topRailPathMode: trpm, manualTextAnnotations: mta }) => {
+      ({ project: p, stairConfig: sc, units: u, manualDimensions: mdi, manualPosts: mp, manualTopRails: mtr, structureOffsetXIn: sox, structureOffsetZIn: soz, pdfMirrored: pm, topRailPathMode: trpm, manualTextAnnotations: mta, pdfDrafts: pd }) => {
         skipAutosaveRestoreRef.current = true;
         setProject({ ...DEFAULT_PROJECT, ...p });
         setStairConfig({ ...DEFAULT_STAIR, ...sc });
@@ -422,6 +440,7 @@ export default function App() {
         if (typeof soz === 'number') setStructureOffsetZIn(soz);
         setPdfMirrored(pm === true);
         if (trpm) setTopRailPathMode(trpm);
+        if (pd) setPdfDrafts(pd);
         setSelectedManualPostId(null);
         setSelectedManualTopRailId(null);
         setPostPlacementMode(false);
@@ -433,12 +452,23 @@ export default function App() {
       (msg) => alert(`Could not open file: ${msg}`),
     );
 
-  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, manualTextAnnotations });
+  const handleSaveJson = () => saveProjectJson({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, manualTextAnnotations, pdfDrafts });
 
-  const handleExportPdf = () => generatePdf({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, pdfMirrored, topRailPathMode, manualTextAnnotations });
+  const handleExportPdf = () => {
+    let effectivePdfDrafts = pdfDrafts;
+    if (activePdfDraftMode === '3d') {
+      const fn = capture3dRef.current;
+      const freshImg = fn ? fn() : null;
+      effectivePdfDrafts = {
+        ...pdfDrafts,
+        threeD: { ...pdfDrafts.threeD, backgroundImage: freshImg },
+      };
+    }
+    generatePdf({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, pdfMirrored, topRailPathMode, manualTextAnnotations, pdfDrafts: effectivePdfDrafts, primaryPageType: activePdfDraftMode === '3d' ? 'threeD' : 'side' });
+  };
 
   const handleSaveProject = async () => {
-    const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualDimensions, manualPosts, manualTopRails, manualTextAnnotations, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, units, currentProjectId });
+    const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualDimensions, manualPosts, manualTopRails, manualTextAnnotations, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, units, currentProjectId, pdfDrafts });
     if (result.ok && result.projectId) {
       setCurrentProjectId(result.projectId);
     }
@@ -470,6 +500,18 @@ export default function App() {
     else setTopRailPathMode('standard');
     const validUnit = (u) => u === 'in' || u === 'mm';
     setUnits(validUnit(sc.units) ? sc.units : validUnit(p.units) ? p.units : 'in');
+    const DEFAULT_PDF_DRAFTS = {
+      side: { type: 'side', dimensions: [], texts: [] },
+      threeD: { type: '3d', backgroundImage: null, dimensions: [], texts: [] },
+    };
+    if (sc.pdfDrafts && typeof sc.pdfDrafts === 'object') {
+      setPdfDrafts({
+        side: { ...DEFAULT_PDF_DRAFTS.side, ...sc.pdfDrafts.side },
+        threeD: { ...DEFAULT_PDF_DRAFTS.threeD, ...sc.pdfDrafts.threeD },
+      });
+    } else {
+      setPdfDrafts(DEFAULT_PDF_DRAFTS);
+    }
     setSelectedManualPostId(null);
     setSelectedManualTopRailId(null);
     setPostPlacementMode(false);
@@ -478,7 +520,91 @@ export default function App() {
     setCurrentProjectId(p.id);
   };
 
+  const handleOpenSidePdf = () => {
+    if (activePdfDraftMode === 'side') { setActivePdfDraftMode(null); return; }
+    setView('side');
+    setViewResetToken(t => t + 1);
+    setActivePdfDraftMode('side');
+  };
+
+  const handleOpen3dPdf = () => {
+    if (activePdfDraftMode === '3d') { setActivePdfDraftMode(null); setSelectedPdfDraftDimensionId(null); return; }
+    setActivePdfDraftMode('3d');
+    setSelectedPdfDraftDimensionId(null);
+  };
+
+  const handleAddPdfDimension = (dimData) => {
+    if (!activePdfDraftMode) return;
+    const key = activePdfDraftMode === 'side' ? 'side' : 'threeD';
+    setPdfDrafts(prev => ({ ...prev, [key]: { ...prev[key], dimensions: [...prev[key].dimensions, dimData] } }));
+    if (activePdfDraftMode === '3d') setSelectedPdfDraftDimensionId(dimData.id);
+  };
+
+  const handleAddPdfText = (textData) => {
+    if (!activePdfDraftMode) return;
+    const key = activePdfDraftMode === 'side' ? 'side' : 'threeD';
+    setPdfDrafts(prev => ({ ...prev, [key]: { ...prev[key], texts: [...(prev[key].texts ?? []), textData] } }));
+  };
+
+  const handleDeleteLastPdfAnnotation = () => {
+    if (!activePdfDraftMode) return;
+    const key = activePdfDraftMode === 'side' ? 'side' : 'threeD';
+    setPdfDrafts(prev => {
+      const draft = prev[key];
+      const texts = draft.texts ?? [];
+      const dims = draft.dimensions ?? [];
+      if (texts.length > 0) return { ...prev, [key]: { ...draft, texts: texts.slice(0, -1) } };
+      if (dims.length > 0) return { ...prev, [key]: { ...draft, dimensions: dims.slice(0, -1) } };
+      return prev;
+    });
+  };
+
+  const handleExitPdfMode = () => { setActivePdfDraftMode(null); setSelectedPdfDraftDimensionId(null); };
+
+  const handleSelectPdfDraftDimension = (id) => setSelectedPdfDraftDimensionId(id);
+
+  const handleUpdatePdfDraftDimension = (id, changes) => {
+    setPdfDrafts(prev => ({
+      ...prev,
+      threeD: { ...prev.threeD, dimensions: prev.threeD.dimensions.map(d => d.id === id ? { ...d, ...changes } : d) },
+    }));
+  };
+
+  const handleDeletePdfDraftDimension = (id) => {
+    setPdfDrafts(prev => ({
+      ...prev,
+      threeD: { ...prev.threeD, dimensions: prev.threeD.dimensions.filter(d => d.id !== id) },
+    }));
+    setSelectedPdfDraftDimensionId(cur => cur === id ? null : cur);
+  };
+
+  const handleDeleteLastPdfDraftDimension = () => {
+    setPdfDrafts(prev => {
+      const dims = prev.threeD.dimensions;
+      if (dims.length === 0) return prev;
+      const lastId = dims[dims.length - 1].id;
+      setSelectedPdfDraftDimensionId(cur => cur === lastId ? null : cur);
+      return { ...prev, threeD: { ...prev.threeD, dimensions: dims.slice(0, -1) } };
+    });
+  };
+
+  const handleClearAllPdfDraftDimensions = () => {
+    setPdfDrafts(prev => ({ ...prev, threeD: { ...prev.threeD, dimensions: [] } }));
+    setSelectedPdfDraftDimensionId(null);
+  };
+
   const handlePrint = () => {
+    if (activePdfDraftMode === '3d') {
+      const fn = capture3dRef.current;
+      const freshImg = fn ? fn() : null;
+      const effectivePdfDrafts = {
+        ...pdfDrafts,
+        threeD: { ...pdfDrafts.threeD, backgroundImage: freshImg },
+      };
+      const blobUrl = generatePdf({ project, stairConfig, calc, warnings, materials, units, manualDimensions, manualPosts, manualTopRails, pdfMirrored, topRailPathMode, manualTextAnnotations, pdfDrafts: effectivePdfDrafts, primaryPageType: 'threeD', mode: 'print' });
+      if (blobUrl) { const pw = window.open(blobUrl, '_blank'); if (!pw) window.location.href = blobUrl; }
+      return;
+    }
     printViewportPdf();
   };
 
@@ -498,7 +624,7 @@ export default function App() {
         onUnitsChange={setUnits}
         onOpenProject={() => setOpenProjectModalOpen(true)}
       />
-      <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} showDimensions={showDimensions} onToggleDimensions={() => setShowDimensions((v) => !v)} manualDimensionsCount={manualDimensions.length} onUndoLastManualDimension={handleUndoLastManualDimension} />
+      <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} showDimensions={showDimensions} onToggleDimensions={() => setShowDimensions((v) => !v)} manualDimensionsCount={manualDimensions.length} onUndoLastManualDimension={handleUndoLastManualDimension} onOpenSidePdf={handleOpenSidePdf} onOpen3dPdf={handleOpen3dPdf} activePdfDraftMode={activePdfDraftMode} />
       <StairScene
         stairConfig={stairConfig}
         calc={calc}
@@ -529,6 +655,15 @@ export default function App() {
         fastRailsPrevPostId={fastRailsPrevPostId}
         onFastRailsPost={handleFastRailsPost}
         onFastRailsPostSelect={handleFastRailsPostSelect}
+        capture3dRef={capture3dRef}
+        activePdfDraftMode={activePdfDraftMode}
+        pdfDrafts={pdfDrafts}
+        onAddPdfDimension={handleAddPdfDimension}
+        onAddPdfText={handleAddPdfText}
+        onDeleteLastPdfAnnotation={handleDeleteLastPdfAnnotation}
+        onExitPdfMode={handleExitPdfMode}
+        selectedPdfDraftDimensionId={selectedPdfDraftDimensionId}
+        onSelectPdfDraftDimension={handleSelectPdfDraftDimension}
       />
       <RightPanel
         project={project}
@@ -580,6 +715,14 @@ export default function App() {
         onToggleFastRailsMode={handleToggleFastRailsMode}
         pdfMirrored={pdfMirrored}
         onTogglePdfMirrored={handleTogglePdfMirrored}
+        activePdfDraftMode={activePdfDraftMode}
+        pdfDrafts={pdfDrafts}
+        selectedPdfDraftDimensionId={selectedPdfDraftDimensionId}
+        onSelectPdfDraftDimension={handleSelectPdfDraftDimension}
+        onUpdatePdfDraftDimension={handleUpdatePdfDraftDimension}
+        onDeletePdfDraftDimension={handleDeletePdfDraftDimension}
+        onDeleteLastPdfDraftDimension={handleDeleteLastPdfDraftDimension}
+        onClearAllPdfDraftDimensions={handleClearAllPdfDraftDimensions}
       />
       <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} units={units} />
       {openProjectModalOpen && (
