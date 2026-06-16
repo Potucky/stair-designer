@@ -268,15 +268,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
 
       {/* Project */}
       <section className="panel-section">
-        <h3 className="section-title">Project</h3>
-        <div className="chip-row">
-          <span className="chip-label">Project Name</span>
-          <input className="field-input" style={{ flex: 1 }} value={project.name} onChange={str('name')} placeholder="My Stair Project" />
-        </div>
-        <div className="chip-row">
-          <span className="chip-label">Client Name</span>
-          <input className="field-input" style={{ flex: 1 }} value={project.client} onChange={str('client')} placeholder="Client" />
-        </div>
         <div className="save-project-row">
           <button className="panel-btn" onClick={onNewProject}>New Project</button>
           <button className="panel-btn" onClick={onOpenProject}>Open Project</button>
@@ -296,6 +287,14 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               {saveStatus === 'saved' ? 'Saved' : saveStatus}
             </span>
           )}
+        </div>
+        <div className="chip-row" style={{ marginTop: 6 }}>
+          <span className="chip-label">Project Name</span>
+          <input className="field-input" style={{ flex: 1 }} value={project.name} onChange={str('name')} placeholder="My Stair Project" />
+        </div>
+        <div className="chip-row">
+          <span className="chip-label">Client Name</span>
+          <input className="field-input" style={{ flex: 1 }} value={project.client} onChange={str('client')} placeholder="Client" />
         </div>
       </section>
 
