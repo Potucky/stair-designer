@@ -17,7 +17,7 @@ export function parseImperialInputToInches(str) {
 
   if (s.includes('/')) {
     // "48-1/8" or "48 1/8" — whole number + separator + fraction
-    const m = s.match(/^(\d+(?:\.\d+)?)[\s\-]+(\d+)\/(\d+)$/);
+    const m = s.match(/^(\d+(?:\.\d+)?)[\s-]+(\d+)\/(\d+)$/);
     if (m) {
       const den = parseInt(m[3], 10);
       if (den === 0) return null;

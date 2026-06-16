@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { TUBE_SIZES } from '../data/materialProfiles.js';
 import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
-import { formatDimensionByUnit, parseDimensionByUnit, formatInchesFraction } from '../utils/units.js';
+import { formatDimensionByUnit, parseDimensionByUnit } from '../utils/units.js';
 import { normalizeRailEndpoints, DEFAULT_MANUAL_SEGMENTS, getManualPostTop, INtoU } from '../geometry/railingGeometry.js';
 
 function NumericDraftInput({ value, onCommit, className, style, inputMode = 'decimal', integer = false, allowZero = false }) {
