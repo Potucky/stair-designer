@@ -1,4 +1,11 @@
-export function validateStair({ angleDeg, riserHeight, treadDepth, width, steps, handrailHeight, pinOpening, railingEnabled, railingRunMode, manualRailingRun, run, rawPostCount, postCountCapped, maxPostCount = 100 }) {
+import { formatDimensionByUnit } from '../utils/units.js';
+
+function fmtV(val, units) {
+  if (units === 'mm') return `${(val * 25.4).toFixed(1)} mm`;
+  return `${formatDimensionByUnit(val, units)}"`;
+}
+
+export function validateStair({ angleDeg, riserHeight, treadDepth, width, steps, handrailHeight, pinOpening, railingEnabled, railingRunMode, manualRailingRun, run, rawPostCount, postCountCapped, maxPostCount = 100, units = 'in8' }) {
   const warnings = [];
 
   if (steps < 1) {
@@ -6,7 +13,7 @@ export function validateStair({ angleDeg, riserHeight, treadDepth, width, steps,
   }
 
   if (run > 0 && run < 1) {
-    warnings.push({ level: 'warning', msg: `Total Run ${run}" is extremely small (< 1"). Railing geometry uses a safe flat approximation.` });
+    warnings.push({ level: 'warning', msg: `Total Run ${fmtV(run, units)} is extremely small (< 1"). Railing geometry uses a safe flat approximation.` });
   }
 
   if (angleDeg > 40) {
@@ -16,36 +23,36 @@ export function validateStair({ angleDeg, riserHeight, treadDepth, width, steps,
   }
 
   if (riserHeight > 7.75) {
-    warnings.push({ level: 'error', msg: `Riser height ${riserHeight.toFixed(3)}" exceeds residential maximum of 7¾".` });
+    warnings.push({ level: 'error', msg: `Riser height ${fmtV(riserHeight, units)} exceeds residential maximum of 7¾".` });
   }
 
   if (treadDepth < 10 && steps >= 2) {
-    warnings.push({ level: 'error', msg: `Tread depth ${treadDepth.toFixed(3)}" is below residential minimum of 10".` });
+    warnings.push({ level: 'error', msg: `Tread depth ${fmtV(treadDepth, units)} is below residential minimum of 10".` });
   }
 
   if (width < 36) {
-    warnings.push({ level: 'warning', msg: `Stair width ${width}" is below typical residential minimum of 36".` });
+    warnings.push({ level: 'warning', msg: `Stair width ${fmtV(width, units)} is below typical residential minimum of 36".` });
   }
 
   if (railingEnabled && railingRunMode === 'manual' && manualRailingRun > 0 && run > 0) {
     if (manualRailingRun < run) {
-      warnings.push({ level: 'warning', msg: `Manual railing run ${manualRailingRun}" is shorter than stair run ${run}". Railing will not cover the full stair.` });
+      warnings.push({ level: 'warning', msg: `Manual railing run ${fmtV(manualRailingRun, units)} is shorter than stair run ${fmtV(run, units)}. Railing will not cover the full stair.` });
     } else if (manualRailingRun > run * 2) {
-      warnings.push({ level: 'warning', msg: `Manual railing run ${manualRailingRun}" is very large compared to stair run ${run}".` });
+      warnings.push({ level: 'warning', msg: `Manual railing run ${fmtV(manualRailingRun, units)} is very large compared to stair run ${fmtV(run, units)}.` });
     }
   }
 
   if (railingEnabled) {
     if (handrailHeight < 34) {
-      warnings.push({ level: 'error', msg: `Handrail height ${handrailHeight}" is below minimum of 34".` });
+      warnings.push({ level: 'error', msg: `Handrail height ${fmtV(handrailHeight, units)} is below minimum of 34".` });
     } else if (handrailHeight > 38) {
-      warnings.push({ level: 'error', msg: `Handrail height ${handrailHeight}" exceeds maximum of 38".` });
+      warnings.push({ level: 'error', msg: `Handrail height ${fmtV(handrailHeight, units)} exceeds maximum of 38".` });
     }
 
     if (pinOpening > 4) {
-      warnings.push({ level: 'error', msg: `Guard/pin opening ${pinOpening}" exceeds 4" sphere rule.` });
+      warnings.push({ level: 'error', msg: `Guard/pin opening ${fmtV(pinOpening, units)} exceeds 4" sphere rule.` });
     } else if (pinOpening > 3.875) {
-      warnings.push({ level: 'warning', msg: `Pin opening ${pinOpening}" exceeds shop target of 3⅞". Stay at or below 3.875" for safety margin.` });
+      warnings.push({ level: 'warning', msg: `Pin opening ${fmtV(pinOpening, units)} exceeds shop target of 3⅞". Stay at or below 3.875" for safety margin.` });
     }
 
     if (postCountCapped && rawPostCount != null) {

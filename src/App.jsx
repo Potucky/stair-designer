@@ -216,7 +216,8 @@ export default function App() {
     rawPostCount: calc.rawPostCount,
     postCountCapped: calc.postCountCapped,
     maxPostCount: calc.maxPostCount,
-  }), [calc, stairConfig]);
+    units,
+  }), [calc, stairConfig, units]);
 
   const materials = useMemo(() => buildMaterialList({
     width: stairConfig.width,
@@ -423,6 +424,12 @@ export default function App() {
     setStructureOffsetZIn(0);
     setPdfMirrored(false);
     setCurrentProjectId(null);
+    setPdfDrafts({
+      side: { type: 'side', dimensions: [], texts: [] },
+      threeD: { type: '3d', backgroundImage: null, dimensions: [], texts: [] },
+    });
+    setActivePdfDraftMode(null);
+    setSelectedPdfDraftDimensionId(null);
   };
 
   const handleOpenJson = () =>

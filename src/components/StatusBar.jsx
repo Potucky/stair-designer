@@ -14,7 +14,7 @@ export default function StatusBar({ activeTool, calc, warnings, units }) {
       <span>|</span>
       <span>Riser: <strong>{calc.riserHeight > 0 ? fmtUnit(calc.riserHeight, units) : '—'}</strong></span>
       <span>|</span>
-      <span>Units: <strong>{units === 'mm' ? 'mm' : 'in'}</strong></span>
+      <span>Units: <strong>{units === 'mm' ? 'mm' : units === 'in16' ? 'Inch 1/16' : 'Inch 1/8'}</strong></span>
       <span>|</span>
       {errorCount > 0 && <span className="status-error">⚠ {errorCount} error{errorCount !== 1 ? 's' : ''}</span>}
       {warnCount > 0 && <span className="status-warn"> {warnCount} warning{warnCount !== 1 ? 's' : ''}</span>}

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { TUBE_SIZES } from '../data/materialProfiles.js';
-import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
+import { fmtDeg, fmtUnit } from '../utils/format.js';
 import { formatDimensionByUnit, parseDimensionByUnit } from '../utils/units.js';
 import { normalizeRailEndpoints, DEFAULT_MANUAL_SEGMENTS, getManualPostTop, INtoU } from '../geometry/railingGeometry.js';
 
@@ -136,10 +136,20 @@ function DimensionDraftInput({ value, onCommit, units, className, style, allowZe
 }
 
 const QUICK_EXT = [0, 1, 2, 3, 4, 5, 10];
+const INCH_TO_MM_LOCAL = 25.4;
 
-function ExtChips({ curLen, onSet }) {
+function ExtChips({ curLen, onSet, units = 'in8' }) {
   const [draft, setDraft] = useState('');
   const isQuick = QUICK_EXT.includes(curLen);
+
+  const chipLabel = (inchVal) => {
+    if (units === 'mm') return `${Math.round(inchVal * INCH_TO_MM_LOCAL)}`;
+    return `${inchVal}"`;
+  };
+
+  const customDisplay = !isQuick && curLen > 0
+    ? (units === 'mm' ? (curLen * INCH_TO_MM_LOCAL).toFixed(1) : String(curLen))
+    : '';
 
   return (
     <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -149,19 +159,20 @@ function ExtChips({ curLen, onSet }) {
           className={`panel-btn${curLen === v ? ' panel-btn-active' : ''}`}
           style={{ padding: '2px 5px', fontSize: 10, minWidth: 26 }}
           onClick={() => { onSet(v); setDraft(''); }}
-        >{v}&quot;</button>
+        >{chipLabel(v)}</button>
       ))}
       <input
         type="text"
         inputMode="decimal"
-        placeholder="1–50"
+        placeholder={units === 'mm' ? '0–1270' : '1–50'}
         className="field-input"
-        style={{ width: 42, fontSize: 10, padding: '2px 4px' }}
-        value={draft || (!isQuick && curLen > 0 ? String(curLen) : '')}
+        style={{ width: 52, fontSize: 10, padding: '2px 4px' }}
+        value={draft || customDisplay}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => {
-          const v = parseFloat(draft);
-          if (Number.isFinite(v)) onSet(Math.max(1, Math.min(50, v)));
+          if (!draft) { setDraft(''); return; }
+          const raw = units === 'mm' ? parseFloat(draft) / INCH_TO_MM_LOCAL : parseFloat(draft);
+          if (Number.isFinite(raw) && raw >= 0) onSet(Math.min(50, raw));
           setDraft('');
         }}
         onKeyDown={(e) => {
@@ -607,29 +618,32 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                     <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
                       <div className="field-label-sm" style={{ marginBottom: 6 }}>Top Rail Route</div>
 
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>Start Ext (in)</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>Start Ext</div>
                       <ExtChips
                         key={`${sel.id}-start`}
                         curLen={startExtLen}
+                        units={units}
                         onSet={v => onUpdateManualTopRail(sel.id, {
                           startEndpoint: { ...r.startEndpoint, extension: v === 0 ? { type: 'none', lengthIn: 0 } : { type: 'straight', lengthIn: v } },
                         })}
                       />
 
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, marginTop: 6 }}>End Ext (in)</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, marginTop: 6 }}>End Ext</div>
                       <ExtChips
                         key={`${sel.id}-end`}
                         curLen={endExtLen}
+                        units={units}
                         onSet={v => onUpdateManualTopRail(sel.id, {
                           endEndpoint: { ...r.endEndpoint, extension: v === 0 ? { type: 'none', lengthIn: 0 } : { type: 'straight', lengthIn: v } },
                         })}
                       />
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 4 }}>
-                        <span className="field-label-sm" style={{ marginBottom: 0, flexShrink: 0 }}>Turn from P1 (in)</span>
-                        <NumericDraftInput
+                        <span className="field-label-sm" style={{ marginBottom: 0, flexShrink: 0 }}>Turn from P1</span>
+                        <DimensionDraftInput
                           className="field-input"
                           style={{ flex: 1, fontSize: 10 }}
+                          units={units}
                           value={effectiveTurnFromP1}
                           allowZero
                           onCommit={handleTurnFromP1Commit}
@@ -668,10 +682,13 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                           };
                           const prevRaw = realIdx > 0 ? routeSegs[realIdx - 1] : null;
                           const stationIn = isTurn && prevRaw && prevRaw.role === 'preTurn' ? prevRaw.lengthIn : null;
+                          const stationLabel = stationIn !== null
+                            ? `at ${formatDimensionByUnit(stationIn, units)}${units === 'mm' ? ' mm' : '"'} from P1`
+                            : null;
                           const label = isTurn
                             ? (seg.type === 'left90'
-                                ? (stationIn !== null ? `Turn L90 at ${stationIn} in from P1` : 'Turn L 90°')
-                                : (stationIn !== null ? `Turn R90 at ${stationIn} in from P1` : 'Turn R 90°'))
+                                ? (stationLabel ? `Turn L90 ${stationLabel}` : 'Turn L 90°')
+                                : (stationLabel ? `Turn R90 ${stationLabel}` : 'Turn R 90°'))
                             : (afterTurn ? 'After turn' : 'Straight');
                           return (
                             <div key={realIdx} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
@@ -680,15 +697,13 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                                 {label}
                               </span>
                               {seg.type === 'straight' && (
-                                <>
-                                  <NumericDraftInput
-                                    className="field-input"
-                                    style={{ flex: 1, fontSize: 10 }}
-                                    value={seg.lengthIn}
-                                    onCommit={v => updateRoute(routeSegs.map((s, j) => j === realIdx ? { ...s, lengthIn: Math.max(1, Math.min(240, v)) } : s))}
-                                  />
-                                  <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>in</span>
-                                </>
+                                <DimensionDraftInput
+                                  className="field-input"
+                                  style={{ flex: 1, fontSize: 10 }}
+                                  units={units}
+                                  value={seg.lengthIn}
+                                  onCommit={v => updateRoute(routeSegs.map((s, j) => j === realIdx ? { ...s, lengthIn: Math.max(1, Math.min(240, v)) } : s))}
+                                />
                               )}
                               <button
                                 className="panel-btn panel-btn-danger"
@@ -728,10 +743,11 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                       {doglegEnabled && (
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                            <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Start dist (in)</span>
-                            <NumericDraftInput
+                            <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Start dist</span>
+                            <DimensionDraftInput
                               className="field-input"
                               style={{ width: 64 }}
+                              units={units}
                               value={sel.doglegStartIn ?? 12}
                               allowZero
                               onCommit={v => onUpdateManualTopRail(sel.id, { doglegStartIn: Math.max(0, v) })}
@@ -751,10 +767,11 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                             >Right</button>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                            <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Sideways offset (in)</span>
-                            <NumericDraftInput
+                            <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Sideways offset</span>
+                            <DimensionDraftInput
                               className="field-input"
                               style={{ width: 64 }}
+                              units={units}
                               value={sel.doglegOffsetIn ?? 6}
                               allowZero
                               onCommit={v => onUpdateManualTopRail(sel.id, { doglegOffsetIn: Math.max(0, v) })}
@@ -817,15 +834,13 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                                 <option value="turn">Turn</option>
                               </select>
                               {seg.type === 'forward' && (
-                                <>
-                                  <NumericDraftInput
-                                    className="field-input"
-                                    style={{ flex: 1, fontSize: 10 }}
-                                    value={seg.lengthIn}
-                                    onCommit={v => updateSegs(segs.map((s, j) => j === i ? { ...s, lengthIn: v } : s))}
-                                  />
-                                  <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>in</span>
-                                </>
+                                <DimensionDraftInput
+                                  className="field-input"
+                                  style={{ flex: 1, fontSize: 10 }}
+                                  units={units}
+                                  value={seg.lengthIn}
+                                  onCommit={v => updateSegs(segs.map((s, j) => j === i ? { ...s, lengthIn: v } : s))}
+                                />
                               )}
                               {seg.type === 'turn' && (
                                 <>
@@ -1028,7 +1043,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             <tr>
               <th>Part</th>
               <th>Qty</th>
-              <th>Length ({units === 'mm' ? 'mm' : 'in'})</th>
+              <th>Length ({units === 'mm' ? 'mm' : units === 'in16' ? 'in 1/16' : 'in 1/8'})</th>
               <th>Profile</th>
             </tr>
           </thead>
@@ -1037,7 +1052,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               <tr key={i}>
                 <td>{item.part}</td>
                 <td>{item.qty}</td>
-                <td>{units === 'mm' ? (parseFloat(item.lengthIn) * INCH_TO_MM).toFixed(1) : item.lengthIn}</td>
+                <td>{formatDimensionByUnit(parseFloat(item.lengthIn), units)}</td>
                 <td>{item.profile}</td>
               </tr>
             ))}
@@ -1080,7 +1095,9 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               <button className="panel-btn" style={{ minWidth: 64 }} onClick={onMoveBack}>Back</button>
             </div>
             <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center' }}>
-              Offset: X {structureOffsetXIn} in / Z {structureOffsetZIn} in
+              {units === 'mm'
+                ? `Offset: X ${(structureOffsetXIn * 25.4).toFixed(1)} mm / Z ${(structureOffsetZIn * 25.4).toFixed(1)} mm`
+                : `Offset: X ${formatDimensionByUnit(structureOffsetXIn, units)}" / Z ${formatDimensionByUnit(structureOffsetZIn, units)}"`}
             </div>
             <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 6, lineHeight: '1.4' }}>
               3D move affects 3D/Print only. Export PDF stays normalized.

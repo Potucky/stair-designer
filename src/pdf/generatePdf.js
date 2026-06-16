@@ -19,7 +19,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
         ? `${formatInchesFraction(n, 16)}"`
         : `${formatInchesFraction(n, 8)}"`;
   };
-  const unitsLabel = units === 'mm' ? 'Metric Units (mm)' : 'Imperial Units (inches)';
+  const unitsLabel = units === 'mm' ? 'Metric Units — mm' : units === 'in16' ? 'Imperial Units — Inch 1/16' : 'Imperial Units — Inch 1/8';
   // Page 1 — landscape letter (792 × 612 pt)
   const LW = doc.internal.pageSize.getWidth();
   const LH = doc.internal.pageSize.getHeight();
