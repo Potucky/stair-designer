@@ -282,11 +282,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           >
             {saveStatus === 'saving' ? 'Saving…' : 'Save Project'}
           </button>
-          {saveStatus && saveStatus !== 'saving' && (
-            <span className={saveStatus === 'saved' ? 'save-status-ok' : 'save-status-error'}>
-              {saveStatus === 'saved' ? 'Saved' : saveStatus}
-            </span>
-          )}
         </div>
         <div className="chip-row" style={{ marginTop: 6 }}>
           <span className="chip-label">Project Name</span>
