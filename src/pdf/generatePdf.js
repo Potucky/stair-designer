@@ -1,13 +1,24 @@
 import { jsPDF } from 'jspdf';
 import { getTubeProfile, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
+import { formatInchesFraction } from '../utils/units.js';
 
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], manualTextAnnotations = [], pdfMirrored = false, topRailPathMode = 'standard', mode = 'save', pdfDrafts = null, primaryPageType = 'side' }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [792, 612] });
   const INCH_TO_MM = 25.4;
-  const fmtDim = (inchVal, dec = 2) =>
-    units === 'mm' ? `${(inchVal * INCH_TO_MM).toFixed(1)} mm` : `${inchVal.toFixed(dec)}"`;
-  const fmtDimStr = (lenStr) =>
-    units === 'mm' ? `${(parseFloat(lenStr) * INCH_TO_MM).toFixed(1)} mm` : `${lenStr}"`;
+  const fmtDim = (inchVal) =>
+    units === 'mm'
+      ? `${(inchVal * INCH_TO_MM).toFixed(1)} mm`
+      : units === 'in16'
+        ? `${formatInchesFraction(inchVal, 16)}"`
+        : `${formatInchesFraction(inchVal, 8)}"`;
+  const fmtDimStr = (lenStr) => {
+    const n = parseFloat(lenStr);
+    return units === 'mm'
+      ? `${(n * INCH_TO_MM).toFixed(1)} mm`
+      : units === 'in16'
+        ? `${formatInchesFraction(n, 16)}"`
+        : `${formatInchesFraction(n, 8)}"`;
+  };
   const unitsLabel = units === 'mm' ? 'Metric Units (mm)' : 'Imperial Units (inches)';
   // Page 1 — landscape letter (792 × 612 pt)
   const LW = doc.internal.pageSize.getWidth();
@@ -59,11 +70,11 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     return y + 13;
   };
 
-  const pageHeader = (num, title, pw = PW) => {
+  const pageHeader = (num, title, pw = PW, total = 4) => {
     txt('STAIR DESIGNER', M, 40, { bold: true, size: 14, color: '#1a1a2e' });
     txt('v0.0.2', pw - M, 40, { size: 9, color: '#888888', align: 'right' });
     txt(title, M, 54, { size: 9, color: '#666666' });
-    txt(`Page ${num} of 4`, pw - M, 54, { size: 9, color: '#888888', align: 'right' });
+    txt(`Page ${num} of ${total}`, pw - M, 54, { size: 9, color: '#888888', align: 'right' });
     hline(M, pw - M, 60, '#1a1a2e', 1);
     return 76;
   };
@@ -143,7 +154,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     // White header band drawn on top of image
     doc.setFillColor(255, 255, 255);
     doc.rect(0, 0, LW, 64, 'F');
-    pageHeader(1, '3D View — Dimensioned Drawing', LW);
+    pageHeader(1, '3D View — Dimensioned Drawing', LW, 1);
     // Dimensions — normalized 0..1 → full-page pt coords
     const _DC = '#1e3a5f';
     (Array.isArray(_td?.dimensions) ? _td.dimensions : []).forEach(dim => {
@@ -181,12 +192,12 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       const ly = midY + lPerpY * _LOFF;
 
       // Angle: normalize to [-90, 90) so text reads left-to-right or bottom-to-top
-      // jsPDF text angle is CCW-positive (same visual effect as SVG rotate CW-positive
-      // when using the same sign, because jsPDF's y-down rendering matches SVG)
+      // _angleDeg is the screen-CW angle (atan2 in y-down coords, same as SVG rotate()).
+      // jsPDF doc.text({ angle }) is CCW-positive, opposite of SVG rotate() — so negate.
       let _angleDeg = Math.atan2(by - ay, bx - ax) * 180 / Math.PI;
       if (_angleDeg >= 90) _angleDeg -= 180;
       else if (_angleDeg < -90) _angleDeg += 180;
-      const _jsPdfAngle = _angleDeg; // same sign: both refer to screen CW
+      const _jsPdfAngle = -_angleDeg; // negate: jsPDF CCW != SVG CW in y-down space
 
       const _lbl = String(dim.label ?? 'DIM');
       doc.setFontSize(8); doc.setFont('helvetica', 'bold');
@@ -221,6 +232,13 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     doc.setFillColor(255, 255, 255);
     doc.rect(0, LH - 44, LW, 44, 'F');
     pageFooter(LW, LH);
+    // 3D PDF mode: single page only — save and return without adding pages 2-4
+    if (mode === 'print') {
+      doc.autoPrint();
+      return doc.output('bloburl');
+    }
+    doc.save(`${(project.name || 'project').replace(/[^a-z0-9_-]/gi, '_')}_stair_designer.pdf`);
+    return;
   } else {
     y = pageHeader(1, 'Side View — Dimensioned Drawing', LW);
 

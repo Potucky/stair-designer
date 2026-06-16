@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { TUBE_SIZES } from '../data/materialProfiles.js';
 import { fmtDeg, fmtUnit, INCH_TO_MM } from '../utils/format.js';
+import { formatDimensionByUnit, parseDimensionByUnit, formatInchesFraction } from '../utils/units.js';
 import { normalizeRailEndpoints, DEFAULT_MANUAL_SEGMENTS, getManualPostTop, INtoU } from '../geometry/railingGeometry.js';
 
 function NumericDraftInput({ value, onCommit, className, style, inputMode = 'decimal', integer = false, allowZero = false }) {
@@ -72,6 +73,63 @@ function NumericDraftInput({ value, onCommit, className, style, inputMode = 'dec
       onChange={handleChange}
       onBlur={handleBlur}
       onFocus={handleFocus}
+      onKeyDown={handleKeyDown}
+    />
+  );
+}
+
+// Editable field for inch/mm dimension values. Displays formatted fractions or mm.
+// Parses user input on blur/Enter; does not reformat on every keystroke.
+function DimensionDraftInput({ value, onCommit, units, className, style, allowZero = false }) {
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState('');
+  const cancelRef = useRef(false);
+  const valueAtFocusRef = useRef(null);
+
+  const display = formatDimensionByUnit(value, units);
+
+  const handleFocus = (e) => {
+    cancelRef.current = false;
+    valueAtFocusRef.current = value;
+    const str = display !== '—' ? display : '';
+    setDraft(str);
+    setFocused(true);
+    const el = e.target;
+    requestAnimationFrame(() => { el.select(); });
+  };
+
+  const handleChange = (e) => { setDraft(e.target.value); };
+
+  const handleBlur = () => {
+    if (!cancelRef.current) {
+      const v = parseDimensionByUnit(draft, units);
+      if (v !== null && (allowZero ? v >= 0 : v > 0)) {
+        onCommit(v);
+      } else {
+        onCommit(valueAtFocusRef.current);
+      }
+    } else {
+      onCommit(valueAtFocusRef.current);
+    }
+    cancelRef.current = false;
+    setFocused(false);
+    setDraft('');
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') e.target.blur();
+    else if (e.key === 'Escape') { cancelRef.current = true; e.target.blur(); }
+  };
+
+  return (
+    <input
+      className={className}
+      style={style}
+      type="text"
+      value={focused ? draft : display}
+      onChange={handleChange}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
       onKeyDown={handleKeyDown}
     />
   );
@@ -200,15 +258,13 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
       {/* Project */}
       <section className="panel-section">
         <h3 className="section-title">Project</h3>
-        <label className="field-label">Project Name
-          <input className="field-input" value={project.name} onChange={str('name')} placeholder="My Stair Project" />
-        </label>
-        <label className="field-label">Client Name
-          <input className="field-input" value={project.client} onChange={str('client')} placeholder="Client" />
-        </label>
-        <div className="field-row">
-          <span className="field-label-sm">Units</span>
-          <span className="field-value-sm">{units === 'mm' ? 'Millimeters (Metric)' : 'Inches (Imperial)'}</span>
+        <div className="chip-row">
+          <span className="chip-label">Project Name</span>
+          <input className="field-input" style={{ flex: 1 }} value={project.name} onChange={str('name')} placeholder="My Stair Project" />
+        </div>
+        <div className="chip-row">
+          <span className="chip-label">Client Name</span>
+          <input className="field-input" style={{ flex: 1 }} value={project.client} onChange={str('client')} placeholder="Client" />
         </div>
         <div className="save-project-row">
           <button className="panel-btn" onClick={onNewProject}>New Project</button>
@@ -234,40 +290,34 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
 
       {/* Section 1: Stair Setup */}
       <section className="panel-section">
-        <h3 className="section-title">Stair Setup</h3>
+        <div className="chip-row">
+          <span className="chip-label">Quantity Step</span>
+          <NumericDraftInput className="field-input" style={{ flex: 1 }} inputMode="numeric" integer={true} value={stairConfig.steps} onCommit={commitSteps} />
+        </div>
+        <div className="chip-row">
+          <span className="chip-label">Step Width</span>
+          <DimensionDraftInput className="field-input" style={{ flex: 1 }} units={units} value={stairConfig.width} onCommit={commitDim('width')} />
+        </div>
+        <div className="chip-row">
+          <span className="chip-label">Step Height</span>
+          <DimensionDraftInput className="field-input" style={{ flex: 1 }} units={units} value={calc.riserHeight} onCommit={v => setStairConfig(s => ({ ...s, height: v * s.steps }))} />
+        </div>
+        <div className="chip-row">
+          <span className="chip-label">Step Length</span>
+          <DimensionDraftInput className="field-input" style={{ flex: 1 }} units={units} value={calc.treadDepth} onCommit={v => setStairConfig(s => ({ ...s, run: v * s.steps }))} />
+        </div>
 
-        <label className="field-label">Total Height (in)
-          <NumericDraftInput className="field-input" value={stairConfig.height} onCommit={commitDim('height')} />
-        </label>
-        <label className="field-label">Total Run (in)
-          <NumericDraftInput className="field-input" value={stairConfig.run} onCommit={commitDim('run')} />
-        </label>
-        <label className="field-label">Width (in)
-          <NumericDraftInput className="field-input" value={stairConfig.width} onCommit={commitDim('width')} />
-        </label>
-        <label className="field-label">Number of Steps
-          <NumericDraftInput className="field-input" inputMode="numeric" integer={true} value={stairConfig.steps} onCommit={commitSteps} />
-        </label>
+        <div className="chip-row">
+          <input type="checkbox" checked={!!stairConfig.bottomLandingEnabled} onChange={toggle('bottomLandingEnabled')} style={{ flexShrink: 0, accentColor: 'var(--accent)', width: 13, height: 13 }} />
+          <span className="chip-label">Bottom Landing Length</span>
+          <DimensionDraftInput className="field-input" style={{ flex: 1 }} units={units} value={stairConfig.bottomLandingLength} onCommit={commitDim('bottomLandingLength')} />
+        </div>
 
-        <label className="field-label field-checkbox">
-          <input type="checkbox" checked={!!stairConfig.bottomLandingEnabled} onChange={toggle('bottomLandingEnabled')} />
-          <span>Bottom Landing</span>
-        </label>
-        {stairConfig.bottomLandingEnabled && (
-          <label className="field-label">Landing Length (in)
-            <NumericDraftInput className="field-input" value={stairConfig.bottomLandingLength} onCommit={commitDim('bottomLandingLength')} />
-          </label>
-        )}
-
-        <label className="field-label field-checkbox">
-          <input type="checkbox" checked={!!stairConfig.topLandingEnabled} onChange={toggle('topLandingEnabled')} />
-          <span>Top Landing</span>
-        </label>
-        {stairConfig.topLandingEnabled && (
-          <label className="field-label">Landing Length (in)
-            <NumericDraftInput className="field-input" value={stairConfig.topLandingLength} onCommit={commitDim('topLandingLength')} />
-          </label>
-        )}
+        <div className="chip-row">
+          <input type="checkbox" checked={!!stairConfig.topLandingEnabled} onChange={toggle('topLandingEnabled')} style={{ flexShrink: 0, accentColor: 'var(--accent)', width: 13, height: 13 }} />
+          <span className="chip-label">Top Landing Length</span>
+          <DimensionDraftInput className="field-input" style={{ flex: 1 }} units={units} value={stairConfig.topLandingLength} onCommit={commitDim('topLandingLength')} />
+        </div>
       </section>
 
       {/* Section 2: Railing Setup */}
@@ -293,15 +343,15 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               </select>
             </label>
             {stairConfig.railingRunMode === 'manual' && (
-              <label className="field-label">Railing Length (in)
-                <NumericDraftInput className="field-input" value={stairConfig.manualRailingRun} onCommit={commitDim('manualRailingRun')} />
+              <label className="field-label">Railing Length
+                <DimensionDraftInput className="field-input" units={units} value={stairConfig.manualRailingRun} onCommit={commitDim('manualRailingRun')} />
               </label>
             )}
-            <label className="field-label">Handrail Height (in)
-              <NumericDraftInput className="field-input" value={stairConfig.handrailHeight} onCommit={commitDim('handrailHeight')} />
+            <label className="field-label">Handrail Height
+              <DimensionDraftInput className="field-input" units={units} value={stairConfig.handrailHeight} onCommit={commitDim('handrailHeight')} />
             </label>
-            <label className="field-label">Guard/Pin Opening (in)
-              <NumericDraftInput className="field-input" value={stairConfig.pinOpening} onCommit={commitDim('pinOpening')} />
+            <label className="field-label">Guard/Pin Opening
+              <DimensionDraftInput className="field-input" units={units} value={stairConfig.pinOpening} onCommit={commitDim('pinOpening')} />
             </label>
 
             <div style={{ marginTop: 8 }}>
@@ -380,8 +430,8 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                 <div className="post-tool-hint">Fast Rails: place next post to create rails</div>
               )}
               {stairConfig.bottomRailEnabled && (
-                <label className="field-label" style={{ marginTop: 8 }}>Bottom Rail Height (in)
-                  <NumericDraftInput className="field-input" value={stairConfig.bottomRailHeight} onCommit={commitDim('bottomRailHeight')} />
+                <label className="field-label" style={{ marginTop: 8 }}>Bottom Rail Height
+                  <DimensionDraftInput className="field-input" units={units} value={stairConfig.bottomRailHeight} onCommit={commitDim('bottomRailHeight')} />
                 </label>
               )}
               {stairConfig.middleRailEnabled && (() => {
@@ -390,9 +440,10 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                   <div style={{ marginTop: 8 }}>
                     {heights.map((h, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                        <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Rail {i + 1} height (in)</span>
-                        <NumericDraftInput
+                        <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Rail {i + 1} height</span>
+                        <DimensionDraftInput
                           className="field-input"
+                          units={units}
                           value={h}
                           onCommit={v => setStairConfig(s => {
                             const hs = s.middleRailHeights ?? (s.middleRailHeight != null ? [s.middleRailHeight] : [18]);
@@ -429,20 +480,22 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             {topRailPathMode === 'standard' && <div style={{ marginTop: 12 }}>
               <div className="field-label-sm" style={{ marginBottom: 6 }}>Top Rail End Extensions</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Lower End Ext (in)</span>
-                <NumericDraftInput
+                <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Lower End Ext</span>
+                <DimensionDraftInput
                   className="field-input"
                   style={{ width: 64 }}
+                  units={units}
                   value={stairConfig.railLowerExtensionIn ?? 0}
                   allowZero
                   onCommit={v => setStairConfig(s => ({ ...s, railLowerExtensionIn: Math.max(0, v) }))}
                 />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Upper End Ext (in)</span>
-                <NumericDraftInput
+                <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Upper End Ext</span>
+                <DimensionDraftInput
                   className="field-input"
                   style={{ width: 64 }}
+                  units={units}
                   value={stairConfig.railUpperExtensionIn ?? 0}
                   allowZero
                   onCommit={v => setStairConfig(s => ({ ...s, railUpperExtensionIn: Math.max(0, v) }))}
