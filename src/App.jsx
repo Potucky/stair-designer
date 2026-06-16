@@ -44,7 +44,7 @@ export default function App() {
   const [units, setUnits] = useState(() => {
     const d = loadInitialDraft();
     const u = d?.units;
-    return u === 'mm' || u === 'in' ? u : 'in';
+    return u === 'mm' ? 'mm' : u === 'in16' ? 'in16' : 'in8';
   });
   const [activeTool, setActiveTool] = useState('select');
   const [view, setView] = useState('3d');
@@ -431,7 +431,7 @@ export default function App() {
         skipAutosaveRestoreRef.current = true;
         setProject({ ...DEFAULT_PROJECT, ...p });
         setStairConfig({ ...DEFAULT_STAIR, ...sc });
-        if (u) setUnits(u);
+        if (u) setUnits(u === 'mm' ? 'mm' : u === 'in16' ? 'in16' : 'in8');
         setManualDimensions(Array.isArray(mdi) ? mdi : []);
         setManualTextAnnotations(Array.isArray(mta) ? mta : []);
         setManualPosts(Array.isArray(mp) ? mp : []);
@@ -498,8 +498,9 @@ export default function App() {
     setPdfMirrored(sc.pdfMirrored === true);
     if (sc.topRailPathMode === 'manual' || sc.topRailPathMode === 'standard') setTopRailPathMode(sc.topRailPathMode);
     else setTopRailPathMode('standard');
-    const validUnit = (u) => u === 'in' || u === 'mm';
-    setUnits(validUnit(sc.units) ? sc.units : validUnit(p.units) ? p.units : 'in');
+    const validUnit = (u) => u === 'in8' || u === 'in16' || u === 'mm' || u === 'in';
+    const mapUnit = (u) => u === 'mm' ? 'mm' : u === 'in16' ? 'in16' : 'in8';
+    setUnits(validUnit(sc.units) ? mapUnit(sc.units) : validUnit(p.units) ? mapUnit(p.units) : 'in8');
     const DEFAULT_PDF_DRAFTS = {
       side: { type: 'side', dimensions: [], texts: [] },
       threeD: { type: '3d', backgroundImage: null, dimensions: [], texts: [] },

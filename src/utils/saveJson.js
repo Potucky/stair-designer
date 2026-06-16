@@ -89,7 +89,7 @@ export function openProjectJson(onLoad, onError) {
             }
           }
         }
-        const units = data.units === 'mm' ? 'mm' : 'in';
+        const units = data.units === 'mm' ? 'mm' : data.units === 'in16' ? 'in16' : 'in8';
         // Load manualDimensions; old files without this field default to [].
         // Accept top-level or stairConfig.manualDimensions fallback.
         const rawDims = Array.isArray(data.manualDimensions)

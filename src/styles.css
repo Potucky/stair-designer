@@ -234,6 +234,28 @@ html, body, #root {
 .field-label-sm { color: var(--text-dim); font-size: 10px; }
 .field-value-sm { color: var(--text); font-size: 10px; }
 
+.chip-label {
+  background: var(--accent);
+  border: 1px solid var(--accent-dark);
+  color: #fff;
+  border-radius: 4px;
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.01em;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.chip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
 /* ─── Panel Buttons ────────────────────────────────────────────────── */
 .save-project-row {
   display: flex;

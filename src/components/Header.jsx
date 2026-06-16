@@ -14,11 +14,18 @@ export default function Header({ onOpenJson, onSaveJson, onExportPdf, onPrint, u
       <div className="header-right">
         <div className="units-toggle-group">
           <button
-            className={`header-btn units-btn${units === 'in' ? ' header-btn-active' : ''}`}
-            title="Switch to inches"
-            onClick={() => onUnitsChange('in')}
+            className={`header-btn units-btn${units === 'in8' || units === 'in' ? ' header-btn-active' : ''}`}
+            title="Show inches to nearest 1/8"
+            onClick={() => onUnitsChange('in8')}
           >
-            Inch
+            Inch 1/8
+          </button>
+          <button
+            className={`header-btn units-btn${units === 'in16' ? ' header-btn-active' : ''}`}
+            title="Show inches to nearest 1/16"
+            onClick={() => onUnitsChange('in16')}
+          >
+            Inch 1/16
           </button>
           <button
             className={`header-btn units-btn${units === 'mm' ? ' header-btn-active' : ''}`}
