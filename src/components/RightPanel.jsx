@@ -144,6 +144,8 @@ function DimensionDraftInput({ value, onCommit, units, className, style, allowZe
   );
 }
 
+const SHOW_LEGACY_RAILING_ASSEMBLY = false;
+
 const QUICK_EXT = [0, 1, 2, 3, 4, 5, 10];
 const INCH_TO_MM_LOCAL = 25.4;
 
@@ -478,6 +480,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               </div>
             </div>
 
+            {SHOW_LEGACY_RAILING_ASSEMBLY && (
             <div style={{ marginTop: 12 }}>
               <div className="field-label-sm" style={{ marginBottom: 6 }}>Railing Assembly</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -577,6 +580,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                 );
               })()}
             </div>
+            )}
 
             {/* Rail End Extensions */}
             {topRailPathMode === 'standard' && <div style={{ marginTop: 12 }}>
@@ -606,6 +610,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             </div>}
 
             {/* Top Rail Mode switch */}
+            {SHOW_LEGACY_RAILING_ASSEMBLY && (
             <div style={{ marginTop: 12 }}>
               <div className="field-label-sm" style={{ marginBottom: 6 }}>Top Rail Mode</div>
               <div style={{ display: 'flex', gap: 6 }}>
@@ -619,6 +624,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                 >Manual</button>
               </div>
             </div>
+            )}
 
             {/* Top rail list */}
             {manualTopRails && manualTopRails.length > 0 && (
@@ -1161,6 +1167,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
       </section>
 
       {/* Railing Position Move */}
+      {SHOW_LEGACY_RAILING_ASSEMBLY && (
       <section className="panel-section">
         <h3 className="section-title">Railing Position</h3>
         <button
@@ -1194,6 +1201,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           </div>
         )}
       </section>
+      )}
 
       {/* PDF Output */}
       <section className="panel-section">
