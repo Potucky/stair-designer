@@ -413,10 +413,9 @@ function TopLanding({ run, width, height, steps, topLandingLength, postPlacement
 }
 
 // Renders manually placed posts from the manualPosts array.
-function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tubeSize, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, railingColorMode, fastRailsMode, fastRailsPrevPostId, onFastRailsPostSelect, isDims }) {
+function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tubeSize, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, railingColorMode, fastRailsMode, fastRailsPrevPostId, onFastRailsPostSelect, isDims, post1Section, post2Section }) {
   const INtoU = 0.5;
   const profile = getTubeProfile(tubeSize);
-  const defaultPostSide = profile.width * INtoU;
 
   return (
     <>
@@ -430,8 +429,12 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
         const worldY = base.y + postH / 2;
         const worldZ = base.z;
 
-        // Use per-post section if set (from compact placement), otherwise tubeSize profile
-        const { w: secW, h: secD } = parseSectionIn(post.section, profile.width, profile.width);
+        // Compact posts use live stairConfig section; regular posts use their stored section
+        const resolvedSection =
+          post.compactSlot === 'post1' ? (post1Section ?? post.section) :
+          post.compactSlot === 'post2' ? (post2Section ?? post.section) :
+          post.section;
+        const { w: secW, h: secD } = parseSectionIn(resolvedSection, profile.width, profile.width);
         const postW = secW * INtoU;
         const postD = secD * INtoU;
 
@@ -1496,6 +1499,8 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             fastRailsPrevPostId={fastRailsPrevPostId}
             onFastRailsPostSelect={onFastRailsPostSelect}
             isDims={isDims}
+            post1Section={stairConfig.post1Section}
+            post2Section={stairConfig.post2Section}
           />
 
           <ManualTopRailsRenderer
