@@ -366,6 +366,18 @@ export function getManualTopRailDoglegSegments(manualTopRails, manualPosts, trea
 
 export const DEFAULT_MANUAL_SEGMENTS = [];
 
+// Maximum allowable clear opening between infill elements (code requirement: 3 7/8")
+export const MAX_INFILL_CLEAR_IN = 3.875;
+
+// Returns the minimum number of infill elements (pickets / cables) needed so that
+// every clear gap between elements is <= MAX_INFILL_CLEAR_IN.
+// clearSpanIn: the total clear space available (between post inner faces, or between rails)
+// elementThicknessIn: the cross-section thickness of each element (picket width, cable dia.)
+export function calcInfillCount(clearSpanIn, elementThicknessIn) {
+  if (clearSpanIn <= MAX_INFILL_CLEAR_IN) return 0;
+  return Math.ceil((clearSpanIn - MAX_INFILL_CLEAR_IN) / (elementThicknessIn + MAX_INFILL_CLEAR_IN));
+}
+
 // Shared top rail segment resolver used by 3D rendering, PDF, and material/cut list.
 // Returns the final real-inch segment list for a set of top rails, honoring:
 //   - straight rails (no dogleg, no custom route)

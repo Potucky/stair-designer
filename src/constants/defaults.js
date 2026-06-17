@@ -4,7 +4,7 @@ export const DEFAULT_STAIR = {
   width: 48,
   steps: 6,
   tubeSize: '2x2',
-  railingEnabled: false,
+  railingEnabled: true,
   handrailHeight: 36,
   pinOpening: 3.875,
   postSpacing: 48,
@@ -21,6 +21,10 @@ export const DEFAULT_STAIR = {
   railingColorMode: 'work',
   railLowerExtensionIn: 0,
   railUpperExtensionIn: 0,
+  infillType: 'none',
+  verticalPicketThicknessIn: 1,
+  horizontalPicketThicknessIn: 1,
+  horizontalCableDiameterIn: 0.125,
 };
 
 export const DEFAULT_PROJECT = {

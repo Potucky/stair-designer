@@ -3,7 +3,7 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { fmtUnit } from '../utils/format.js';
-import { getTubeProfile, getManualPostBase, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualPostBase, getManualPostTop, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, calcInfillCount, INtoU as INtoU_GEO } from '../geometry/railingGeometry.js';
 
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
@@ -557,6 +557,137 @@ function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions
           <mesh key={`mr-${rail.id}-${height}`} position={midV.toArray()} quaternion={quat} castShadow>
             <boxGeometry args={[length, RAIL_H, RAIL_W]} />
             <meshStandardMaterial color={railingColorMode === 'black' ? '#111111' : '#2F7D7A'} metalness={0.3} roughness={0.5} />
+          </mesh>
+        );
+      })}
+    </>
+  );
+}
+
+// Renders vertical pickets or horizontal pickets/cables between Post 1 and Post 2.
+// Count is derived automatically so every clear gap stays within 3 7/8" (3.875").
+function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, handrailHeight, bottomRailHeightIn, tubeSize, railingColorMode }) {
+  const INtoU = INtoU_GEO;
+
+  const meshSpecs = useMemo(() => {
+    if (!infillType || infillType === 'none') return [];
+    if (!manualPosts || manualPosts.length < 2) return [];
+
+    const p1 = manualPosts[0];
+    const p2 = manualPosts[1];
+
+    const p1Base = getManualPostBase(p1, treadPositions, riserHeight, run);
+    const p2Base = getManualPostBase(p2, treadPositions, riserHeight, run);
+    const p1Top = getManualPostTop(p1, treadPositions, riserHeight, run);
+    const p2Top = getManualPostTop(p2, treadPositions, riserHeight, run);
+
+    if (!p1Base || !p2Base || !p1Top || !p2Top) return [];
+
+    const postWidthIn = getTubeProfile(tubeSize).width;
+
+    // Span vector (scene units) from P1 base to P2 base
+    const sdx = p2Base.x - p1Base.x;
+    const sdy = p2Base.y - p1Base.y;
+    const sdz = p2Base.z - p1Base.z;
+    const spanScene = Math.sqrt(sdx * sdx + sdy * sdy + sdz * sdz);
+    const spanIn = spanScene / INtoU;
+
+    if (spanIn < 0.1) return [];
+
+    // Y of bottom channel at each post (above post base, following nosing line via getManualPostBase)
+    const btmP1y = p1Base.y + bottomRailHeightIn * INtoU;
+    const btmP2y = p2Base.y + bottomRailHeightIn * INtoU;
+    const topP1y = p1Top.y;
+    const topP2y = p2Top.y;
+
+    const specs = [];
+
+    if (infillType === 'vertical' || infillType === 'verticalPicket') {
+      const thickIn = verticalPicketThicknessIn;
+      const clearIn = spanIn - postWidthIn;   // inside face to inside face
+      const n = calcInfillCount(clearIn, thickIn);
+      if (n <= 0) return [];
+
+      const gapIn = (clearIn - n * thickIn) / (n + 1);
+      const halfPostIn = postWidthIn / 2;
+
+      for (let i = 0; i < n; i++) {
+        const distIn = halfPostIn + gapIn + i * (gapIn + thickIn) + thickIn / 2;
+        const t = distIn / spanIn;
+
+        const px = p1Base.x + t * sdx;
+        const pz = p1Base.z + t * sdz;
+        const btmY = btmP1y + t * (btmP2y - btmP1y);
+        const topY = topP1y + t * (topP2y - topP1y);
+        const h = topY - btmY;
+        if (h < 0.01) continue;
+
+        specs.push({ kind: 'box', key: `vp-${i}`, x: px, y: (btmY + topY) / 2, z: pz, length: thickIn * INtoU, height: h, depth: thickIn * INtoU, ux: 0, uy: 1, uz: 0 });
+      }
+
+    } else if (infillType === 'horizontalPicket' || infillType === 'horizontalCable') {
+      const thickIn = infillType === 'horizontalPicket' ? horizontalPicketThicknessIn : horizontalCableDiameterIn;
+      const openingIn = (topP1y - btmP1y) / INtoU;  // same at P1 and P2 (both = handrailHeight - bottomRailHeightIn)
+      const n = calcInfillCount(openingIn, thickIn);
+      if (n <= 0) return [];
+
+      const gapIn = (openingIn - n * thickIn) / (n + 1);
+
+      for (let i = 0; i < n; i++) {
+        const hvIn = gapIn + i * (gapIn + thickIn) + thickIn / 2;
+        const tv = hvIn / openingIn;
+
+        const sx = p1Base.x;
+        const sy = btmP1y + tv * (topP1y - btmP1y);
+        const sz = p1Base.z;
+
+        const ex = p2Base.x;
+        const ey = btmP2y + tv * (topP2y - btmP2y);
+        const ez = p2Base.z;
+
+        const seg = Math.sqrt((ex - sx) ** 2 + (ey - sy) ** 2 + (ez - sz) ** 2);
+        if (seg < 0.01) continue;
+
+        specs.push({
+          kind: 'box',
+          key: `${infillType === 'horizontalPicket' ? 'hp' : 'hc'}-${i}`,
+          x: (sx + ex) / 2, y: (sy + ey) / 2, z: (sz + ez) / 2,
+          length: seg,
+          height: thickIn * INtoU,
+          depth: thickIn * INtoU,
+          ux: (ex - sx) / seg,
+          uy: (ey - sy) / seg,
+          uz: (ez - sz) / seg,
+        });
+      }
+    }
+
+    return specs;
+  }, [manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, handrailHeight, bottomRailHeightIn, tubeSize, INtoU]);
+
+  if (meshSpecs.length === 0) return null;
+
+  const baseColor = railingColorMode === 'black' ? '#111111' : '#4a4a4a';
+  const cableColor = '#9ca3af';
+
+  return (
+    <>
+      {meshSpecs.map((s) => {
+        const isAlignedY = s.ux === 0 && s.uz === 0;
+        const quat = isAlignedY
+          ? new THREE.Quaternion()
+          : new THREE.Quaternion().setFromUnitVectors(
+              new THREE.Vector3(1, 0, 0),
+              new THREE.Vector3(s.ux, s.uy, s.uz)
+            );
+        return (
+          <mesh key={s.key} position={[s.x, s.y, s.z]} quaternion={quat} castShadow>
+            <boxGeometry args={[s.length, s.height, s.depth]} />
+            <meshStandardMaterial
+              color={infillType === 'horizontalCable' ? cableColor : baseColor}
+              metalness={0.55}
+              roughness={0.35}
+            />
           </mesh>
         );
       })}
@@ -1378,6 +1509,21 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
               railingColorMode={effectiveColorMode}
             />
           )}
+
+          <InfillRenderer
+            manualPosts={manualPosts || []}
+            treadPositions={calc.treadPositions}
+            riserHeight={calc.riserHeight}
+            run={run}
+            infillType={stairConfig.infillType ?? 'none'}
+            verticalPicketThicknessIn={stairConfig.verticalPicketThicknessIn ?? 1}
+            horizontalPicketThicknessIn={stairConfig.horizontalPicketThicknessIn ?? 1}
+            horizontalCableDiameterIn={stairConfig.horizontalCableDiameterIn ?? 0.125}
+            handrailHeight={handrailHeight}
+            bottomRailHeightIn={stairConfig.bottomRailHeight ?? 1}
+            tubeSize={tubeSize}
+            railingColorMode={effectiveColorMode}
+          />
         </group>
 
         <MeasureTool active={isMeasure} units={units} />

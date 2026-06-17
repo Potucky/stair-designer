@@ -249,6 +249,21 @@ html, body, #root {
   user-select: none;
 }
 
+.chip-label-btn {
+  cursor: pointer;
+  font: inherit;
+  line-height: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.chip-label-btn:hover {
+  background: var(--accent-dark);
+}
+.chip-label-active {
+  background: #1e3a8a;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2563eb;
+}
+
 .chip-row {
   display: flex;
   align-items: center;
@@ -572,6 +587,32 @@ html, body, #root {
   cursor: crosshair;
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* ─── Railing Component Grid ───────────────────────────────────────── */
+.rc-comp-row {
+  display: grid;
+  grid-template-columns: 90px 34px 56px 54px;
+  gap: 2px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.rc-comp-row .chip-label,
+.rc-comp-row .chip-label-btn {
+  font-size: 9px;
+  padding: 2px 5px;
+  overflow: hidden;
+}
+.rc-comp-row .field-input {
+  font-size: 10px;
+  padding: 3px 5px;
+}
+.rc-empty-cell {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  height: 20px;
+  opacity: 0.5;
 }
 
 /* ─── Mobile ───────────────────────────────────────────────────────── */

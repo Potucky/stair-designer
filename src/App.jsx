@@ -72,6 +72,7 @@ export default function App() {
     return Array.isArray(d?.manualPosts) ? d.manualPosts : [];
   });
   const [postPlacementMode, setPostPlacementMode] = useState(false);
+  const [compactPostTarget, setCompactPostTarget] = useState(null); // null | 1 | 2
   const [selectedManualPostId, setSelectedManualPostId] = useState(null);
 
   const [manualTopRails, setManualTopRails] = useState(() => {
@@ -124,6 +125,7 @@ export default function App() {
     const onKey = (e) => {
       if (e.key === 'Escape') {
         setPostPlacementMode(false);
+        setCompactPostTarget(null);
         setTopRailMode(false);
         setTopRailFirstPostId(null);
         setFastRailsMode(false);
@@ -274,6 +276,29 @@ export default function App() {
   };
 
   const handleAddManualPost = (postData) => {
+    if (compactPostTarget !== null) {
+      const postIdx = compactPostTarget - 1;
+      const height = compactPostTarget === 1
+        ? (stairConfig.post1HeightIn ?? stairConfig.handrailHeight ?? 36)
+        : (stairConfig.post2HeightIn ?? stairConfig.handrailHeight ?? 36);
+      const section = compactPostTarget === 1
+        ? (stairConfig.post1Section ?? '2 x 2')
+        : (stairConfig.post2Section ?? '2 x 2');
+      const thickness = compactPostTarget === 1
+        ? (stairConfig.post1Thickness ?? '1.8')
+        : (stairConfig.post2Thickness ?? '1.8');
+      const enrichedData = { ...postData, heightIn: height, section, thickness };
+      setManualPosts(prev => {
+        if (prev.length > postIdx) {
+          return prev.map((p, i) => i === postIdx ? { ...p, ...enrichedData } : p);
+        }
+        const id = `post-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        return [...prev, { ...enrichedData, id }];
+      });
+      setCompactPostTarget(null);
+      setPostPlacementMode(false);
+      return;
+    }
     const id = `post-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     setManualPosts(prev => [...prev, { ...postData, id }]);
   };
@@ -288,11 +313,27 @@ export default function App() {
 
   const handleTogglePostPlacement = () => {
     setPostPlacementMode(prev => !prev);
+    setCompactPostTarget(null);
     setSelectedManualPostId(null);
     setTopRailMode(false);
     setTopRailFirstPostId(null);
     setFastRailsMode(false);
     setFastRailsPrevPostId(null);
+  };
+
+  const handleToggleCompactPostPlacement = (postNum) => {
+    setCompactPostTarget(prev => {
+      const toggling = prev === postNum;
+      setPostPlacementMode(!toggling);
+      if (!toggling) {
+        setTopRailMode(false);
+        setTopRailFirstPostId(null);
+        setFastRailsMode(false);
+        setFastRailsPrevPostId(null);
+        setSelectedManualPostId(null);
+      }
+      return toggling ? null : postNum;
+    });
   };
 
   const handleToggleTopRailMode = () => {
@@ -696,6 +737,8 @@ export default function App() {
         manualPosts={manualPosts}
         postPlacementMode={postPlacementMode}
         onTogglePostPlacement={handleTogglePostPlacement}
+        compactPostTarget={compactPostTarget}
+        onToggleCompactPostPlacement={handleToggleCompactPostPlacement}
         selectedManualPostId={selectedManualPostId}
         onUpdateManualPost={handleUpdateManualPost}
         onDeleteManualPost={handleDeleteManualPost}

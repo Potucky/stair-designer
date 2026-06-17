@@ -1,5 +1,14 @@
 import { useState, useRef } from 'react';
 import { TUBE_SIZES } from '../data/materialProfiles.js';
+
+const PROFILE_SIZES = (() => {
+  const steps = [1, 1.5, 2, 2.5, 3, 3.5, 4];
+  const sizes = [];
+  for (const w of steps) {
+    for (const h of steps) sizes.push(`${w} x ${h}`);
+  }
+  return sizes;
+})();
 import { fmtDeg, fmtUnit } from '../utils/format.js';
 import { formatDimensionByUnit, parseDimensionByUnit } from '../utils/units.js';
 import { normalizeRailEndpoints, DEFAULT_MANUAL_SEGMENTS, getManualPostTop, INtoU } from '../geometry/railingGeometry.js';
@@ -184,7 +193,7 @@ function ExtChips({ curLen, onSet, units = 'in8' }) {
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onNewProject, onSaveProject, onOpenProject, onExportPdf, units, activeTool, manualDimensions, onUpdateManualDimension, onDeleteManualDimension, manualPosts, postPlacementMode, onTogglePostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode, manualTextAnnotations, onUpdateManualTextAnnotation, onDeleteManualTextAnnotation, pdfMirrored, onTogglePdfMirrored, activePdfDraftMode, pdfDrafts, selectedPdfDraftDimensionId, onUpdatePdfDraftDimension, onDeletePdfDraftDimension, onDeleteLastPdfDraftDimension, onClearAllPdfDraftDimensions }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onNewProject, onSaveProject, onOpenProject, onExportPdf, units, activeTool, manualDimensions, onUpdateManualDimension, onDeleteManualDimension, manualPosts, postPlacementMode, onTogglePostPlacement, compactPostTarget, onToggleCompactPostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode, manualTextAnnotations, onUpdateManualTextAnnotation, onDeleteManualTextAnnotation, pdfMirrored, onTogglePdfMirrored, activePdfDraftMode, pdfDrafts, selectedPdfDraftDimensionId, onUpdatePdfDraftDimension, onDeletePdfDraftDimension, onDeleteLastPdfDraftDimension, onClearAllPdfDraftDimensions }) {
   const [saveStatus, setSaveStatus] = useState(null);
   const [turnFromP1In, setTurnFromP1In] = useState(null);
 
@@ -325,17 +334,112 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         </div>
       </section>
 
-      {/* Section 2: Railing Setup */}
+      {/* Section: Railing Components */}
       <section className="panel-section">
-        <h3 className="section-title">Railing Setup</h3>
+        <div className="rc-comp-row">
+          <button
+            className={`chip-label chip-label-btn${compactPostTarget === 1 ? ' chip-label-active' : ''}`}
+            title={compactPostTarget === 1 ? 'Cancel Post 1 placement' : 'Click to place Post 1 on any step or landing'}
+            onClick={() => onToggleCompactPostPlacement(1)}
+          >Post 1</button>
+          <DimensionDraftInput className="field-input" units={units} value={stairConfig.post1HeightIn ?? 36} onCommit={v => setStairConfig(s => ({ ...s, post1HeightIn: v }))} />
+          <select className="field-input" value={stairConfig.post1Section ?? '2 x 2'} onChange={e => setStairConfig(s => ({ ...s, post1Section: e.target.value }))}>
+            {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
+          </select>
+          <select className="field-input" value={stairConfig.post1Thickness ?? '1.8'} onChange={e => setStairConfig(s => ({ ...s, post1Thickness: e.target.value }))}>
+            <option value="1.8">1.8</option>
+            <option value="1.4">1.4</option>
+          </select>
+        </div>
+        {compactPostTarget === 1 && (
+          <div className="post-tool-hint">Post 1 placement active — click a step or landing to place</div>
+        )}
+        <div className="rc-comp-row">
+          <button
+            className={`chip-label chip-label-btn${compactPostTarget === 2 ? ' chip-label-active' : ''}`}
+            title={compactPostTarget === 2 ? 'Cancel Post 2 placement' : 'Click to place Post 2 on any step or landing'}
+            onClick={() => onToggleCompactPostPlacement(2)}
+          >Post 2</button>
+          <DimensionDraftInput className="field-input" units={units} value={stairConfig.post2HeightIn ?? 36} onCommit={v => setStairConfig(s => ({ ...s, post2HeightIn: v }))} />
+          <select className="field-input" value={stairConfig.post2Section ?? '2 x 2'} onChange={e => setStairConfig(s => ({ ...s, post2Section: e.target.value }))}>
+            {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
+          </select>
+          <select className="field-input" value={stairConfig.post2Thickness ?? '1.8'} onChange={e => setStairConfig(s => ({ ...s, post2Thickness: e.target.value }))}>
+            <option value="1.8">1.8</option>
+            <option value="1.4">1.4</option>
+          </select>
+        </div>
+        {compactPostTarget === 2 && (
+          <div className="post-tool-hint">Post 2 placement active — click a step or landing to place</div>
+        )}
+        <div className="rc-comp-row">
+          <span className="chip-label">Top Handrail</span>
+          <div className="rc-empty-cell" />
+          <select className="field-input" value={stairConfig.handrailSection ?? '2 x 2'} onChange={e => setStairConfig(s => ({ ...s, handrailSection: e.target.value }))}>
+            {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
+          </select>
+          <select className="field-input" value={stairConfig.handrailThickness ?? '1.8'} onChange={e => setStairConfig(s => ({ ...s, handrailThickness: e.target.value }))}>
+            <option value="1.8">1.8</option>
+            <option value="1.4">1.4</option>
+          </select>
+        </div>
+        <div className="rc-comp-row">
+          <span className="chip-label">Bottom Channel</span>
+          <div className="rc-empty-cell" />
+          <select className="field-input" value={stairConfig.bottomChannelSection ?? '2 x 3'} onChange={e => setStairConfig(s => ({ ...s, bottomChannelSection: e.target.value }))}>
+            {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
+          </select>
+          <select className="field-input" value={stairConfig.bottomChannelThickness ?? '1.8'} onChange={e => setStairConfig(s => ({ ...s, bottomChannelThickness: e.target.value }))}>
+            <option value="1.8">1.8</option>
+            <option value="1.4">1.4</option>
+          </select>
+        </div>
+        <div className="rc-comp-row">
+          <button
+            className={`chip-label chip-label-btn${(stairConfig.infillType ?? 'none') === 'vertical' ? ' chip-label-active' : ''}`}
+            onClick={() => setStairConfig(s => ({ ...s, infillType: 'vertical' }))}
+          >Picket Vertical</button>
+          <div className="rc-empty-cell" />
+          <select className="field-input" value={stairConfig.picketVerticalSection ?? '1 x 1'} onChange={e => setStairConfig(s => ({ ...s, picketVerticalSection: e.target.value }))}>
+            {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
+          </select>
+          <select className="field-input" value={stairConfig.picketVerticalThickness ?? '1.8'} onChange={e => setStairConfig(s => ({ ...s, picketVerticalThickness: e.target.value }))}>
+            <option value="1.8">1.8</option>
+            <option value="1.4">1.4</option>
+          </select>
+        </div>
+        <div className="rc-comp-row">
+          <button
+            className={`chip-label chip-label-btn${(stairConfig.infillType ?? 'none') === 'horizontalPicket' ? ' chip-label-active' : ''}`}
+            onClick={() => setStairConfig(s => ({ ...s, infillType: 'horizontalPicket' }))}
+          >Picket Horizontal</button>
+          <div className="rc-empty-cell" />
+          <select className="field-input" value={stairConfig.picketHorizontalSection ?? '1 x 1'} onChange={e => setStairConfig(s => ({ ...s, picketHorizontalSection: e.target.value }))}>
+            {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
+          </select>
+          <select className="field-input" value={stairConfig.picketHorizontalThickness ?? '1.8'} onChange={e => setStairConfig(s => ({ ...s, picketHorizontalThickness: e.target.value }))}>
+            <option value="1.8">1.8</option>
+            <option value="1.4">1.4</option>
+          </select>
+        </div>
+        <div className="rc-comp-row">
+          <button
+            className={`chip-label chip-label-btn${(stairConfig.infillType ?? 'none') === 'horizontalCable' ? ' chip-label-active' : ''}`}
+            onClick={() => setStairConfig(s => ({ ...s, infillType: 'horizontalCable' }))}
+          >Cable Horizontal</button>
+          <div className="rc-empty-cell" />
+          <select className="field-input" value={stairConfig.cableSize ?? '1/8'} onChange={e => setStairConfig(s => ({ ...s, cableSize: e.target.value }))}>
+            <option value="1/8">1/8</option>
+          </select>
+          <select className="field-input" value={stairConfig.cableFinish ?? 'Black'} onChange={e => setStairConfig(s => ({ ...s, cableFinish: e.target.value }))}>
+            <option value="Black">Black</option>
+            <option value="Chrome">Chrome</option>
+          </select>
+        </div>
+      </section>
 
-        <label className="field-label field-checkbox">
-          <input type="checkbox" checked={stairConfig.railingEnabled} onChange={toggle('railingEnabled')} />
-          <span>Railing Enabled</span>
-        </label>
-
-        {stairConfig.railingEnabled && (
-          <>
+      {/* Section 2: Railing */}
+      <section className="panel-section">
             <label className="field-label">Tube Size
               <select className="field-input" value={stairConfig.tubeSize} onChange={sel('tubeSize')}>
                 {TUBE_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -352,9 +456,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                 <DimensionDraftInput className="field-input" units={units} value={stairConfig.manualRailingRun} onCommit={commitDim('manualRailingRun')} />
               </label>
             )}
-            <label className="field-label">Handrail Height
-              <DimensionDraftInput className="field-input" units={units} value={stairConfig.handrailHeight} onCommit={commitDim('handrailHeight')} />
-            </label>
             <label className="field-label">Guard/Pin Opening
               <DimensionDraftInput className="field-input" units={units} value={stairConfig.pinOpening} onCommit={commitDim('pinOpening')} />
             </label>
@@ -419,6 +520,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                 </button>
                 <button className="panel-btn" disabled title="Coming soon">Bridges</button>
               </div>
+
               {postPlacementMode && (
                 <div className="post-tool-hint">Post tool active — click a step or side to place a post</div>
               )}
@@ -433,11 +535,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               )}
               {fastRailsMode && fastRailsPrevPostId && (
                 <div className="post-tool-hint">Fast Rails: place next post to create rails</div>
-              )}
-              {stairConfig.bottomRailEnabled && (
-                <label className="field-label" style={{ marginTop: 8 }}>Bottom Rail Height
-                  <DimensionDraftInput className="field-input" units={units} value={stairConfig.bottomRailHeight} onCommit={commitDim('bottomRailHeight')} />
-                </label>
               )}
               {stairConfig.middleRailEnabled && (() => {
                 const heights = stairConfig.middleRailHeights ?? (stairConfig.middleRailHeight != null ? [stairConfig.middleRailHeight] : [18]);
@@ -931,8 +1028,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
                 </div>
               );
             })()}
-          </>
-        )}
       </section>
 
       {/* Manual Dimensions */}
