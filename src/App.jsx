@@ -277,7 +277,7 @@ export default function App() {
 
   const handleAddManualPost = (postData) => {
     if (compactPostTarget !== null) {
-      const postIdx = compactPostTarget - 1;
+      const slotKey = `post${compactPostTarget}`;
       const height = compactPostTarget === 1
         ? (stairConfig.post1HeightIn ?? stairConfig.handrailHeight ?? 36)
         : (stairConfig.post2HeightIn ?? stairConfig.handrailHeight ?? 36);
@@ -287,10 +287,11 @@ export default function App() {
       const thickness = compactPostTarget === 1
         ? (stairConfig.post1Thickness ?? '1.8')
         : (stairConfig.post2Thickness ?? '1.8');
-      const enrichedData = { ...postData, heightIn: height, section, thickness };
+      const enrichedData = { ...postData, heightIn: height, section, thickness, compactSlot: slotKey };
       setManualPosts(prev => {
-        if (prev.length > postIdx) {
-          return prev.map((p, i) => i === postIdx ? { ...p, ...enrichedData } : p);
+        const existingIdx = prev.findIndex(p => p.compactSlot === slotKey);
+        if (existingIdx >= 0) {
+          return prev.map((p, i) => i === existingIdx ? { ...p, ...enrichedData } : p);
         }
         const id = `post-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         return [...prev, { ...enrichedData, id }];

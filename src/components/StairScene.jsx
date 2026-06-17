@@ -8,6 +8,18 @@ import { getTubeProfile, getManualPostBase, getManualPostTop, resolveTopRailSegm
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
 
+// Parse "W x H" section string (e.g. "2 x 2") into {w, h} in inches.
+// Falls back to defaultW / defaultH when the string is absent or unparseable.
+function parseSectionIn(section, defaultW, defaultH) {
+  if (section) {
+    const parts = String(section).split(/\s*[xX]\s*/).map(s => parseFloat(s.trim()));
+    if (parts.length === 2 && parts.every(n => Number.isFinite(n) && n > 0)) {
+      return { w: parts[0], h: parts[1] };
+    }
+  }
+  return { w: defaultW, h: defaultH };
+}
+
 // Visual tread thickness in scene units (shared by StairModel and ManualPostsRenderer)
 const TREAD_THICK = 0.3;
 
@@ -404,7 +416,7 @@ function TopLanding({ run, width, height, steps, topLandingLength, postPlacement
 function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tubeSize, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, railingColorMode, fastRailsMode, fastRailsPrevPostId, onFastRailsPostSelect, isDims }) {
   const INtoU = 0.5;
   const profile = getTubeProfile(tubeSize);
-  const postSide = profile.width * INtoU; // real profile width in scene units
+  const defaultPostSide = profile.width * INtoU;
 
   return (
     <>
@@ -417,6 +429,11 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
         const worldX = base.x;
         const worldY = base.y + postH / 2;
         const worldZ = base.z;
+
+        // Use per-post section if set (from compact placement), otherwise tubeSize profile
+        const { w: secW, h: secD } = parseSectionIn(post.section, profile.width, profile.width);
+        const postW = secW * INtoU;
+        const postD = secD * INtoU;
 
         const basePostColor = railingColorMode === 'black' ? '#111111' : '#4a4a4a';
         let color = basePostColor;
@@ -443,7 +460,7 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
             onClick={handleClick}
             castShadow
           >
-            <boxGeometry args={[postSide, postH, postSide]} />
+            <boxGeometry args={[postW, postH, postD]} />
             <meshStandardMaterial
               color={color}
               metalness={0.55}
@@ -457,10 +474,12 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
 }
 
 // Renders top rail beams. Handles post-anchored, fixed/detached endpoints, and straight extensions.
-function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, railingColorMode, railLowerExtensionIn = 0, railUpperExtensionIn = 0, topRailPathMode = 'standard' }) {
+function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, railingColorMode, railLowerExtensionIn = 0, railUpperExtensionIn = 0, topRailPathMode = 'standard', handrailSection }) {
   const INtoU = 0.5;
-  const RAIL_W = 2 * INtoU;
-  const RAIL_H = 1 * INtoU;
+  // Parse handrailSection ("W x H") — default to 2×1 to match previous hardcoded values
+  const { w: railWIn, h: railHIn } = parseSectionIn(handrailSection, 2, 1);
+  const RAIL_W = railWIn * INtoU;
+  const RAIL_H = railHIn * INtoU;
 
   const segments = useMemo(() => resolveTopRailSegments(
     manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn, topRailPathMode
@@ -494,10 +513,12 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
   );
 }
 
-function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight, railingColorMode }) {
+function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight, railingColorMode, bottomChannelSection }) {
   const INtoU = 0.5;
-  const RAIL_W = 2 * INtoU;
-  const RAIL_H = 1 * INtoU;
+  // Parse bottomChannelSection ("W x H") — default to 2×1 to match previous hardcoded values
+  const { w: railWIn, h: railHIn } = parseSectionIn(bottomChannelSection, 2, 1);
+  const RAIL_W = railWIn * INtoU;
+  const RAIL_H = railHIn * INtoU;
 
   const segments = useMemo(
     () => getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight, 0, 0),
@@ -573,8 +594,9 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
     if (!infillType || infillType === 'none') return [];
     if (!manualPosts || manualPosts.length < 2) return [];
 
-    const p1 = manualPosts[0];
-    const p2 = manualPosts[1];
+    // Resolve Post 1 / Post 2 by stable compactSlot identity; fall back to array order
+    const p1 = manualPosts.find(p => p.compactSlot === 'post1') ?? manualPosts[0];
+    const p2 = manualPosts.find(p => p.compactSlot === 'post2') ?? manualPosts[1];
 
     const p1Base = getManualPostBase(p1, treadPositions, riserHeight, run);
     const p2Base = getManualPostBase(p2, treadPositions, riserHeight, run);
@@ -584,6 +606,8 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
     if (!p1Base || !p2Base || !p1Top || !p2Top) return [];
 
     const postWidthIn = getTubeProfile(tubeSize).width;
+    // Guard against undefined/NaN bottomRailHeightIn so geometry stays safe
+    const safeBottomRailHeightIn = Number.isFinite(bottomRailHeightIn) && bottomRailHeightIn >= 0 ? bottomRailHeightIn : 1;
 
     // Span vector (scene units) from P1 base to P2 base
     const sdx = p2Base.x - p1Base.x;
@@ -595,8 +619,8 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
     if (spanIn < 0.1) return [];
 
     // Y of bottom channel at each post (above post base, following nosing line via getManualPostBase)
-    const btmP1y = p1Base.y + bottomRailHeightIn * INtoU;
-    const btmP2y = p2Base.y + bottomRailHeightIn * INtoU;
+    const btmP1y = p1Base.y + safeBottomRailHeightIn * INtoU;
+    const btmP2y = p2Base.y + safeBottomRailHeightIn * INtoU;
     const topP1y = p1Top.y;
     const topP2y = p2Top.y;
 
@@ -1484,6 +1508,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             railLowerExtensionIn={railLowerExtensionIn}
             railUpperExtensionIn={railUpperExtensionIn}
             topRailPathMode={topRailPathMode}
+            handrailSection={stairConfig.handrailSection}
           />
 
           {bottomRailEnabled && (
@@ -1495,6 +1520,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
               run={run}
               bottomRailHeight={bottomRailHeight ?? 1}
               railingColorMode={effectiveColorMode}
+              bottomChannelSection={stairConfig.bottomChannelSection}
             />
           )}
 
