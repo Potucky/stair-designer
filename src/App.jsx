@@ -228,6 +228,8 @@ export default function App() {
     railingEnabled: stairConfig.railingEnabled,
     handrailHeight: stairConfig.handrailHeight,
     tubeSize: stairConfig.tubeSize,
+    post1Section: stairConfig.post1Section,
+    post2Section: stairConfig.post2Section,
     manualPosts,
     manualTopRails,
     treadPositions: calc.treadPositions,

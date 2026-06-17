@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getTubeProfile, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints } from '../geometry/railingGeometry.js';
+import { getTubeProfile, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints, resolveManualPostSection } from '../geometry/railingGeometry.js';
 import { formatInchesFraction } from '../utils/units.js';
 
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], manualTextAnnotations = [], pdfMirrored = false, topRailPathMode = 'standard', mode = 'save', pdfDrafts = null, primaryPageType = 'side' }) {
@@ -390,10 +390,10 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // ── Manual Posts (side view) — rectangles drawn before Top Rail
   {
-    const postProfile = getTubeProfile(stairConfig.tubeSize);
-    const postW = Math.max(3, postProfile.width * sc);
-
     validManualPosts.forEach((post) => {
+      const postSection = resolveManualPostSection(post, stairConfig.post1Section, stairConfig.post2Section, stairConfig.tubeSize);
+      const postW = Math.max(3, getTubeProfile(postSection).width * sc);
+
       let baseY;
       if (post.surfaceType === 'bottomLanding') {
         // Post sits on the visible top surface of the bottom landing slab
@@ -485,10 +485,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // ── Manual Post Labels (side view) — drawn last for readability
   {
-    const postProfile = getTubeProfile(stairConfig.tubeSize);
-    const postW = Math.max(3, postProfile.width * sc);
-
     validManualPosts.forEach((post, idx) => {
+      const postSection = resolveManualPostSection(post, stairConfig.post1Section, stairConfig.post2Section, stairConfig.tubeSize);
+      const postW = Math.max(3, getTubeProfile(postSection).width * sc);
       let baseY;
       if (post.surfaceType === 'bottomLanding') {
         // Post sits on the visible top surface of the bottom landing slab

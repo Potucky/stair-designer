@@ -7,6 +7,13 @@ export function getTubeProfile(tubeSize) {
   return TUBE_PROFILES[tubeSize] || TUBE_PROFILES['2x2'];
 }
 
+// Resolves the section label for a manual post, respecting compact-slot overrides.
+export function resolveManualPostSection(post, post1Section, post2Section, fallbackTubeSize) {
+  if (post.compactSlot === 'post1') return post1Section ?? post.section ?? fallbackTubeSize;
+  if (post.compactSlot === 'post2') return post2Section ?? post.section ?? fallbackTubeSize;
+  return post.section ?? fallbackTubeSize;
+}
+
 // Base center of a post in scene units (world coords: X offset by -run*INtoU/2)
 export function getManualPostBase(post, treadPositions, riserHeight, run) {
   const r_u = run * INtoU;

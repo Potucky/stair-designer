@@ -1,7 +1,7 @@
 const NUMERIC_KEYS = new Set([
   'height', 'run', 'width', 'handrailHeight', 'pinOpening', 'postSpacing', 'manualRailingRun', 'bottomLandingLength', 'topLandingLength', 'bottomRailHeight', 'railLowerExtensionIn', 'railUpperExtensionIn',
 ]);
-const ALL_STAIR_KEYS = [...NUMERIC_KEYS, 'steps', 'railingEnabled', 'tubeSize', 'railingRunMode', 'bottomLandingEnabled', 'topLandingEnabled', 'bottomRailEnabled', 'railingColorMode', 'middleRailEnabled'];
+const ALL_STAIR_KEYS = [...NUMERIC_KEYS, 'steps', 'railingEnabled', 'tubeSize', 'railingRunMode', 'bottomLandingEnabled', 'topLandingEnabled', 'bottomRailEnabled', 'railingColorMode', 'middleRailEnabled', 'post1Section', 'post2Section'];
 
 function isValidStairValue(key, value) {
   if (key === 'steps') return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value > 0;
@@ -9,7 +9,7 @@ function isValidStairValue(key, value) {
   if (key === 'bottomLandingEnabled') return typeof value === 'boolean';
   if (key === 'topLandingEnabled') return typeof value === 'boolean';
   if (key === 'bottomRailEnabled') return typeof value === 'boolean';
-  if (key === 'tubeSize') return typeof value === 'string' && value.length > 0;
+  if (key === 'tubeSize' || key === 'post1Section' || key === 'post2Section') return typeof value === 'string' && value.length > 0;
   if (key === 'railingRunMode') return value === 'matchStair' || value === 'manual';
   if (key === 'railingColorMode') return value === 'work' || value === 'black';
   if (key === 'middleRailEnabled') return typeof value === 'boolean';

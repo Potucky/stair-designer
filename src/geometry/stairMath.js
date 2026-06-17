@@ -1,4 +1,4 @@
-import { resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments } from './railingGeometry.js';
+import { resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, resolveManualPostSection } from './railingGeometry.js';
 
 export function calcStair({ height, run, width, steps, railingEnabled, handrailHeight, postSpacing, railingRunMode = 'matchStair', manualRailingRun }) {
   const riserHeight = steps > 0 ? height / steps : 0;
@@ -92,7 +92,7 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
   };
 }
 
-export function buildMaterialList({ width, steps, stringerLength, tubeSize, manualPosts = [], manualTopRails = [], treadPositions = [], riserHeight = 0, run = 0, bottomLandingEnabled = false, bottomLandingLength = 36, topLandingEnabled = false, topLandingLength = 36, bottomRailEnabled = false, bottomRailHeight = 1, middleRailEnabled = false, middleRailHeights = [], middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, topRailPathMode = 'standard' }) {
+export function buildMaterialList({ width, steps, stringerLength, tubeSize, post1Section = null, post2Section = null, manualPosts = [], manualTopRails = [], treadPositions = [], riserHeight = 0, run = 0, bottomLandingEnabled = false, bottomLandingLength = 36, topLandingEnabled = false, topLandingLength = 36, bottomRailEnabled = false, bottomRailHeight = 1, middleRailEnabled = false, middleRailHeights = [], middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, topRailPathMode = 'standard' }) {
   const items = [];
 
   if (bottomLandingEnabled) {
@@ -106,8 +106,17 @@ export function buildMaterialList({ width, steps, stringerLength, tubeSize, manu
   items.push({ part: 'Tread', qty: treadQty, lengthIn: width.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Horizontal tread span' });
 
   if (manualPosts.length > 0) {
-    const maxH = manualPosts.reduce((m, p) => Math.max(m, Number(p.heightIn) || 0), 0);
-    items.push({ part: 'Manual Post', qty: manualPosts.length, lengthIn: maxH.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Manually placed' });
+    // Group posts by resolved section so compact-slot overrides show the correct profile.
+    const groups = new Map();
+    for (const p of manualPosts) {
+      const section = resolveManualPostSection(p, post1Section, post2Section, tubeSize);
+      if (!groups.has(section)) groups.set(section, []);
+      groups.get(section).push(p);
+    }
+    for (const [section, posts] of groups) {
+      const maxH = posts.reduce((m, p) => Math.max(m, Number(p.heightIn) || 0), 0);
+      items.push({ part: 'Manual Post', qty: posts.length, lengthIn: maxH.toFixed(2), profile: `Square Tube ${section}`, note: 'Manually placed' });
+    }
   }
 
   if (manualTopRails.length > 0) {
