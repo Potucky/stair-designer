@@ -1,6 +1,16 @@
 import { jsPDF } from 'jspdf';
-import { getTubeProfile, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, INtoU, TREAD_THICK, normalizeRailEndpoints, resolveManualPostSection } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualPostBase, getManualPostTop, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, calcInfillCount, INtoU, TREAD_THICK, normalizeRailEndpoints, resolveManualPostSection } from '../geometry/railingGeometry.js';
 import { formatInchesFraction } from '../utils/units.js';
+
+function parseSectionIn(section, defaultW, defaultH) {
+  if (section) {
+    const parts = String(section).split(/\s*[xX]\s*/).map(s => parseFloat(s.trim()));
+    if (parts.length === 2 && parts.every(n => Number.isFinite(n) && n > 0)) {
+      return { w: parts[0], h: parts[1] };
+    }
+  }
+  return { w: defaultW, h: defaultH };
+}
 
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], manualTextAnnotations = [], pdfMirrored = false, topRailPathMode = 'standard', mode = 'save', pdfDrafts = null, primaryPageType = 'side' }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [792, 612] });
@@ -36,6 +46,27 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     if (!(calc.treadPositions || [])[p.stepIndex]) return false;
     return isFinite(Number(p.offsetXIn));
   });
+
+  const effectiveManualPosts = (() => {
+    if (!stairConfig.railingSideMode) return validManualPosts;
+    const isRight = stairConfig.railingSideMode === 'right';
+    const profile = getTubeProfile(stairConfig.tubeSize);
+    return validManualPosts.map((post) => {
+      const resolvedSection = resolveManualPostSection(post, stairConfig.post1Section, stairConfig.post2Section, stairConfig.tubeSize);
+      const { h: secD } = parseSectionIn(resolvedSection, profile.width, profile.width);
+      const postHalfZIn = secD / 2;
+      const zIn = isRight
+        ? Number(stairConfig.width) / 2 - postHalfZIn
+        : -Number(stairConfig.width) / 2 + postHalfZIn;
+      return { ...post, zIn };
+    });
+  })();
+
+  const getCompactPosts = () => {
+    const p1 = effectiveManualPosts.find(p => p.compactSlot === 'post1') ?? effectiveManualPosts[0];
+    const p2 = effectiveManualPosts.find(p => p.compactSlot === 'post2') ?? effectiveManualPosts[1];
+    return p1 && p2 ? { p1, p2 } : null;
+  };
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -137,8 +168,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   const ox = dAreaX + (dAreaW - dw) / 2;
   const oy = groundY;
 
-  const mirrored = Boolean(pdfMirrored);
-  const mx = mirrored ? (x) => 2 * ox + dw - x : (x) => x;
+  const sideViewMirrored = Boolean(pdfMirrored) || stairConfig.railingSideMode === 'right';
+  const mirrored = sideViewMirrored;
+  const mx = sideViewMirrored ? (x) => 2 * ox + dw - x : (x) => x;
 
   if (primaryPageType === 'threeD') {
     // ── PAGE 1 — 3D View Dimensioned Drawing ──────────────────────────────
@@ -323,7 +355,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     const bottomRailHeight = stairConfig.bottomRailHeight ?? 1;
     const brSegs = getManualBottomRailSegments(
       Array.isArray(manualTopRails) ? manualTopRails : [],
-      validManualPosts,
+      effectiveManualPosts,
       calc.treadPositions,
       calc.riserHeight,
       stairConfig.run,
@@ -365,7 +397,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       effectiveMiddleRailHeights.forEach((height) => {
         const mrSegs = getManualMiddleRailSegments(
           Array.isArray(manualTopRails) ? manualTopRails : [],
-          validManualPosts,
+          effectiveManualPosts,
           calc.treadPositions,
           calc.riserHeight,
           stairConfig.run,
@@ -390,7 +422,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   // ── Manual Posts (side view) — rectangles drawn before Top Rail
   {
-    validManualPosts.forEach((post) => {
+    effectiveManualPosts.forEach((post) => {
       const postSection = resolveManualPostSection(post, stairConfig.post1Section, stairConfig.post2Section, stairConfig.tubeSize);
       const postW = Math.max(3, getTubeProfile(postSection).width * sc);
 
@@ -436,7 +468,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
     const railSegs = resolveTopRailSegments(
       Array.isArray(manualTopRails) ? manualTopRails : [],
-      validManualPosts,
+      effectiveManualPosts,
       calc.treadPositions,
       calc.riserHeight,
       stairConfig.run,
@@ -483,9 +515,165 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     });
   }
 
+  // ── Compact Railing Assembly (side view) ─────────────────────────────────
+  // Mirrors the live compact renderers: Post 1/Post 2 are resolved by compactSlot
+  // first, side mode is applied at render time, and the bottom channel centerline
+  // stays aligned to the post centerline.
+  {
+    const compact = getCompactPosts();
+    const compactTopEnabled = stairConfig.compactTopHandrailEnabled !== false;
+    const compactBottomEnabled = stairConfig.compactBottomChannelEnabled !== false;
+    const infillType = stairConfig.infillType ?? 'none';
+
+    if (compact && (compactTopEnabled || compactBottomEnabled || infillType !== 'none')) {
+      const { p1, p2 } = compact;
+      const p1Base = getManualPostBase(p1, calc.treadPositions, calc.riserHeight, stairConfig.run);
+      const p2Base = getManualPostBase(p2, calc.treadPositions, calc.riserHeight, stairConfig.run);
+      const p1Top = getManualPostTop(p1, calc.treadPositions, calc.riserHeight, stairConfig.run);
+      const p2Top = getManualPostTop(p2, calc.treadPositions, calc.riserHeight, stairConfig.run);
+
+      if (p1Base && p2Base && p1Top && p2Top) {
+        const sxToPdf = mirrored
+          ? (sx) => ox + dw / 2 - (sx / INtoU) * sc
+          : (sx) => ox + dw / 2 + (sx / INtoU) * sc;
+        const syToPdf = (sy) => oy - (sy / INtoU) * sc - rPx / 2 + (TREAD_THICK / INtoU) * sc;
+        const drawSceneLine = (start, end, color, widthPt) => {
+          doc.setDrawColor(color);
+          doc.setLineWidth(widthPt);
+          doc.line(sxToPdf(start.x), syToPdf(start.y), sxToPdf(end.x), syToPdf(end.y));
+        };
+
+        const { h: handrailHIn } = parseSectionIn(stairConfig.handrailSection, 2, 1);
+        const { h: channelHIn } = parseSectionIn(stairConfig.bottomChannelSection, 2, 1);
+        const topRailWidthPt = Math.max(1.5, handrailHIn * sc);
+        const channelWidthPt = Math.max(1.5, channelHIn * sc);
+        const bottomColor = isBlackRailing ? '#000000' : '#2a8a3a';
+
+        const compactBottomFacePoints = () => {
+          const r_u = stairConfig.run * INtoU;
+          const rH_u = calc.riserHeight * INtoU;
+          const stepCount = calc.treadPositions.length;
+          const tD_u = stepCount > 0 ? (stairConfig.run / stepCount) * INtoU : 0;
+          if (tD_u <= 0) {
+            return {
+              p1: { x: p1Base.x, y: p1Base.y + 1 * INtoU, z: p1Base.z },
+              p2: { x: p2Base.x, y: p2Base.y + 1 * INtoU, z: p2Base.z },
+            };
+          }
+          const nosingSlope = rH_u / tD_u;
+          const p1NosingY = nosingSlope * (p1Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK;
+          const p2NosingY = nosingSlope * (p2Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK;
+          return {
+            p1: { x: p1Base.x, y: p1NosingY + 1 * INtoU, z: p1Base.z },
+            p2: { x: p2Base.x, y: p2NosingY + 1 * INtoU, z: p2Base.z },
+          };
+        };
+
+        const bottomFace = compactBottomEnabled
+          ? compactBottomFacePoints()
+          : {
+              p1: { x: p1Base.x, y: p1Base.y + (stairConfig.bottomRailHeight ?? 1) * INtoU, z: p1Base.z },
+              p2: { x: p2Base.x, y: p2Base.y + (stairConfig.bottomRailHeight ?? 1) * INtoU, z: p2Base.z },
+            };
+
+        if (compactBottomEnabled) {
+          const channelHalfH = (channelHIn / 2) * INtoU;
+          drawSceneLine(
+            { x: bottomFace.p1.x, y: bottomFace.p1.y + channelHalfH, z: p1Base.z },
+            { x: bottomFace.p2.x, y: bottomFace.p2.y + channelHalfH, z: p1Base.z },
+            bottomColor,
+            channelWidthPt
+          );
+        }
+
+        if (infillType && infillType !== 'none') {
+          const sdx = p2Base.x - p1Base.x;
+          const sdy = p2Base.y - p1Base.y;
+          const sdz = p2Base.z - p1Base.z;
+          const spanScene = Math.sqrt(sdx * sdx + sdy * sdy + sdz * sdz);
+          const spanIn = spanScene / INtoU;
+          const postWidthIn = getTubeProfile(stairConfig.tubeSize).width;
+          const topShift = compactTopEnabled ? 0.25 * INtoU : 0;
+          const bottomShift = compactBottomEnabled ? 0.25 * INtoU : 0;
+          const infillColor = isBlackRailing
+            ? '#000000'
+            : infillType === 'horizontalCable'
+              ? '#dc2626'
+              : infillType === 'horizontalPicket'
+                ? '#8b5cf6'
+                : '#2F7D7A';
+
+          if (spanIn > 0.1 && (infillType === 'vertical' || infillType === 'verticalPicket')) {
+            const thickIn = Number(stairConfig.verticalPicketThicknessIn ?? 1);
+            const clearIn = spanIn - postWidthIn;
+            const n = Number.isFinite(thickIn) && thickIn > 0 ? calcInfillCount(clearIn, thickIn) : 0;
+            if (n > 0) {
+              const gapIn = (clearIn - n * thickIn) / (n + 1);
+              const halfPostIn = postWidthIn / 2;
+              doc.setDrawColor(infillColor);
+              doc.setLineWidth(Math.max(0.8, thickIn * sc));
+              for (let i = 0; i < n; i++) {
+                const distIn = halfPostIn + gapIn + i * (gapIn + thickIn) + thickIn / 2;
+                const t = distIn / spanIn;
+                const px = p1Base.x + t * sdx;
+                const btmY = bottomFace.p1.y + t * (bottomFace.p2.y - bottomFace.p1.y) + bottomShift;
+                const topY = p1Top.y + t * (p2Top.y - p1Top.y) + topShift;
+                if (topY <= btmY) continue;
+                doc.line(sxToPdf(px), syToPdf(btmY), sxToPdf(px), syToPdf(topY));
+              }
+            }
+          } else if (infillType === 'horizontalPicket' || infillType === 'horizontalCable') {
+            const thickIn = Number(infillType === 'horizontalPicket'
+              ? stairConfig.horizontalPicketThicknessIn ?? 1
+              : stairConfig.horizontalCableDiameterIn ?? 0.125);
+            const openingIn = (p1Top.y - bottomFace.p1.y) / INtoU;
+            const n = Number.isFinite(thickIn) && thickIn > 0 ? calcInfillCount(openingIn, thickIn) : 0;
+            if (n > 0 && openingIn > 0) {
+              const gapIn = (openingIn - n * thickIn) / (n + 1);
+              doc.setDrawColor(infillColor);
+              doc.setLineWidth(Math.max(infillType === 'horizontalCable' ? 0.6 : 0.8, thickIn * sc));
+              for (let i = 0; i < n; i++) {
+                const hvIn = gapIn + i * (gapIn + thickIn) + thickIn / 2;
+                const tv = hvIn / openingIn;
+                drawSceneLine(
+                  {
+                    x: p1Base.x,
+                    y: bottomFace.p1.y + tv * (p1Top.y - bottomFace.p1.y),
+                    z: p1Base.z,
+                  },
+                  {
+                    x: p2Base.x,
+                    y: bottomFace.p2.y + tv * (p2Top.y - bottomFace.p2.y),
+                    z: p2Base.z,
+                  },
+                  infillColor,
+                  Math.max(infillType === 'horizontalCable' ? 0.6 : 0.8, thickIn * sc)
+                );
+              }
+            }
+          }
+        }
+
+        if (compactTopEnabled) {
+          const dx = p2Top.x - p1Top.x;
+          const dz = p2Top.z - p1Top.z;
+          const length = Math.sqrt((p2Top.x - p1Top.x) ** 2 + (p2Top.y - p1Top.y) ** 2 + (p2Top.z - p1Top.z) ** 2);
+          const cosSlope = length > 0 ? Math.sqrt(dx * dx + dz * dz) / length : 1;
+          const centerLift = (handrailHIn / 2) * INtoU * cosSlope;
+          drawSceneLine(
+            { x: p1Top.x, y: p1Top.y + centerLift, z: p1Top.z },
+            { x: p2Top.x, y: p2Top.y + centerLift, z: p2Top.z },
+            railColors.railLine,
+            topRailWidthPt
+          );
+        }
+      }
+    }
+  }
+
   // ── Manual Post Labels (side view) — drawn last for readability
   {
-    validManualPosts.forEach((post, idx) => {
+    effectiveManualPosts.forEach((post, idx) => {
       const postSection = resolveManualPostSection(post, stairConfig.post1Section, stairConfig.post2Section, stairConfig.tubeSize);
       const postW = Math.max(3, getTubeProfile(postSection).width * sc);
       let baseY;
