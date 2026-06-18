@@ -3,7 +3,7 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { fmtUnit } from '../utils/format.js';
-import { getTubeProfile, getManualPostBase, getManualPostTop, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, calcInfillCount, INtoU as INtoU_GEO } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualPostBase, getManualPostTop, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, calcInfillCount, resolveManualPostSection, INtoU as INtoU_GEO } from '../geometry/railingGeometry.js';
 
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
@@ -1419,9 +1419,27 @@ function PdfModePanel({ mode, pdfDraft, activeTool, onAddPdfDimension, onAddPdfT
 }
 
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation, capture3dRef = null, activePdfDraftMode = null, pdfDrafts = null, onAddPdfDimension, onAddPdfText, onDeleteLastPdfAnnotation, onExitPdfMode, selectedPdfDraftDimensionId = null, onSelectPdfDraftDimension }) {
-  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, topLandingWidth, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 } = stairConfig;
+  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, topLandingWidth, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, railingSideMode, post1Section, post2Section } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'color';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
+
+  // Override zIn per post based on railingSideMode so the full railing follows the selected edge.
+  // Offset by half the post's Z-section so the OUTER FACE is flush with the stair edge, not the center.
+  // This is a render-time transform — stored post data is not mutated.
+  const effectivePosts = useMemo(() => {
+    if (!railingSideMode) return manualPosts || [];
+    const isRight = railingSideMode === 'right';
+    const profile = getTubeProfile(tubeSize);
+    return (manualPosts || []).map(post => {
+      const resolvedSection = resolveManualPostSection(post, post1Section, post2Section, tubeSize);
+      // secD is the Z extent of the post (second number in "W x H" section string)
+      const { h: secD } = parseSectionIn(resolvedSection, profile.width, profile.width);
+      const postHalfZIn = secD / 2;
+      // All posts (including topLanding) align to the normal stair tread width, not topLandingWidth
+      const zIn = isRight ? width / 2 - postHalfZIn : -width / 2 + postHalfZIn;
+      return { ...post, zIn };
+    });
+  }, [manualPosts, railingSideMode, width, tubeSize, post1Section, post2Section]);
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
   // In PDF mode, disable 3D dim/text tools so PDF overlay handles annotation capture instead
@@ -1481,7 +1499,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
 
         <group position={[structureOffsetXIn * 0.5, 0, structureOffsetZIn * 0.5]}>
           <ManualPostsRenderer
-            manualPosts={manualPosts || []}
+            manualPosts={effectivePosts}
             treadPositions={calc.treadPositions}
             riserHeight={calc.riserHeight}
             run={run}
@@ -1502,7 +1520,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
 
           <ManualTopRailsRenderer
             manualTopRails={manualTopRails || []}
-            manualPosts={manualPosts || []}
+            manualPosts={effectivePosts}
             treadPositions={calc.treadPositions}
             riserHeight={calc.riserHeight}
             run={run}
@@ -1516,7 +1534,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           {bottomRailEnabled && (
             <ManualBottomRailsRenderer
               manualTopRails={manualTopRails || []}
-              manualPosts={manualPosts || []}
+              manualPosts={effectivePosts}
               treadPositions={calc.treadPositions}
               riserHeight={calc.riserHeight}
               run={run}
@@ -1529,7 +1547,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           {middleRailEnabled && effectiveMiddleRailHeights.length > 0 && (
             <ManualMiddleRailsRenderer
               manualTopRails={manualTopRails || []}
-              manualPosts={manualPosts || []}
+              manualPosts={effectivePosts}
               treadPositions={calc.treadPositions}
               riserHeight={calc.riserHeight}
               run={run}
@@ -1539,7 +1557,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           )}
 
           <InfillRenderer
-            manualPosts={manualPosts || []}
+            manualPosts={effectivePosts}
             treadPositions={calc.treadPositions}
             riserHeight={calc.riserHeight}
             run={run}
