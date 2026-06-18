@@ -437,7 +437,7 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
         const postW = secW * INtoU;
         const postD = secD * INtoU;
 
-        const basePostColor = railingColorMode === 'black' ? '#111111' : '#4a4a4a';
+        const basePostColor = railingColorMode === 'black' ? '#111111' : '#1a5fb4';
         let color = basePostColor;
         if (id === topRailFirstPostId) color = '#3b82f6';
         else if (fastRailsMode && id === fastRailsPrevPostId) color = '#22c55e';
@@ -506,7 +506,7 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
         return (
           <mesh key={segKey} position={midV.toArray()} quaternion={quat}>
             <boxGeometry args={[length, RAIL_H, RAIL_W]} />
-            <meshStandardMaterial color={railingColorMode === 'black' ? '#111111' : '#8B6914'} metalness={0.3} roughness={0.5} />
+            <meshStandardMaterial color={railingColorMode === 'black' ? '#111111' : '#e07820'} metalness={0.3} roughness={0.5} />
           </mesh>
         );
       })}
@@ -542,7 +542,7 @@ function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions
         return (
           <mesh key={`br-${rail.id}`} position={midV.toArray()} quaternion={quat}>
             <boxGeometry args={[length, RAIL_H, RAIL_W]} />
-            <meshStandardMaterial color={railingColorMode === 'black' ? '#111111' : '#8B6914'} metalness={0.3} roughness={0.5} />
+            <meshStandardMaterial color={railingColorMode === 'black' ? '#111111' : '#2a8a3a'} metalness={0.3} roughness={0.5} />
           </mesh>
         );
       })}
@@ -692,8 +692,12 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
 
   if (meshSpecs.length === 0) return null;
 
-  const baseColor = railingColorMode === 'black' ? '#111111' : '#4a4a4a';
-  const cableColor = '#9ca3af';
+  const infillColor = (() => {
+    if (railingColorMode === 'black') return '#111111';
+    if (infillType === 'horizontalCable') return '#dc2626';
+    if (infillType === 'horizontalPicket') return '#8b5cf6';
+    return '#2F7D7A'; // verticalPicket / vertical
+  })();
 
   return (
     <>
@@ -709,7 +713,7 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
           <mesh key={s.key} position={[s.x, s.y, s.z]} quaternion={quat}>
             <boxGeometry args={[s.length, s.height, s.depth]} />
             <meshStandardMaterial
-              color={infillType === 'horizontalCable' ? cableColor : baseColor}
+              color={infillColor}
               metalness={0.55}
               roughness={0.35}
             />
