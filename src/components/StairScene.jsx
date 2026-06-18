@@ -623,7 +623,7 @@ function CompactHandrailRenderer({ manualPosts, treadPositions, riserHeight, run
 
 // Compact U-channel (bottom channel): П-shaped, open on the bottom, between Post 1 and Post 2.
 // Built from 3 rectangular pieces: top web + left wall + right wall. Wall thickness: 0.125 in (visual only).
-function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight, run, bottomChannelSection, bottomRailHeight, railingColorMode }) {
+function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight, run, bottomChannelSection, bottomRailHeight, railingColorMode, width, railingSideMode }) {
   const INtoU = 0.5;
   const { w: chanWIn, h: chanHIn } = parseSectionIn(bottomChannelSection, 2, 1);
   const chanW = chanWIn * INtoU;
@@ -638,12 +638,36 @@ function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight
   const p2Base = getManualPostBase(p2, treadPositions, riserHeight, run);
   if (!p1Base || !p2Base) return null;
 
-  const btmOffsetU = (bottomRailHeight ?? 1) * INtoU;
-  const p1CenterY = p1Base.y + btmOffsetU + chanH / 2;
-  const p2CenterY = p2Base.y + btmOffsetU + chanH / 2;
+  // Side offset: channel outer face 1 inch inward from outside stair edge.
+  // center = width/2 - 1in clearance - chanWIn/2
+  const halfStairIn = (width ?? 36) / 2;
+  const chanCenterZIn = railingSideMode === 'right'
+    ? halfStairIn - 1 - chanWIn / 2
+    : -(halfStairIn - 1 - chanWIn / 2);
+  const chanCenterZ = chanCenterZIn * INtoU;
 
-  const startV = new THREE.Vector3(p1Base.x, p1CenterY, p1Base.z);
-  const endV = new THREE.Vector3(p2Base.x, p2CenterY, p2Base.z);
+  // Stair surface reference: use nosing-line Y at each post's actual X position.
+  // p1Base.y is the tread surface at the post's step, but compact posts sit at the
+  // center of their treads, so the nosing line there is 0.5*riserHeight above p1Base.y.
+  // Without this correction, the channel bottom face drops below the tread surface
+  // at intermediate nosing points between the two posts.
+  // Formula mirrors resolveBottomRailEndpoint in railingGeometry.js.
+  const r_u = run * INtoU;
+  const rH_u = riserHeight * INtoU;
+  const steps = treadPositions.length;
+  const tD_u = steps > 0 ? (run / steps) * INtoU : 0;
+  const nosingSlope = tD_u > 0 ? rH_u / tD_u : 0;
+  const p1SurfaceY = tD_u > 0 ? nosingSlope * (p1Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK : p1Base.y;
+  const p2SurfaceY = tD_u > 0 ? nosingSlope * (p2Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK : p2Base.y;
+
+  // Channel center: 1.0 inch clearance above stair surface + half channel height.
+  // This places the bottom lower edge exactly 1.0 inch above the stair tread corner reference line.
+  const clearanceIn = 1.0;
+  const p1CenterY = p1SurfaceY + (clearanceIn + chanHIn / 2) * INtoU;
+  const p2CenterY = p2SurfaceY + (clearanceIn + chanHIn / 2) * INtoU;
+
+  const startV = new THREE.Vector3(p1Base.x, p1CenterY, chanCenterZ);
+  const endV = new THREE.Vector3(p2Base.x, p2CenterY, chanCenterZ);
   const length = startV.distanceTo(endV);
   if (length < 0.01) return null;
 
@@ -676,7 +700,7 @@ function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight
 
 // Renders vertical pickets or horizontal pickets/cables between Post 1 and Post 2.
 // Count is derived automatically so every clear gap stays within 3 7/8" (3.875").
-function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, handrailHeight, bottomRailHeightIn, tubeSize, railingColorMode, compactTopHandrailEnabled = true, compactBottomChannelEnabled = true }) {
+function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, handrailHeight, bottomRailHeightIn, tubeSize, railingColorMode, compactTopHandrailEnabled = true, compactBottomChannelEnabled = true, width, railingSideMode, bottomChannelSection }) {
   const INtoU = INtoU_GEO;
 
   const meshSpecs = useMemo(() => {
@@ -707,9 +731,26 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
 
     if (spanIn < 0.1) return [];
 
-    // Y of bottom channel at each post (above post base, following nosing line via getManualPostBase)
-    const btmP1y = p1Base.y + safeBottomRailHeightIn * INtoU;
-    const btmP2y = p2Base.y + safeBottomRailHeightIn * INtoU;
+    // Y of bottom channel bottom face at each post.
+    // When compact bottom channel is active, use nosing-line Y + 1.0 inch clearance so
+    // the channel bottom lower edge stays 1.0 inch above the stair tread corner reference line
+    // (mirrors the correction in CompactBottomChannelRenderer).
+    // When inactive, fall back to legacy bottomRailHeightIn above post base.
+    const r_u = run * INtoU;
+    const rH_u = riserHeight * INtoU;
+    const stepsCount = treadPositions.length;
+    const tD_u = stepsCount > 0 ? (run / stepsCount) * INtoU : 0;
+    let btmP1y, btmP2y;
+    if (compactBottomChannelEnabled && tD_u > 0) {
+      const nosingSlope = rH_u / tD_u;
+      const p1NosingY = nosingSlope * (p1Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK;
+      const p2NosingY = nosingSlope * (p2Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK;
+      btmP1y = p1NosingY + 1.0 * INtoU;
+      btmP2y = p2NosingY + 1.0 * INtoU;
+    } else {
+      btmP1y = p1Base.y + safeBottomRailHeightIn * INtoU;
+      btmP2y = p2Base.y + safeBottomRailHeightIn * INtoU;
+    }
     const topP1y = p1Top.y;
     const topP2y = p2Top.y;
 
@@ -729,12 +770,24 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
       const btmShift = compactBottomChannelEnabled ? overlapU : 0;
       const topShift = compactTopHandrailEnabled ? overlapU : 0;
 
+      // When compact bottom channel is active, align picket Z to channel centerline
+      // (1 inch clearance from outside stair edge + half channel width inward).
+      let picketZ = null;
+      if (compactBottomChannelEnabled && width != null && railingSideMode) {
+        const { w: chanWInfill } = parseSectionIn(bottomChannelSection, 2, 1);
+        const halfStairIn = width / 2;
+        const chanCenterZIn = railingSideMode === 'right'
+          ? halfStairIn - 1 - chanWInfill / 2
+          : -(halfStairIn - 1 - chanWInfill / 2);
+        picketZ = chanCenterZIn * INtoU;
+      }
+
       for (let i = 0; i < n; i++) {
         const distIn = halfPostIn + gapIn + i * (gapIn + thickIn) + thickIn / 2;
         const t = distIn / spanIn;
 
         const px = p1Base.x + t * sdx;
-        const pz = p1Base.z + t * sdz;
+        const pz = picketZ !== null ? picketZ : p1Base.z + t * sdz;
         const btmY = btmP1y + t * (btmP2y - btmP1y) + btmShift;
         const topY = topP1y + t * (topP2y - topP1y) + topShift;
         const h = topY - btmY;
@@ -781,7 +834,7 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
     }
 
     return specs;
-  }, [manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, handrailHeight, bottomRailHeightIn, tubeSize, INtoU, compactTopHandrailEnabled, compactBottomChannelEnabled]);
+  }, [manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, handrailHeight, bottomRailHeightIn, tubeSize, INtoU, compactTopHandrailEnabled, compactBottomChannelEnabled, width, railingSideMode, bottomChannelSection]);
 
   if (meshSpecs.length === 0) return null;
 
@@ -1669,6 +1722,8 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
               bottomChannelSection={stairConfig.bottomChannelSection}
               bottomRailHeight={stairConfig.bottomRailHeight ?? 1}
               railingColorMode={effectiveColorMode}
+              width={width}
+              railingSideMode={railingSideMode}
             />
           )}
 
@@ -1687,6 +1742,9 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             railingColorMode={effectiveColorMode}
             compactTopHandrailEnabled={compactTopHandrailEnabled !== false}
             compactBottomChannelEnabled={compactBottomChannelEnabled !== false}
+            width={width}
+            railingSideMode={railingSideMode}
+            bottomChannelSection={stairConfig.bottomChannelSection}
           />
         </group>
 
