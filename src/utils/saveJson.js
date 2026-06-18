@@ -1,7 +1,21 @@
+import { DEFAULT_STAIR } from '../constants/defaults.js';
+
 const NUMERIC_KEYS = new Set([
   'height', 'run', 'width', 'handrailHeight', 'pinOpening', 'postSpacing', 'manualRailingRun', 'bottomLandingLength', 'topLandingLength', 'topLandingWidth', 'bottomRailHeight', 'railLowerExtensionIn', 'railUpperExtensionIn',
+  'post1HeightIn', 'post2HeightIn', 'verticalPicketThicknessIn', 'horizontalPicketThicknessIn', 'horizontalCableDiameterIn',
 ]);
-const ALL_STAIR_KEYS = [...NUMERIC_KEYS, 'steps', 'railingEnabled', 'tubeSize', 'railingRunMode', 'bottomLandingEnabled', 'topLandingEnabled', 'bottomRailEnabled', 'railingColorMode', 'railingSideMode', 'middleRailEnabled', 'post1Section', 'post2Section'];
+const ALL_STAIR_KEYS = [
+  ...NUMERIC_KEYS,
+  'steps', 'railingEnabled', 'tubeSize', 'railingRunMode', 'bottomLandingEnabled', 'topLandingEnabled', 'bottomRailEnabled',
+  'railingColorMode', 'railingSideMode', 'middleRailEnabled',
+  'post1Section', 'post2Section', 'post1Thickness', 'post2Thickness',
+  'compactTopHandrailEnabled', 'handrailSection',
+  'compactBottomChannelEnabled', 'bottomChannelSection',
+  'infillType',
+  'picketVerticalSection', 'picketVerticalThickness',
+  'picketHorizontalSection', 'picketHorizontalThickness',
+  'cableSize', 'cableFinish',
+];
 
 function isValidStairValue(key, value) {
   if (key === 'steps') return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value > 0;
@@ -14,6 +28,10 @@ function isValidStairValue(key, value) {
   if (key === 'railingColorMode') return value === 'color' || value === 'work' || value === 'black';
   if (key === 'railingSideMode') return value === 'left' || value === 'right';
   if (key === 'middleRailEnabled') return typeof value === 'boolean';
+  if (key === 'post1Thickness' || key === 'post2Thickness' || key === 'picketVerticalThickness' || key === 'picketHorizontalThickness') return value === '1.8' || value === '1.4';
+  if (key === 'compactTopHandrailEnabled' || key === 'compactBottomChannelEnabled') return typeof value === 'boolean';
+  if (key === 'handrailSection' || key === 'bottomChannelSection' || key === 'picketVerticalSection' || key === 'picketHorizontalSection' || key === 'cableSize' || key === 'cableFinish') return typeof value === 'string' && value.length > 0;
+  if (key === 'infillType') return ['none', 'vertical', 'verticalPicket', 'horizontalPicket', 'horizontalCable'].includes(value);
   if (key === 'bottomLandingLength' || key === 'topLandingLength' || key === 'topLandingWidth')
     return typeof value === 'number' && Number.isFinite(value) && value > 0;
   if (NUMERIC_KEYS.has(key)) return typeof value === 'number' && Number.isFinite(value);
@@ -82,7 +100,7 @@ export function openProjectJson(onLoad, onError) {
           if (typeof data.project.client === 'string') project.client = data.project.client;
           if (typeof data.project.notes === 'string') project.notes = data.project.notes;
         }
-        const stairConfig = {};
+        const stairConfig = { ...DEFAULT_STAIR };
         if (data.stairConfig && typeof data.stairConfig === 'object') {
           for (const key of ALL_STAIR_KEYS) {
             if (key in data.stairConfig && isValidStairValue(key, data.stairConfig[key])) {
