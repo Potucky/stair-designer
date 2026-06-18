@@ -374,6 +374,7 @@ function BottomLanding({ run, width, bottomLandingLength, treadDepth, postPlacem
 function TopLanding({ run, width, topLandingWidth, height, steps, topLandingLength, postPlacementMode, onAddManualPost, handrailHeight, treadPositions, fastRailsMode, onFastRailsPost }) {
   const INtoU = 0.5;
   const r = run * INtoU;
+  const stairW = width * INtoU;
   const w = (topLandingWidth ?? width) * INtoU;
   const h = height * INtoU;
   const riserH = steps > 0 ? h / steps : h;
@@ -405,7 +406,7 @@ function TopLanding({ run, width, topLandingWidth, height, steps, topLandingLeng
   } : undefined;
 
   return (
-    <mesh position={[r / 2 - treadD + landLen / 2, h - riserH / 2 + TREAD_THICK / 2, 0]} onClick={handleClick} castShadow receiveShadow>
+    <mesh position={[r / 2 - treadD + landLen / 2, h - riserH / 2 + TREAD_THICK / 2, -stairW / 2 + w / 2]} onClick={handleClick} castShadow receiveShadow>
       <boxGeometry args={[landLen, TREAD_THICK, w]} />
       <meshStandardMaterial color="#7c8da0" metalness={0.3} roughness={0.6} />
     </mesh>
