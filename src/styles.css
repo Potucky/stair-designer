@@ -181,6 +181,8 @@ html, body, #root {
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
+  --rp-active: #3b82f6;
+  --rp-active-dark: #2563eb;
 }
 .right-panel::-webkit-scrollbar { width: 4px; }
 .right-panel::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
@@ -632,6 +634,28 @@ html, body, #root {
   border-radius: 4px;
   height: 20px;
   opacity: 0.5;
+}
+
+/* ─── Right Panel Active Blue Consistency ─────────────────────────── */
+.right-panel .chip-label {
+  background: var(--rp-active);
+  border-color: var(--rp-active-dark);
+}
+.right-panel .chip-label-btn:hover {
+  background: var(--rp-active-dark);
+}
+.right-panel .chip-label-active {
+  background: var(--rp-active-dark);
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--rp-active);
+}
+.right-panel .panel-btn-active {
+  background: var(--rp-active);
+  border-color: var(--rp-active-dark);
+  color: #fff;
+}
+.right-panel .panel-btn-active:hover:not(:disabled) {
+  background: var(--rp-active-dark);
+  color: #fff;
 }
 
 /* ─── Mobile ───────────────────────────────────────────────────────── */
