@@ -322,8 +322,6 @@ function StairModel({ height, run, width, steps, handrailHeight, treadPositions,
         key={i}
         position={[tx - r / 2, ty - riserH / 2 + TREAD_THICK / 2, 0]}
         onClick={handleTreadClick}
-        castShadow
-        receiveShadow
       >
         <boxGeometry args={[treadD, TREAD_THICK, w]} />
         {treadMat}
@@ -364,7 +362,7 @@ function BottomLanding({ run, width, bottomLandingLength, treadDepth, postPlacem
   } : undefined;
 
   return (
-    <mesh position={[-r / 2 - landLen / 2, TREAD_THICK / 2, 0]} onClick={handleClick} castShadow receiveShadow>
+    <mesh position={[-r / 2 - landLen / 2, TREAD_THICK / 2, 0]} onClick={handleClick}>
       <boxGeometry args={[landLen, TREAD_THICK, w]} />
       <meshStandardMaterial color="#7c8da0" metalness={0.3} roughness={0.6} />
     </mesh>
@@ -406,7 +404,7 @@ function TopLanding({ run, width, topLandingWidth, height, steps, topLandingLeng
   } : undefined;
 
   return (
-    <mesh position={[r / 2 - treadD + landLen / 2, h - riserH / 2 + TREAD_THICK / 2, -stairW / 2 + w / 2]} onClick={handleClick} castShadow receiveShadow>
+    <mesh position={[r / 2 - treadD + landLen / 2, h - riserH / 2 + TREAD_THICK / 2, -stairW / 2 + w / 2]} onClick={handleClick}>
       <boxGeometry args={[landLen, TREAD_THICK, w]} />
       <meshStandardMaterial color="#7c8da0" metalness={0.3} roughness={0.6} />
     </mesh>
@@ -462,7 +460,6 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
             key={id}
             position={[worldX, worldY, worldZ]}
             onClick={handleClick}
-            castShadow
           >
             <boxGeometry args={[postW, postH, postD]} />
             <meshStandardMaterial
@@ -507,7 +504,7 @@ function ManualTopRailsRenderer({ manualTopRails, manualPosts, treadPositions, r
         const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
 
         return (
-          <mesh key={segKey} position={midV.toArray()} quaternion={quat} castShadow>
+          <mesh key={segKey} position={midV.toArray()} quaternion={quat}>
             <boxGeometry args={[length, RAIL_H, RAIL_W]} />
             <meshStandardMaterial color={railingColorMode === 'black' ? '#111111' : '#8B6914'} metalness={0.3} roughness={0.5} />
           </mesh>
@@ -543,7 +540,7 @@ function ManualBottomRailsRenderer({ manualTopRails, manualPosts, treadPositions
         const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
 
         return (
-          <mesh key={`br-${rail.id}`} position={midV.toArray()} quaternion={quat} castShadow>
+          <mesh key={`br-${rail.id}`} position={midV.toArray()} quaternion={quat}>
             <boxGeometry args={[length, RAIL_H, RAIL_W]} />
             <meshStandardMaterial color={railingColorMode === 'black' ? '#111111' : '#8B6914'} metalness={0.3} roughness={0.5} />
           </mesh>
@@ -579,7 +576,7 @@ function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions
         const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
 
         return (
-          <mesh key={`mr-${rail.id}-${height}`} position={midV.toArray()} quaternion={quat} castShadow>
+          <mesh key={`mr-${rail.id}-${height}`} position={midV.toArray()} quaternion={quat}>
             <boxGeometry args={[length, RAIL_H, RAIL_W]} />
             <meshStandardMaterial color={railingColorMode === 'black' ? '#111111' : '#2F7D7A'} metalness={0.3} roughness={0.5} />
           </mesh>
@@ -709,7 +706,7 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
               new THREE.Vector3(s.ux, s.uy, s.uz)
             );
         return (
-          <mesh key={s.key} position={[s.x, s.y, s.z]} quaternion={quat} castShadow>
+          <mesh key={s.key} position={[s.x, s.y, s.z]} quaternion={quat}>
             <boxGeometry args={[s.length, s.height, s.depth]} />
             <meshStandardMaterial
               color={infillType === 'horizontalCable' ? cableColor : baseColor}
@@ -1452,7 +1449,6 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
     <div id="print-viewport" className="scene-container" style={activeCursor ? { cursor: activeCursor } : undefined}>
       <Canvas
         camera={{ position: [80, 55, 110], fov: 45, near: 0.1, far: 5000 }}
-        shadows
         gl={{ preserveDrawingBuffer: true }}
       >
         <color attach="background" args={['#edf2f7']} />
@@ -1462,7 +1458,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
         <KeyboardNudge controlsRef={orbitRef} />
 
         <ambientLight intensity={1.1} />
-        <directionalLight position={[100, 200, 100]} intensity={1.5} castShadow shadow-mapSize={[1024, 1024]} />
+        <directionalLight position={[100, 200, 100]} intensity={1.5} />
         <directionalLight position={[-80, 100, -60]} intensity={0.5} />
         <directionalLight position={[0, -50, 80]} intensity={0.12} />
 
