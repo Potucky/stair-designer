@@ -1,5 +1,5 @@
 const NUMERIC_KEYS = new Set([
-  'height', 'run', 'width', 'handrailHeight', 'pinOpening', 'postSpacing', 'manualRailingRun', 'bottomLandingLength', 'topLandingLength', 'bottomRailHeight', 'railLowerExtensionIn', 'railUpperExtensionIn',
+  'height', 'run', 'width', 'handrailHeight', 'pinOpening', 'postSpacing', 'manualRailingRun', 'bottomLandingLength', 'topLandingLength', 'topLandingWidth', 'bottomRailHeight', 'railLowerExtensionIn', 'railUpperExtensionIn',
 ]);
 const ALL_STAIR_KEYS = [...NUMERIC_KEYS, 'steps', 'railingEnabled', 'tubeSize', 'railingRunMode', 'bottomLandingEnabled', 'topLandingEnabled', 'bottomRailEnabled', 'railingColorMode', 'railingSideMode', 'middleRailEnabled', 'post1Section', 'post2Section'];
 
@@ -14,7 +14,7 @@ function isValidStairValue(key, value) {
   if (key === 'railingColorMode') return value === 'color' || value === 'work' || value === 'black';
   if (key === 'railingSideMode') return value === 'left' || value === 'right';
   if (key === 'middleRailEnabled') return typeof value === 'boolean';
-  if (key === 'bottomLandingLength' || key === 'topLandingLength')
+  if (key === 'bottomLandingLength' || key === 'topLandingLength' || key === 'topLandingWidth')
     return typeof value === 'number' && Number.isFinite(value) && value > 0;
   if (NUMERIC_KEYS.has(key)) return typeof value === 'number' && Number.isFinite(value);
   return false;
@@ -112,6 +112,8 @@ export function openProjectJson(onLoad, onError) {
               .filter(isValidManualTopRail)
               .map(r => (r.profile ? r : { ...r, profile: '2x1' }))
           : [];
+        stairConfig.bottomLandingEnabled = true;
+        stairConfig.topLandingEnabled = true;
         if (!('bottomRailEnabled' in stairConfig)) stairConfig.bottomRailEnabled = false;
         if (!('bottomRailHeight' in stairConfig)) stairConfig.bottomRailHeight = 1;
         if (!('railingColorMode' in stairConfig)) stairConfig.railingColorMode = 'color';

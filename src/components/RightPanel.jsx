@@ -339,16 +339,10 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           >Black</button>
         </div>
 
-        <div className="chip-row">
-          <input type="checkbox" checked={!!stairConfig.bottomLandingEnabled} onChange={toggle('bottomLandingEnabled')} style={{ flexShrink: 0, accentColor: 'var(--accent)', width: 13, height: 13 }} />
-          <span className="chip-label">Bottom Landing Length</span>
-          <DimensionDraftInput className="field-input" style={{ flex: 1 }} units={units} value={stairConfig.bottomLandingLength} onCommit={commitDim('bottomLandingLength')} />
-        </div>
-
-        <div className="chip-row">
-          <input type="checkbox" checked={!!stairConfig.topLandingEnabled} onChange={toggle('topLandingEnabled')} style={{ flexShrink: 0, accentColor: 'var(--accent)', width: 13, height: 13 }} />
-          <span className="chip-label">Top Landing Length</span>
-          <DimensionDraftInput className="field-input" style={{ flex: 1 }} units={units} value={stairConfig.topLandingLength} onCommit={commitDim('topLandingLength')} />
+        <div className="stair-kv-row">
+          <span className="chip-label">Top Landing</span>
+          <DimensionDraftInput className="field-input" units={units} value={stairConfig.topLandingLength ?? 36} onCommit={commitDim('topLandingLength')} />
+          <DimensionDraftInput className="field-input" units={units} value={stairConfig.topLandingWidth ?? stairConfig.width} onCommit={commitDim('topLandingWidth')} />
         </div>
       </section>
 

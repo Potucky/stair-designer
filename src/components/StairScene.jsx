@@ -371,10 +371,10 @@ function BottomLanding({ run, width, bottomLandingLength, treadDepth, postPlacem
   );
 }
 
-function TopLanding({ run, width, height, steps, topLandingLength, postPlacementMode, onAddManualPost, handrailHeight, treadPositions, fastRailsMode, onFastRailsPost }) {
+function TopLanding({ run, width, topLandingWidth, height, steps, topLandingLength, postPlacementMode, onAddManualPost, handrailHeight, treadPositions, fastRailsMode, onFastRailsPost }) {
   const INtoU = 0.5;
   const r = run * INtoU;
-  const w = width * INtoU;
+  const w = (topLandingWidth ?? width) * INtoU;
   const h = height * INtoU;
   const riserH = steps > 0 ? h / steps : h;
   const treadD = steps > 0 ? r / steps : 0;
@@ -1418,7 +1418,7 @@ function PdfModePanel({ mode, pdfDraft, activeTool, onAddPdfDimension, onAddPdfT
 }
 
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation, capture3dRef = null, activePdfDraftMode = null, pdfDrafts = null, onAddPdfDimension, onAddPdfText, onDeleteLastPdfAnnotation, onExitPdfMode, selectedPdfDraftDimensionId = null, onSelectPdfDraftDimension }) {
-  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 } = stairConfig;
+  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, topLandingWidth, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'color';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
   const orbitRef = useRef();
@@ -1460,12 +1460,8 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           infiniteGrid
         />
 
-        {bottomLandingEnabled && (
-          <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength} treadDepth={calc.treadDepth} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
-        )}
-        {topLandingEnabled && (
-          <TopLanding run={run} width={width} height={height} steps={steps} topLandingLength={topLandingLength} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} treadPositions={calc.treadPositions} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
-        )}
+        <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength ?? 36} treadDepth={calc.treadDepth} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
+        <TopLanding run={run} width={width} topLandingWidth={topLandingWidth ?? width} height={height} steps={steps} topLandingLength={topLandingLength ?? 36} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} treadPositions={calc.treadPositions} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
 
         <StairModel
           height={height}
@@ -1473,7 +1469,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           width={width}
           steps={steps}
           handrailHeight={handrailHeight}
-          treadPositions={topLandingEnabled && calc.treadPositions.length > 0 ? calc.treadPositions.slice(0, -1) : calc.treadPositions}
+          treadPositions={calc.treadPositions.length > 0 ? calc.treadPositions.slice(0, -1) : calc.treadPositions}
           postPlacementMode={postPlacementMode}
           onAddManualPost={onAddManualPost}
           fastRailsMode={fastRailsMode}

@@ -39,7 +39,10 @@ export default function App() {
   });
   const [stairConfig, setStairConfig] = useState(() => {
     const d = loadInitialDraft();
-    return d?.stairConfig ? { ...DEFAULT_STAIR, ...d.stairConfig } : DEFAULT_STAIR;
+    const cfg = d?.stairConfig ? { ...DEFAULT_STAIR, ...d.stairConfig } : DEFAULT_STAIR;
+    cfg.bottomLandingEnabled = true;
+    cfg.topLandingEnabled = true;
+    return cfg;
   });
   const [units, setUnits] = useState(() => {
     const d = loadInitialDraft();
@@ -239,6 +242,7 @@ export default function App() {
     bottomLandingLength: stairConfig.bottomLandingLength,
     topLandingEnabled: stairConfig.topLandingEnabled,
     topLandingLength: stairConfig.topLandingLength,
+    topLandingWidth: stairConfig.topLandingWidth,
     bottomRailEnabled: stairConfig.bottomRailEnabled,
     bottomRailHeight: stairConfig.bottomRailHeight,
     middleRailEnabled: stairConfig.middleRailEnabled,
@@ -450,7 +454,7 @@ export default function App() {
     if (hasObjects && !window.confirm('Start a new project? Current unsaved changes will be cleared.')) return;
     localStorage.removeItem(LS_KEY);
     setProject(DEFAULT_PROJECT);
-    setStairConfig({ ...DEFAULT_STAIR, steps: 6, bottomLandingEnabled: true, topLandingEnabled: true });
+    setStairConfig({ ...DEFAULT_STAIR, steps: 6, bottomLandingEnabled: true, topLandingEnabled: true, topLandingWidth: DEFAULT_STAIR.width });
     setManualDimensions([]);
     setManualTextAnnotations([]);
     setManualPosts([]);

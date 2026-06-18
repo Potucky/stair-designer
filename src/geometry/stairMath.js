@@ -92,14 +92,14 @@ export function calcStair({ height, run, width, steps, railingEnabled, handrailH
   };
 }
 
-export function buildMaterialList({ width, steps, stringerLength, tubeSize, post1Section = null, post2Section = null, manualPosts = [], manualTopRails = [], treadPositions = [], riserHeight = 0, run = 0, bottomLandingEnabled = false, bottomLandingLength = 36, topLandingEnabled = false, topLandingLength = 36, bottomRailEnabled = false, bottomRailHeight = 1, middleRailEnabled = false, middleRailHeights = [], middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, topRailPathMode = 'standard' }) {
+export function buildMaterialList({ width, steps, stringerLength, tubeSize, post1Section = null, post2Section = null, manualPosts = [], manualTopRails = [], treadPositions = [], riserHeight = 0, run = 0, bottomLandingEnabled = false, bottomLandingLength = 36, topLandingEnabled = false, topLandingLength = 36, topLandingWidth = null, bottomRailEnabled = false, bottomRailHeight = 1, middleRailEnabled = false, middleRailHeights = [], middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, topRailPathMode = 'standard' }) {
   const items = [];
 
   if (bottomLandingEnabled) {
     items.push({ part: 'Bottom Landing', qty: 1, lengthIn: bottomLandingLength.toFixed(2), profile: 'Flat Platform', note: `${width.toFixed(0)}" wide` });
   }
   if (topLandingEnabled) {
-    items.push({ part: 'Top Landing', qty: 1, lengthIn: topLandingLength.toFixed(2), profile: 'Flat Platform', note: `${width.toFixed(0)}" wide` });
+    items.push({ part: 'Top Landing', qty: 1, lengthIn: topLandingLength.toFixed(2), profile: 'Flat Platform', note: `${(topLandingWidth ?? width).toFixed(0)}" wide` });
   }
   items.push({ part: 'Side Stringer', qty: 2, lengthIn: stringerLength.toFixed(2), profile: `Square Tube ${tubeSize}`, note: 'Each side' });
   const treadQty = topLandingEnabled && steps > 0 ? steps - 1 : steps;
