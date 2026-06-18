@@ -1,7 +1,7 @@
 const NUMERIC_KEYS = new Set([
   'height', 'run', 'width', 'handrailHeight', 'pinOpening', 'postSpacing', 'manualRailingRun', 'bottomLandingLength', 'topLandingLength', 'bottomRailHeight', 'railLowerExtensionIn', 'railUpperExtensionIn',
 ]);
-const ALL_STAIR_KEYS = [...NUMERIC_KEYS, 'steps', 'railingEnabled', 'tubeSize', 'railingRunMode', 'bottomLandingEnabled', 'topLandingEnabled', 'bottomRailEnabled', 'railingColorMode', 'middleRailEnabled', 'post1Section', 'post2Section'];
+const ALL_STAIR_KEYS = [...NUMERIC_KEYS, 'steps', 'railingEnabled', 'tubeSize', 'railingRunMode', 'bottomLandingEnabled', 'topLandingEnabled', 'bottomRailEnabled', 'railingColorMode', 'railingSideMode', 'middleRailEnabled', 'post1Section', 'post2Section'];
 
 function isValidStairValue(key, value) {
   if (key === 'steps') return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value > 0;
@@ -11,7 +11,8 @@ function isValidStairValue(key, value) {
   if (key === 'bottomRailEnabled') return typeof value === 'boolean';
   if (key === 'tubeSize' || key === 'post1Section' || key === 'post2Section') return typeof value === 'string' && value.length > 0;
   if (key === 'railingRunMode') return value === 'matchStair' || value === 'manual';
-  if (key === 'railingColorMode') return value === 'work' || value === 'black';
+  if (key === 'railingColorMode') return value === 'color' || value === 'work' || value === 'black';
+  if (key === 'railingSideMode') return value === 'left' || value === 'right';
   if (key === 'middleRailEnabled') return typeof value === 'boolean';
   if (key === 'bottomLandingLength' || key === 'topLandingLength')
     return typeof value === 'number' && Number.isFinite(value) && value > 0;
@@ -113,7 +114,8 @@ export function openProjectJson(onLoad, onError) {
           : [];
         if (!('bottomRailEnabled' in stairConfig)) stairConfig.bottomRailEnabled = false;
         if (!('bottomRailHeight' in stairConfig)) stairConfig.bottomRailHeight = 1;
-        if (!('railingColorMode' in stairConfig)) stairConfig.railingColorMode = 'work';
+        if (!('railingColorMode' in stairConfig)) stairConfig.railingColorMode = 'color';
+        if (!('railingSideMode' in stairConfig)) stairConfig.railingSideMode = 'left';
         if (!('middleRailEnabled' in stairConfig)) stairConfig.middleRailEnabled = false;
         if (!('railLowerExtensionIn' in stairConfig)) stairConfig.railLowerExtensionIn = 0;
         if (!('railUpperExtensionIn' in stairConfig)) stairConfig.railUpperExtensionIn = 0;

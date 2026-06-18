@@ -1419,7 +1419,7 @@ function PdfModePanel({ mode, pdfDraft, activeTool, onAddPdfDimension, onAddPdfT
 
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation, capture3dRef = null, activePdfDraftMode = null, pdfDrafts = null, onAddPdfDimension, onAddPdfText, onDeleteLastPdfAnnotation, onExitPdfMode, selectedPdfDraftDimensionId = null, onSelectPdfDraftDimension }) {
   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0 } = stairConfig;
-  const effectiveColorMode = railingColorMode ?? 'work';
+  const effectiveColorMode = railingColorMode ?? 'color';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';

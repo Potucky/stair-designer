@@ -306,21 +306,37 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
 
       {/* Section 1: Stair Setup */}
       <section className="panel-section">
-        <div className="chip-row">
+        <div className="stair-kv-row">
           <span className="chip-label">Quantity Step</span>
-          <NumericDraftInput className="field-input" style={{ flex: 1 }} inputMode="numeric" integer={true} value={stairConfig.steps} onCommit={commitSteps} />
+          <NumericDraftInput className="field-input" inputMode="numeric" integer={true} value={stairConfig.steps} onCommit={commitSteps} />
+          <button
+            className={`panel-btn${(stairConfig.railingSideMode ?? 'left') === 'left' ? ' panel-btn-active' : ''}`}
+            onClick={() => setStairConfig(s => ({ ...s, railingSideMode: 'left' }))}
+          >Left</button>
         </div>
-        <div className="chip-row">
+        <div className="stair-kv-row">
           <span className="chip-label">Step Width</span>
-          <DimensionDraftInput className="field-input" style={{ flex: 1 }} units={units} value={stairConfig.width} onCommit={commitDim('width')} />
+          <DimensionDraftInput className="field-input" units={units} value={stairConfig.width} onCommit={commitDim('width')} />
+          <button
+            className={`panel-btn${(stairConfig.railingSideMode ?? 'left') === 'right' ? ' panel-btn-active' : ''}`}
+            onClick={() => setStairConfig(s => ({ ...s, railingSideMode: 'right' }))}
+          >Right</button>
         </div>
-        <div className="chip-row">
+        <div className="stair-kv-row">
           <span className="chip-label">Step Height</span>
-          <DimensionDraftInput className="field-input" style={{ flex: 1 }} units={units} value={calc.riserHeight} onCommit={v => setStairConfig(s => ({ ...s, height: v * s.steps }))} />
+          <DimensionDraftInput className="field-input" units={units} value={calc.riserHeight} onCommit={v => setStairConfig(s => ({ ...s, height: v * s.steps }))} />
+          <button
+            className={`panel-btn${(stairConfig.railingColorMode ?? 'color') !== 'black' ? ' panel-btn-active' : ''}`}
+            onClick={() => setStairConfig(s => ({ ...s, railingColorMode: 'color' }))}
+          >Color</button>
         </div>
-        <div className="chip-row">
+        <div className="stair-kv-row">
           <span className="chip-label">Step Length</span>
-          <DimensionDraftInput className="field-input" style={{ flex: 1 }} units={units} value={calc.treadDepth} onCommit={v => setStairConfig(s => ({ ...s, run: v * s.steps }))} />
+          <DimensionDraftInput className="field-input" units={units} value={calc.treadDepth} onCommit={v => setStairConfig(s => ({ ...s, run: v * s.steps }))} />
+          <button
+            className={`panel-btn${(stairConfig.railingColorMode ?? 'color') === 'black' ? ' panel-btn-active' : ''}`}
+            onClick={() => setStairConfig(s => ({ ...s, railingColorMode: 'black' }))}
+          >Black</button>
         </div>
 
         <div className="chip-row">
@@ -467,7 +483,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               <div style={{ display: 'flex', gap: 6 }}>
                 <button
                   className={`panel-btn${stairConfig.railingColorMode !== 'black' ? ' panel-btn-active' : ''}`}
-                  onClick={() => setStairConfig(s => ({ ...s, railingColorMode: 'work' }))}
+                  onClick={() => setStairConfig(s => ({ ...s, railingColorMode: 'color' }))}
                 >
                   Work Colors
                 </button>

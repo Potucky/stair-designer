@@ -271,6 +271,25 @@ html, body, #root {
   margin-bottom: 4px;
 }
 
+/* ─── Stair Setup Aligned Rows (4 top rows) ─────────────────────────── */
+.stair-kv-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 52px;
+  gap: 5px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.stair-kv-row .field-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.stair-kv-row .panel-btn {
+  width: 100%;
+  padding: 4px 2px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
 /* ─── Panel Buttons ────────────────────────────────────────────────── */
 .save-project-row {
   display: flex;
