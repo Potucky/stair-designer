@@ -327,9 +327,12 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           <div className="post-tool-hint">Post 2 placement active — click a step or landing to place</div>
         )}
         <div className="rc-comp-row">
-          <span className="chip-label">Top Handrail</span>
+          <button
+            className={`chip-label chip-label-btn${(stairConfig.compactTopHandrailEnabled ?? true) ? ' chip-label-active' : ''}`}
+            onClick={() => setStairConfig(s => ({ ...s, compactTopHandrailEnabled: !(s.compactTopHandrailEnabled ?? true) }))}
+          >Top Handrail</button>
           <div className="rc-empty-cell" />
-          <select className="field-input" value={stairConfig.handrailSection ?? '2 x 2'} onChange={e => setStairConfig(s => ({ ...s, handrailSection: e.target.value }))}>
+          <select className="field-input" value={stairConfig.handrailSection ?? '2 x 1'} onChange={e => setStairConfig(s => ({ ...s, handrailSection: e.target.value }))}>
             {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
           </select>
           <select className="field-input" value={stairConfig.handrailThickness ?? '1.8'} onChange={e => setStairConfig(s => ({ ...s, handrailThickness: e.target.value }))}>
@@ -338,9 +341,12 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           </select>
         </div>
         <div className="rc-comp-row">
-          <span className="chip-label">Bottom Channel</span>
+          <button
+            className={`chip-label chip-label-btn${(stairConfig.compactBottomChannelEnabled ?? true) ? ' chip-label-active' : ''}`}
+            onClick={() => setStairConfig(s => ({ ...s, compactBottomChannelEnabled: !(s.compactBottomChannelEnabled ?? true) }))}
+          >Bottom Channel</button>
           <div className="rc-empty-cell" />
-          <select className="field-input" value={stairConfig.bottomChannelSection ?? '2 x 3'} onChange={e => setStairConfig(s => ({ ...s, bottomChannelSection: e.target.value }))}>
+          <select className="field-input" value={stairConfig.bottomChannelSection ?? '2 x 1'} onChange={e => setStairConfig(s => ({ ...s, bottomChannelSection: e.target.value }))}>
             {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
           </select>
           <select className="field-input" value={stairConfig.bottomChannelThickness ?? '1.8'} onChange={e => setStairConfig(s => ({ ...s, bottomChannelThickness: e.target.value }))}>

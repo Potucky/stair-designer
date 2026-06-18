@@ -586,9 +586,97 @@ function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions
   );
 }
 
+// Compact handrail: rectangular beam from Post 1 top to Post 2 top.
+function CompactHandrailRenderer({ manualPosts, treadPositions, riserHeight, run, handrailSection, railingColorMode }) {
+  const INtoU = 0.5;
+  const { w: railWIn, h: railHIn } = parseSectionIn(handrailSection, 2, 1);
+  const RAIL_W = railWIn * INtoU;
+  const RAIL_H = railHIn * INtoU;
+
+  const p1 = manualPosts.find(p => p.compactSlot === 'post1') ?? manualPosts[0];
+  const p2 = manualPosts.find(p => p.compactSlot === 'post2') ?? manualPosts[1];
+  if (!p1 || !p2) return null;
+
+  const p1Top = getManualPostTop(p1, treadPositions, riserHeight, run);
+  const p2Top = getManualPostTop(p2, treadPositions, riserHeight, run);
+  if (!p1Top || !p2Top) return null;
+
+  const startV = new THREE.Vector3(p1Top.x, p1Top.y, p1Top.z);
+  const endV = new THREE.Vector3(p2Top.x, p2Top.y, p2Top.z);
+  const length = startV.distanceTo(endV);
+  if (length < 0.01) return null;
+
+  const midV = startV.clone().lerp(endV, 0.5);
+  const dx = endV.x - startV.x, dz = endV.z - startV.z;
+  const cosSlope = length > 0 ? Math.sqrt(dx * dx + dz * dz) / length : 1;
+  midV.y += (RAIL_H / 2) * cosSlope;
+  const direction = endV.clone().sub(startV).normalize();
+  const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
+
+  return (
+    <mesh position={midV.toArray()} quaternion={quat}>
+      <boxGeometry args={[length, RAIL_H, RAIL_W]} />
+      <meshStandardMaterial color={railingColorMode === 'black' ? '#111111' : '#e07820'} metalness={0.3} roughness={0.5} />
+    </mesh>
+  );
+}
+
+// Compact U-channel (bottom channel): П-shaped, open on the bottom, between Post 1 and Post 2.
+// Built from 3 rectangular pieces: top web + left wall + right wall. Wall thickness: 0.125 in (visual only).
+function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight, run, bottomChannelSection, bottomRailHeight, railingColorMode }) {
+  const INtoU = 0.5;
+  const { w: chanWIn, h: chanHIn } = parseSectionIn(bottomChannelSection, 2, 1);
+  const chanW = chanWIn * INtoU;
+  const chanH = chanHIn * INtoU;
+  const wallT = 0.125 * INtoU; // 0.125 in visual wall thickness for 3D display
+
+  const p1 = manualPosts.find(p => p.compactSlot === 'post1') ?? manualPosts[0];
+  const p2 = manualPosts.find(p => p.compactSlot === 'post2') ?? manualPosts[1];
+  if (!p1 || !p2) return null;
+
+  const p1Base = getManualPostBase(p1, treadPositions, riserHeight, run);
+  const p2Base = getManualPostBase(p2, treadPositions, riserHeight, run);
+  if (!p1Base || !p2Base) return null;
+
+  const btmOffsetU = (bottomRailHeight ?? 1) * INtoU;
+  const p1CenterY = p1Base.y + btmOffsetU + chanH / 2;
+  const p2CenterY = p2Base.y + btmOffsetU + chanH / 2;
+
+  const startV = new THREE.Vector3(p1Base.x, p1CenterY, p1Base.z);
+  const endV = new THREE.Vector3(p2Base.x, p2CenterY, p2Base.z);
+  const length = startV.distanceTo(endV);
+  if (length < 0.01) return null;
+
+  const midV = startV.clone().lerp(endV, 0.5);
+  const direction = endV.clone().sub(startV).normalize();
+  const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
+  const color = railingColorMode === 'black' ? '#111111' : '#2a8a3a';
+
+  // In beam-local frame: X = length, Y = up, Z = width. Channel opens at local -Y (downward).
+  return (
+    <group position={midV.toArray()} quaternion={quat}>
+      {/* Top web: full width, sits at top of bounding box */}
+      <mesh position={[0, chanH / 2 - wallT / 2, 0]}>
+        <boxGeometry args={[length, wallT, chanW]} />
+        <meshStandardMaterial color={color} metalness={0.3} roughness={0.5} />
+      </mesh>
+      {/* Left side wall: hangs from web to open bottom */}
+      <mesh position={[0, -wallT / 2, -(chanW / 2 - wallT / 2)]}>
+        <boxGeometry args={[length, chanH - wallT, wallT]} />
+        <meshStandardMaterial color={color} metalness={0.3} roughness={0.5} />
+      </mesh>
+      {/* Right side wall: hangs from web to open bottom */}
+      <mesh position={[0, -wallT / 2, chanW / 2 - wallT / 2]}>
+        <boxGeometry args={[length, chanH - wallT, wallT]} />
+        <meshStandardMaterial color={color} metalness={0.3} roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
 // Renders vertical pickets or horizontal pickets/cables between Post 1 and Post 2.
 // Count is derived automatically so every clear gap stays within 3 7/8" (3.875").
-function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, handrailHeight, bottomRailHeightIn, tubeSize, railingColorMode }) {
+function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, handrailHeight, bottomRailHeightIn, tubeSize, railingColorMode, compactTopHandrailEnabled = true, compactBottomChannelEnabled = true }) {
   const INtoU = INtoU_GEO;
 
   const meshSpecs = useMemo(() => {
@@ -636,14 +724,19 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
       const gapIn = (clearIn - n * thickIn) / (n + 1);
       const halfPostIn = postWidthIn / 2;
 
+      // Shift picket ends 0.25 in into each rail so they appear inserted, not floating.
+      const overlapU = 0.25 * INtoU;
+      const btmShift = compactBottomChannelEnabled ? overlapU : 0;
+      const topShift = compactTopHandrailEnabled ? overlapU : 0;
+
       for (let i = 0; i < n; i++) {
         const distIn = halfPostIn + gapIn + i * (gapIn + thickIn) + thickIn / 2;
         const t = distIn / spanIn;
 
         const px = p1Base.x + t * sdx;
         const pz = p1Base.z + t * sdz;
-        const btmY = btmP1y + t * (btmP2y - btmP1y);
-        const topY = topP1y + t * (topP2y - topP1y);
+        const btmY = btmP1y + t * (btmP2y - btmP1y) + btmShift;
+        const topY = topP1y + t * (topP2y - topP1y) + topShift;
         const h = topY - btmY;
         if (h < 0.01) continue;
 
@@ -688,7 +781,7 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
     }
 
     return specs;
-  }, [manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, handrailHeight, bottomRailHeightIn, tubeSize, INtoU]);
+  }, [manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, handrailHeight, bottomRailHeightIn, tubeSize, INtoU, compactTopHandrailEnabled, compactBottomChannelEnabled]);
 
   if (meshSpecs.length === 0) return null;
 
@@ -1420,7 +1513,7 @@ function PdfModePanel({ mode, pdfDraft, activeTool, onAddPdfDimension, onAddPdfT
 }
 
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation, capture3dRef = null, activePdfDraftMode = null, pdfDrafts = null, onAddPdfDimension, onAddPdfText, onDeleteLastPdfAnnotation, onExitPdfMode, selectedPdfDraftDimensionId = null, onSelectPdfDraftDimension }) {
-  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, topLandingWidth, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, railingSideMode, post1Section, post2Section } = stairConfig;
+  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, topLandingWidth, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, railingSideMode, post1Section, post2Section, compactTopHandrailEnabled, compactBottomChannelEnabled } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'color';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
 
@@ -1556,6 +1649,29 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             />
           )}
 
+          {compactTopHandrailEnabled !== false && effectivePosts.length >= 2 && (
+            <CompactHandrailRenderer
+              manualPosts={effectivePosts}
+              treadPositions={calc.treadPositions}
+              riserHeight={calc.riserHeight}
+              run={run}
+              handrailSection={stairConfig.handrailSection}
+              railingColorMode={effectiveColorMode}
+            />
+          )}
+
+          {compactBottomChannelEnabled !== false && effectivePosts.length >= 2 && (
+            <CompactBottomChannelRenderer
+              manualPosts={effectivePosts}
+              treadPositions={calc.treadPositions}
+              riserHeight={calc.riserHeight}
+              run={run}
+              bottomChannelSection={stairConfig.bottomChannelSection}
+              bottomRailHeight={stairConfig.bottomRailHeight ?? 1}
+              railingColorMode={effectiveColorMode}
+            />
+          )}
+
           <InfillRenderer
             manualPosts={effectivePosts}
             treadPositions={calc.treadPositions}
@@ -1569,6 +1685,8 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             bottomRailHeightIn={stairConfig.bottomRailHeight ?? 1}
             tubeSize={tubeSize}
             railingColorMode={effectiveColorMode}
+            compactTopHandrailEnabled={compactTopHandrailEnabled !== false}
+            compactBottomChannelEnabled={compactBottomChannelEnabled !== false}
           />
         </group>
 
