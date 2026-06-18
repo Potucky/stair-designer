@@ -448,6 +448,24 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             <option value="Chrome">Chrome</option>
           </select>
         </div>
+        <div className="rc-comp-row-ext">
+          <span className="chip-label">Lower End</span>
+          <DimensionDraftInput
+            className="field-input"
+            units={units}
+            value={stairConfig.railLowerExtensionIn ?? 0}
+            allowZero
+            onCommit={v => setStairConfig(s => ({ ...s, railLowerExtensionIn: Math.max(0, v) }))}
+          />
+          <span className="chip-label">Upper End</span>
+          <DimensionDraftInput
+            className="field-input"
+            units={units}
+            value={stairConfig.railUpperExtensionIn ?? 0}
+            allowZero
+            onCommit={v => setStairConfig(s => ({ ...s, railUpperExtensionIn: Math.max(0, v) }))}
+          />
+        </div>
       </section>
 
       {/* Section 2: Railing */}
@@ -592,32 +610,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             </div>
             )}
 
-            {/* Rail End Extensions */}
-            {topRailPathMode === 'standard' && <div style={{ marginTop: 12 }}>
-              <div className="field-label-sm" style={{ marginBottom: 6 }}>Top Rail End Extensions</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Lower End Ext</span>
-                <DimensionDraftInput
-                  className="field-input"
-                  style={{ width: 64 }}
-                  units={units}
-                  value={stairConfig.railLowerExtensionIn ?? 0}
-                  allowZero
-                  onCommit={v => setStairConfig(s => ({ ...s, railLowerExtensionIn: Math.max(0, v) }))}
-                />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="field-label-sm" style={{ flex: 1, marginBottom: 0 }}>Upper End Ext</span>
-                <DimensionDraftInput
-                  className="field-input"
-                  style={{ width: 64 }}
-                  units={units}
-                  value={stairConfig.railUpperExtensionIn ?? 0}
-                  allowZero
-                  onCommit={v => setStairConfig(s => ({ ...s, railUpperExtensionIn: Math.max(0, v) }))}
-                />
-              </div>
-            </div>}
 
             {/* Top Rail Mode switch */}
             {SHOW_LEGACY_RAILING_ASSEMBLY && (

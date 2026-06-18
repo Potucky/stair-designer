@@ -628,6 +628,23 @@ html, body, #root {
   font-size: 10px;
   padding: 3px 5px;
 }
+.rc-comp-row-ext {
+  display: grid;
+  grid-template-columns: 1fr 56px 1fr 56px;
+  gap: 2px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.rc-comp-row-ext .chip-label {
+  font-size: 9px;
+  padding: 2px 5px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.rc-comp-row-ext .field-input {
+  font-size: 10px;
+  padding: 3px 5px;
+}
 .rc-empty-cell {
   background: var(--bg-input);
   border: 1px solid var(--border);
