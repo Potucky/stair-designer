@@ -638,13 +638,8 @@ function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight
   const p2Base = getManualPostBase(p2, treadPositions, riserHeight, run);
   if (!p1Base || !p2Base) return null;
 
-  // Side offset: channel outer face 1 inch inward from outside stair edge.
-  // center = width/2 - 1in clearance - chanWIn/2
-  const halfStairIn = (width ?? 36) / 2;
-  const chanCenterZIn = railingSideMode === 'right'
-    ? halfStairIn - 1 - chanWIn / 2
-    : -(halfStairIn - 1 - chanWIn / 2);
-  const chanCenterZ = chanCenterZIn * INtoU;
+  // Side offset: align channel center to post centerline.
+  const chanCenterZ = p1Base.z;
 
   // Stair surface reference: use nosing-line Y at each post's actual X position.
   // p1Base.y is the tread surface at the post's step, but compact posts sit at the
@@ -770,16 +765,10 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
       const btmShift = compactBottomChannelEnabled ? overlapU : 0;
       const topShift = compactTopHandrailEnabled ? overlapU : 0;
 
-      // When compact bottom channel is active, align picket Z to channel centerline
-      // (1 inch clearance from outside stair edge + half channel width inward).
+      // When compact bottom channel is active, align picket Z to post centerline.
       let picketZ = null;
-      if (compactBottomChannelEnabled && width != null && railingSideMode) {
-        const { w: chanWInfill } = parseSectionIn(bottomChannelSection, 2, 1);
-        const halfStairIn = width / 2;
-        const chanCenterZIn = railingSideMode === 'right'
-          ? halfStairIn - 1 - chanWInfill / 2
-          : -(halfStairIn - 1 - chanWInfill / 2);
-        picketZ = chanCenterZIn * INtoU;
+      if (compactBottomChannelEnabled) {
+        picketZ = p1Base.z;
       }
 
       for (let i = 0; i < n; i++) {
