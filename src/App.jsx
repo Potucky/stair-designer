@@ -55,6 +55,14 @@ export default function App() {
     return u === 'mm' ? 'mm' : u === 'in16' ? 'in16' : 'in8';
   });
   const [projectMode, setProjectMode] = useState('build');
+  const [iMeasureConfig, setIMeasureConfig] = useState({
+    angleDeg: 38,
+    postCenterDistanceIn: 72,
+    overallHeightIn: 36,
+    bcLowP1In: 5,
+    bcLowP2In: 5,
+    bcHeightIn: 5,
+  });
   const [activeTool, setActiveTool] = useState('select');
   const [view, setView] = useState('3d');
   const [showDimensions, setShowDimensions] = useState(true);
@@ -795,6 +803,9 @@ export default function App() {
         onDeletePdfDraftDimension={handleDeletePdfDraftDimension}
         onDeleteLastPdfDraftDimension={handleDeleteLastPdfDraftDimension}
         onClearAllPdfDraftDimensions={handleClearAllPdfDraftDimensions}
+        projectMode={projectMode}
+        iMeasureConfig={iMeasureConfig}
+        onIMeasureConfigChange={setIMeasureConfig}
       />
       <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} units={units} />
       {openProjectModalOpen && (

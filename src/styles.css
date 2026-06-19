@@ -296,6 +296,34 @@ html, body, #root {
   box-sizing: border-box;
 }
 
+/* ─── iMeasure Reference Grid ─────────────────────────────────────── */
+.im-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  column-gap: 4px;
+  row-gap: 4px;
+  align-items: center;
+}
+.im-grid .chip-label {
+  font-size: 9px;
+  padding: 2px 5px;
+}
+.im-grid .field-input {
+  min-width: 0;
+  box-sizing: border-box;
+  font-size: 10px;
+  padding: 3px 5px;
+}
+.im-value-preview {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  background: var(--bg-app);
+  color: var(--text-dim);
+  cursor: default;
+}
+
 /* ─── Panel Buttons ────────────────────────────────────────────────── */
 .save-project-row {
   display: flex;

@@ -141,7 +141,7 @@ function DimensionDraftInput({ value, onCommit, units, className, style, allowZe
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, onNewProject, onSaveProject, onOpenProject, units, compactPostTarget, onToggleCompactPostPlacement, activePdfDraftMode, pdfDrafts, selectedPdfDraftDimensionId, onUpdatePdfDraftDimension, onDeletePdfDraftDimension, onDeleteLastPdfDraftDimension, onClearAllPdfDraftDimensions }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, onNewProject, onSaveProject, onOpenProject, units, compactPostTarget, onToggleCompactPostPlacement, activePdfDraftMode, pdfDrafts, selectedPdfDraftDimensionId, onUpdatePdfDraftDimension, onDeletePdfDraftDimension, onDeleteLastPdfDraftDimension, onClearAllPdfDraftDimensions, projectMode, iMeasureConfig, onIMeasureConfigChange }) {
   const [saveStatus, setSaveStatus] = useState(null);
 
   const str = (field) => (e) => setProject((p) => ({ ...p, [field]: e.target.value }));
@@ -156,6 +156,9 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
   const selectedDim = selectedPdfDraftDimensionId
     ? threeDDims.find(d => d.id === selectedPdfDraftDimensionId)
     : null;
+
+  const commitIMeasure = (field) => (v) =>
+    onIMeasureConfigChange((cfg) => ({ ...cfg, [field]: v }));
 
   return (
     <aside className="right-panel">
@@ -244,6 +247,67 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         </div>
       </section>
 
+      {projectMode === 'measure' && (
+        <section className="panel-section">
+          <h3 className="section-title">iMeasure Reference</h3>
+
+          <div className="im-grid">
+            {/* Row 1: Angle | Post C-C */}
+            <span className="chip-label">Angle</span>
+            <NumericDraftInput
+              className="field-input"
+              inputMode="decimal"
+              value={iMeasureConfig?.angleDeg ?? 38}
+              onCommit={commitIMeasure('angleDeg')}
+            />
+            <span className="chip-label">Post C-C</span>
+            <DimensionDraftInput
+              className="field-input"
+              units={units}
+              value={iMeasureConfig?.postCenterDistanceIn ?? 72}
+              onCommit={commitIMeasure('postCenterDistanceIn')}
+            />
+
+            {/* Row 2: Height | empty */}
+            <span className="chip-label">Height</span>
+            <DimensionDraftInput
+              className="field-input"
+              units={units}
+              value={iMeasureConfig?.overallHeightIn ?? 36}
+              onCommit={commitIMeasure('overallHeightIn')}
+            />
+            <span className="chip-label" style={{ opacity: 0.25 }}>&nbsp;</span>
+            <span className="field-input" style={{ opacity: 0.25 }}>&nbsp;</span>
+
+            {/* Row 3: BC Low | BC Height */}
+            <span className="chip-label">BC Low</span>
+            <DimensionDraftInput
+              className="field-input"
+              units={units}
+              value={iMeasureConfig?.bcLowP1In ?? 5}
+              onCommit={commitIMeasure('bcLowP1In')}
+            />
+            <span className="chip-label">BC Height</span>
+            <DimensionDraftInput
+              className="field-input"
+              units={units}
+              value={iMeasureConfig?.bcHeightIn ?? 5}
+              onCommit={commitIMeasure('bcHeightIn')}
+            />
+
+            {/* Row 4: Horizontal | Vertical (read-only calculated) */}
+            <span className="chip-label">Horizontal</span>
+            <span className="field-input im-value-preview">
+              {formatDimensionByUnit((iMeasureConfig?.postCenterDistanceIn ?? 72) * Math.cos((iMeasureConfig?.angleDeg ?? 38) * Math.PI / 180), units)}
+            </span>
+            <span className="chip-label">Vertical</span>
+            <span className="field-input im-value-preview">
+              {formatDimensionByUnit((iMeasureConfig?.postCenterDistanceIn ?? 72) * Math.sin((iMeasureConfig?.angleDeg ?? 38) * Math.PI / 180), units)}
+            </span>
+          </div>
+        </section>
+      )}
+
       {/* Section 1: Stair Setup */}
       <section className="panel-section">
         <div className="stair-kv-row">
@@ -254,7 +318,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             onClick={() => setStairConfig(s => ({ ...s, railingSideMode: 'left' }))}
           >Left</button>
         </div>
-        <div className="stair-kv-row">
+        <div className="stair-kv-row" style={projectMode === 'measure' ? { opacity: 0.45, pointerEvents: 'none' } : {}}>
           <span className="chip-label">Step Width</span>
           <DimensionDraftInput className="field-input" units={units} value={stairConfig.width} onCommit={commitDim('width')} />
           <button
@@ -262,7 +326,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             onClick={() => setStairConfig(s => ({ ...s, railingSideMode: 'right' }))}
           >Right</button>
         </div>
-        <div className="stair-kv-row">
+        <div className="stair-kv-row" style={projectMode === 'measure' ? { opacity: 0.45, pointerEvents: 'none' } : {}}>
           <span className="chip-label">Step Height</span>
           <DimensionDraftInput className="field-input" units={units} value={calc.riserHeight} onCommit={v => setStairConfig(s => ({ ...s, height: v * s.steps }))} />
           <button
@@ -288,6 +352,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
 
       {/* Section: Railing Components */}
       <section className="panel-section">
+        <div style={projectMode === 'measure' ? { opacity: 0.45, pointerEvents: 'none' } : {}}>
         <div className="rc-comp-row">
           <button
             className={`chip-label chip-label-btn${compactPostTarget === 1 ? ' chip-label-active' : ''}`}
@@ -306,6 +371,8 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         {compactPostTarget === 1 && (
           <div className="post-tool-hint">Post 1 placement active — click a step or landing to place</div>
         )}
+        </div>
+        <div style={projectMode === 'measure' ? { opacity: 0.45, pointerEvents: 'none' } : {}}>
         <div className="rc-comp-row">
           <button
             className={`chip-label chip-label-btn${compactPostTarget === 2 ? ' chip-label-active' : ''}`}
@@ -324,6 +391,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         {compactPostTarget === 2 && (
           <div className="post-tool-hint">Post 2 placement active — click a step or landing to place</div>
         )}
+        </div>
         <div className="rc-comp-row">
           <button
             className={`chip-label chip-label-btn${(stairConfig.compactTopHandrailEnabled ?? true) ? ' chip-label-active' : ''}`}
