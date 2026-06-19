@@ -319,8 +319,8 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           >Left</button>
         </div>
         <div className="stair-kv-row">
-          <span className="chip-label" style={projectMode === 'measure' ? { opacity: 0.45 } : {}}>Step Width</span>
-          <DimensionDraftInput className="field-input" style={projectMode === 'measure' ? { opacity: 0.45, pointerEvents: 'none' } : {}} units={units} value={stairConfig.width} onCommit={commitDim('width')} />
+          <span className="chip-label">Step Width</span>
+          <DimensionDraftInput className="field-input" units={units} value={stairConfig.width} onCommit={commitDim('width')} />
           <button
             className={`panel-btn${(stairConfig.railingSideMode ?? 'left') === 'right' ? ' panel-btn-active' : ''}`}
             onClick={() => setStairConfig(s => ({ ...s, railingSideMode: 'right' }))}
@@ -335,8 +335,8 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           >Color</button>
         </div>
         <div className="stair-kv-row">
-          <span className="chip-label">Step Length</span>
-          <DimensionDraftInput className="field-input" units={units} value={calc.treadDepth} onCommit={v => setStairConfig(s => ({ ...s, run: v * s.steps }))} />
+          <span className="chip-label" style={projectMode === 'measure' ? { opacity: 0.45 } : {}}>Step Length</span>
+          <DimensionDraftInput className="field-input" style={projectMode === 'measure' ? { opacity: 0.45, pointerEvents: 'none' } : {}} units={units} value={calc.treadDepth} onCommit={v => setStairConfig(s => ({ ...s, run: v * s.steps }))} />
           <button
             className={`panel-btn${(stairConfig.railingColorMode ?? 'color') === 'black' ? ' panel-btn-active' : ''}`}
             onClick={() => setStairConfig(s => ({ ...s, railingColorMode: 'black' }))}
