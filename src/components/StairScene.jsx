@@ -3,7 +3,7 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { fmtUnit } from '../utils/format.js';
-import { getTubeProfile, getManualPostBase, getManualPostTop, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, calcInfillCount, resolveManualPostSection, isLegacyCompactDuplicateRail, INtoU as INtoU_GEO } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualPostBase, getManualPostTop, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, calcInfillCount, resolveManualPostSection, isLegacyCompactDuplicateRail, resolveCompactPostAnchors, INtoU as INtoU_GEO } from '../geometry/railingGeometry.js';
 
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
@@ -1563,13 +1563,15 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
   // Offset by half the post's Z-section so the OUTER FACE is flush with the stair edge, not the center.
   // This is a render-time transform — stored post data is not mutated.
   const effectivePosts = useMemo(() => {
+    // Re-anchor compact posts to current stair geometry before height/Z resolution.
+    const anchored = resolveCompactPostAnchors(manualPosts || [], stairConfig, calc.treadPositions);
     // Resolve compact post heights live from stairConfig so UI changes take effect immediately.
     const resolveHeight = (post) => {
       if (post.compactSlot === 'post1' && post1HeightIn != null) return Number(post1HeightIn);
       if (post.compactSlot === 'post2' && post2HeightIn != null) return Number(post2HeightIn);
       return post.heightIn;
     };
-    const posts = (manualPosts || []).map(post => {
+    const posts = anchored.map(post => {
       const h = resolveHeight(post);
       return h !== post.heightIn ? { ...post, heightIn: h } : post;
     });
@@ -1585,7 +1587,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
       const zIn = isRight ? width / 2 - postHalfZIn : -width / 2 + postHalfZIn;
       return { ...post, zIn };
     });
-  }, [manualPosts, railingSideMode, width, tubeSize, post1Section, post2Section, post1HeightIn, post2HeightIn]);
+  }, [manualPosts, stairConfig, calc.treadPositions, railingSideMode, width, tubeSize, post1Section, post2Section, post1HeightIn, post2HeightIn]);
 
   // Exclude legacy manual rails that duplicate the compact Post 1 → Post 2 pair.
   const filteredManualTopRails = useMemo(

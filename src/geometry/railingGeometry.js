@@ -68,6 +68,57 @@ export function isCompactPost(post) {
   return post?.compactSlot === 'post1' || post?.compactSlot === 'post2';
 }
 
+// Re-anchors compact Post 1 / Post 2 to current stair geometry at render/export time.
+// Ordinary posts (no compactSlot) are returned unchanged.
+// Preserves the post's logical anchor (stepIndex / surfaceType) set by the user.
+// Falls back to default lower/upper positions only when anchor data is missing.
+export function resolveCompactPostAnchors(posts, stairConfig, treadPositions) {
+  const { steps = 0, bottomLandingEnabled = false } = stairConfig;
+  if (!Array.isArray(treadPositions) || treadPositions.length === 0 || steps === 0) return posts;
+
+  const lastValidIdx = treadPositions.length - 1;
+
+  return posts.map(post => {
+    if (post.compactSlot !== 'post1' && post.compactSlot !== 'post2') return post;
+
+    const isPost1 = post.compactSlot === 'post1';
+
+    // Preserve bottomLanding anchor — recompute xIn per convention.
+    if (post.surfaceType === 'bottomLanding') {
+      return { ...post, surfaceType: 'bottomLanding', xIn: 0, stepIndex: null };
+    }
+
+    // Preserve topLanding anchor — recompute xIn per convention.
+    if (post.surfaceType === 'topLanding') {
+      const lastTp = treadPositions[lastValidIdx];
+      if (!lastTp) return post;
+      return { ...post, surfaceType: 'topLanding', xIn: lastTp.x, stepIndex: null };
+    }
+
+    // Preserve regular tread anchor — clamp stepIndex into valid range and recompute xIn.
+    if (post.stepIndex != null && isFinite(Number(post.stepIndex))) {
+      const clampedIdx = Math.max(0, Math.min(Number(post.stepIndex), lastValidIdx));
+      const tp = treadPositions[clampedIdx];
+      if (!tp) return post;
+      return { ...post, surfaceType: undefined, xIn: tp.x, stepIndex: clampedIdx };
+    }
+
+    // Fallback for posts with no valid saved anchor (new posts, old saved projects).
+    if (isPost1) {
+      if (bottomLandingEnabled) {
+        return { ...post, surfaceType: 'bottomLanding', xIn: 0, stepIndex: null };
+      }
+      const tp = treadPositions[0];
+      if (!tp) return post;
+      return { ...post, surfaceType: undefined, xIn: tp.x, stepIndex: 0 };
+    }
+    // post2 fallback — last regular tread
+    const tp = treadPositions[lastValidIdx];
+    if (!tp) return post;
+    return { ...post, surfaceType: undefined, xIn: tp.x, stepIndex: lastValidIdx };
+  });
+}
+
 // Finds a post by id in the given array; returns null if not found.
 export function getPostById(posts, id) {
   return posts.find(p => p.id === id) ?? null;

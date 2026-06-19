@@ -16,7 +16,7 @@ import { printViewportPdf } from './pdf/printViewport.js';
 import { saveProject } from './lib/saveProject.js';
 import { loadProject } from './lib/loadProject.js';
 import { DEFAULT_STAIR, DEFAULT_PROJECT } from './constants/defaults.js';
-import { normalizeRailEndpoints, normalizeSection } from './geometry/railingGeometry.js';
+import { normalizeRailEndpoints, normalizeSection, resolveCompactPostAnchors } from './geometry/railingGeometry.js';
 
 const SECTION_KEYS = ['post1Section', 'post2Section', 'handrailSection', 'bottomChannelSection', 'picketVerticalSection', 'picketHorizontalSection'];
 
@@ -238,7 +238,7 @@ export default function App() {
     tubeSize: stairConfig.tubeSize,
     post1Section: stairConfig.post1Section,
     post2Section: stairConfig.post2Section,
-    manualPosts,
+    manualPosts: resolveCompactPostAnchors(manualPosts, stairConfig, calc.treadPositions),
     manualTopRails,
     treadPositions: calc.treadPositions,
     riserHeight: calc.riserHeight,

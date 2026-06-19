@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getTubeProfile, getManualPostBase, getManualPostTop, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, calcInfillCount, INtoU, TREAD_THICK, normalizeRailEndpoints, resolveManualPostSection, isLegacyCompactDuplicateRail } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualPostBase, getManualPostTop, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, calcInfillCount, INtoU, TREAD_THICK, normalizeRailEndpoints, resolveManualPostSection, isLegacyCompactDuplicateRail, resolveCompactPostAnchors } from '../geometry/railingGeometry.js';
 import { formatInchesFraction } from '../utils/units.js';
 
 function parseSectionIn(section, defaultW, defaultH) {
@@ -41,6 +41,8 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   const validManualPosts = (Array.isArray(manualPosts) ? manualPosts : []).filter((p) => {
     if (!p) return false;
     if (!isFinite(Number(p.xIn)) || !isFinite(Number(p.heightIn)) || Number(p.heightIn) <= 0) return false;
+    // Compact posts are re-anchored at render time — accept them regardless of stale stepIndex/surfaceType.
+    if (p.compactSlot === 'post1' || p.compactSlot === 'post2') return true;
     if (p.surfaceType === 'bottomLanding' || p.surfaceType === 'topLanding') return true;
     if (p.stepIndex == null) return false;
     if (!(calc.treadPositions || [])[p.stepIndex]) return false;
@@ -48,10 +50,11 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   });
 
   const effectiveManualPosts = (() => {
-    if (!stairConfig.railingSideMode) return validManualPosts;
+    const resolved = resolveCompactPostAnchors(validManualPosts, stairConfig, calc.treadPositions);
+    if (!stairConfig.railingSideMode) return resolved;
     const isRight = stairConfig.railingSideMode === 'right';
     const profile = getTubeProfile(stairConfig.tubeSize);
-    return validManualPosts.map((post) => {
+    return resolved.map((post) => {
       const resolvedSection = resolveManualPostSection(post, stairConfig.post1Section, stairConfig.post2Section, stairConfig.tubeSize);
       const { h: secD } = parseSectionIn(resolvedSection, profile.width, profile.width);
       const postHalfZIn = secD / 2;
