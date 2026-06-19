@@ -54,6 +54,7 @@ export default function App() {
     const u = d?.units;
     return u === 'mm' ? 'mm' : u === 'in16' ? 'in16' : 'in8';
   });
+  const [projectMode, setProjectMode] = useState('build');
   const [activeTool, setActiveTool] = useState('select');
   const [view, setView] = useState('3d');
   const [showDimensions, setShowDimensions] = useState(true);
@@ -690,6 +691,8 @@ export default function App() {
         units={units}
         onUnitsChange={setUnits}
         onOpenProject={() => setOpenProjectModalOpen(true)}
+        projectMode={projectMode}
+        onProjectModeChange={setProjectMode}
       />
       <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} showDimensions={showDimensions} onToggleDimensions={() => setShowDimensions((v) => !v)} manualDimensionsCount={manualDimensions.length} onUndoLastManualDimension={handleUndoLastManualDimension} onOpenSidePdf={handleOpenSidePdf} onOpen3dPdf={handleOpen3dPdf} activePdfDraftMode={activePdfDraftMode} />
       <StairScene

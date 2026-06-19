@@ -102,6 +102,10 @@ html, body, #root {
 .header-btn-primary:hover { background: var(--accent-dark); color: #fff; }
 .header-btn-active { background: rgba(37, 99, 235, 0.1); color: var(--accent); border-color: var(--accent); }
 .header-btn-active:hover { background: rgba(37, 99, 235, 0.15); color: var(--accent); }
+.mode-btn { background: #2563eb; border-color: #1d4ed8; color: #fff; font-weight: 600; }
+.mode-btn:hover { background: #1d4ed8; color: #fff; }
+.mode-btn-active { outline: 2px solid #dc2626; outline-offset: 1px; }
+
 .units-toggle-group { display: flex; gap: 0; }
 .units-toggle-group .units-btn { border-radius: 0; border-right-width: 0; }
 .units-toggle-group .units-btn:first-child { border-radius: 4px 0 0 4px; }

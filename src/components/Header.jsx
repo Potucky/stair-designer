@@ -1,4 +1,4 @@
-export default function Header({ onOpenJson, onSaveJson, onExportPdf, onPrint, units, onUnitsChange }) {
+export default function Header({ onOpenJson, onSaveJson, onExportPdf, onPrint, units, onUnitsChange, projectMode = 'build', onProjectModeChange }) {
   const menus = ['File', 'Edit', 'View', 'Build', 'Materials', 'Export', 'Help'];
 
   return (
@@ -39,6 +39,18 @@ export default function Header({ onOpenJson, onSaveJson, onExportPdf, onPrint, u
         <button className="header-btn" onClick={onSaveJson}>Save JSON</button>
         <button className="header-btn header-btn-primary" onClick={onExportPdf}>Export PDF</button>
         <button className="header-btn" onClick={onPrint}>Print</button>
+        <button
+          className={`header-btn mode-btn${projectMode === 'build' ? ' mode-btn-active' : ''}`}
+          onClick={() => onProjectModeChange('build')}
+        >
+          iBuild
+        </button>
+        <button
+          className={`header-btn mode-btn${projectMode === 'measure' ? ' mode-btn-active' : ''}`}
+          onClick={() => onProjectModeChange('measure')}
+        >
+          iMeasure
+        </button>
       </div>
     </header>
   );
