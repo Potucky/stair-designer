@@ -545,10 +545,18 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
           ? (sx) => ox + dw / 2 - (sx / INtoU) * sc
           : (sx) => ox + dw / 2 + (sx / INtoU) * sc;
         const syToPdf = (sy) => oy - (sy / INtoU) * sc - rPx / 2 + (TREAD_THICK / INtoU) * sc;
-        const drawSceneLine = (start, end, color, widthPt) => {
+        // syToPdf uses rPx/2 (= riserHeight*sc/2) as the vertical anchor, which aligns
+        // tread and topLanding posts perfectly. For bottomLanding posts the post rectangle
+        // draws from slabH = max(4, 3.5*sc) above ground instead. These match only when
+        // riserHeight = 7". Apply a per-post additive PDF-Y correction so compact rail
+        // endpoints align with the post rectangle tops for any riser height.
+        const _compactSlabH = Math.max(4, 3.5 * sc);
+        const p1YAdj = p1Resolved.surfaceType === 'bottomLanding' ? rPx / 2 - _compactSlabH : 0;
+        const p2YAdj = p2Resolved.surfaceType === 'bottomLanding' ? rPx / 2 - _compactSlabH : 0;
+        const drawSceneLineAdj = (start, end, color, widthPt, startAdj = 0, endAdj = 0) => {
           doc.setDrawColor(color);
           doc.setLineWidth(widthPt);
-          doc.line(sxToPdf(start.x), syToPdf(start.y), sxToPdf(end.x), syToPdf(end.y));
+          doc.line(sxToPdf(start.x), syToPdf(start.y) + startAdj, sxToPdf(end.x), syToPdf(end.y) + endAdj);
         };
 
         const { h: handrailHIn } = parseSectionIn(stairConfig.handrailSection, 2, 1);
@@ -586,11 +594,13 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
         if (compactBottomEnabled) {
           const channelHalfH = (channelHIn / 2) * INtoU;
-          drawSceneLine(
+          drawSceneLineAdj(
             { x: bottomFace.p1.x, y: bottomFace.p1.y + channelHalfH, z: p1Base.z },
             { x: bottomFace.p2.x, y: bottomFace.p2.y + channelHalfH, z: p1Base.z },
             bottomColor,
-            channelWidthPt
+            channelWidthPt,
+            p1YAdj,
+            p2YAdj
           );
         }
 
@@ -627,7 +637,8 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
                 const btmY = bottomFace.p1.y + t * (bottomFace.p2.y - bottomFace.p1.y) + bottomShift;
                 const topY = p1Top.y + t * (p2Top.y - p1Top.y) + topShift;
                 if (topY <= btmY) continue;
-                doc.line(sxToPdf(px), syToPdf(btmY), sxToPdf(px), syToPdf(topY));
+                const yAdj = p1YAdj + t * (p2YAdj - p1YAdj);
+                doc.line(sxToPdf(px), syToPdf(btmY) + yAdj, sxToPdf(px), syToPdf(topY) + yAdj);
               }
             }
           } else if (infillType === 'horizontalPicket' || infillType === 'horizontalCable') {
@@ -643,7 +654,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
               for (let i = 0; i < n; i++) {
                 const hvIn = gapIn + i * (gapIn + thickIn) + thickIn / 2;
                 const tv = hvIn / openingIn;
-                drawSceneLine(
+                drawSceneLineAdj(
                   {
                     x: p1Base.x,
                     y: bottomFace.p1.y + tv * (p1Top.y - bottomFace.p1.y),
@@ -655,7 +666,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
                     z: p2Base.z,
                   },
                   infillColor,
-                  Math.max(infillType === 'horizontalCable' ? 0.6 : 0.8, thickIn * sc)
+                  Math.max(infillType === 'horizontalCable' ? 0.6 : 0.8, thickIn * sc),
+                  p1YAdj,
+                  p2YAdj
                 );
               }
             }
@@ -668,11 +681,13 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
           const length = Math.sqrt((p2Top.x - p1Top.x) ** 2 + (p2Top.y - p1Top.y) ** 2 + (p2Top.z - p1Top.z) ** 2);
           const cosSlope = length > 0 ? Math.sqrt(dx * dx + dz * dz) / length : 1;
           const centerLift = (handrailHIn / 2) * INtoU * cosSlope;
-          drawSceneLine(
+          drawSceneLineAdj(
             { x: p1Top.x, y: p1Top.y + centerLift, z: p1Top.z },
             { x: p2Top.x, y: p2Top.y + centerLift, z: p2Top.z },
             railColors.railLine,
-            topRailWidthPt
+            topRailWidthPt,
+            p1YAdj,
+            p2YAdj
           );
         }
       }
