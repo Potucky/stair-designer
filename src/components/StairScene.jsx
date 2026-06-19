@@ -593,8 +593,8 @@ function CompactHandrailRenderer({ manualPosts, treadPositions, riserHeight, run
   const RAIL_W = railWIn * INtoU;
   const RAIL_H = railHIn * INtoU;
 
-  const p1 = manualPosts.find(p => p.compactSlot === 'post1') ?? manualPosts[0];
-  const p2 = manualPosts.find(p => p.compactSlot === 'post2') ?? manualPosts[1];
+  const p1 = manualPosts.find(p => p.compactSlot === 'post1');
+  const p2 = manualPosts.find(p => p.compactSlot === 'post2');
   if (!p1 || !p2) return null;
 
   const p1Top = getManualPostTop(p1, treadPositions, riserHeight, run);
@@ -630,8 +630,8 @@ function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight
   const chanH = chanHIn * INtoU;
   const wallT = 0.125 * INtoU; // 0.125 in visual wall thickness for 3D display
 
-  const p1 = manualPosts.find(p => p.compactSlot === 'post1') ?? manualPosts[0];
-  const p2 = manualPosts.find(p => p.compactSlot === 'post2') ?? manualPosts[1];
+  const p1 = manualPosts.find(p => p.compactSlot === 'post1');
+  const p2 = manualPosts.find(p => p.compactSlot === 'post2');
   if (!p1 || !p2) return null;
 
   const p1Base = getManualPostBase(p1, treadPositions, riserHeight, run);
@@ -702,9 +702,9 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
     if (!infillType || infillType === 'none') return [];
     if (!manualPosts || manualPosts.length < 2) return [];
 
-    // Resolve Post 1 / Post 2 by stable compactSlot identity; fall back to array order
-    const p1 = manualPosts.find(p => p.compactSlot === 'post1') ?? manualPosts[0];
-    const p2 = manualPosts.find(p => p.compactSlot === 'post2') ?? manualPosts[1];
+    const p1 = manualPosts.find(p => p.compactSlot === 'post1');
+    const p2 = manualPosts.find(p => p.compactSlot === 'post2');
+    if (!p1 || !p2) return [];
 
     const p1Base = getManualPostBase(p1, treadPositions, riserHeight, run);
     const p2Base = getManualPostBase(p2, treadPositions, riserHeight, run);
@@ -1595,6 +1595,12 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
     [manualTopRails, effectivePosts]
   );
 
+  const compactPostPair = useMemo(() => {
+    const p1 = effectivePosts.find(p => p.compactSlot === 'post1');
+    const p2 = effectivePosts.find(p => p.compactSlot === 'post2');
+    return p1 && p2 ? { p1, p2 } : null;
+  }, [effectivePosts]);
+
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
   // In PDF mode, disable 3D dim/text tools so PDF overlay handles annotation capture instead
@@ -1710,7 +1716,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             />
           )}
 
-          {compactTopHandrailEnabled !== false && effectivePosts.length >= 2 && (
+          {compactTopHandrailEnabled !== false && compactPostPair !== null && (
             <CompactHandrailRenderer
               manualPosts={effectivePosts}
               treadPositions={calc.treadPositions}
@@ -1721,7 +1727,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             />
           )}
 
-          {compactBottomChannelEnabled !== false && effectivePosts.length >= 2 && (
+          {compactBottomChannelEnabled !== false && compactPostPair !== null && (
             <CompactBottomChannelRenderer
               manualPosts={effectivePosts}
               treadPositions={calc.treadPositions}

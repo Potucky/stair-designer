@@ -66,8 +66,8 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   })();
 
   const getCompactPosts = () => {
-    const p1 = effectiveManualPosts.find(p => p.compactSlot === 'post1') ?? effectiveManualPosts[0];
-    const p2 = effectiveManualPosts.find(p => p.compactSlot === 'post2') ?? effectiveManualPosts[1];
+    const p1 = effectiveManualPosts.find(p => p.compactSlot === 'post1');
+    const p2 = effectiveManualPosts.find(p => p.compactSlot === 'post2');
     return p1 && p2 ? { p1, p2 } : null;
   };
 
