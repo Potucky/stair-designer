@@ -40,9 +40,12 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
   const validManualPosts = (Array.isArray(manualPosts) ? manualPosts : []).filter((p) => {
     if (!p) return false;
+    // Compact posts may have stale/missing xIn, zIn, offsets, stepIndex, surfaceType.
+    // Allow them through so resolveCompactPostAnchors can repair them before PDF assembly.
+    if (p.compactSlot === 'post1' || p.compactSlot === 'post2') {
+      return isFinite(Number(p.heightIn)) && Number(p.heightIn) > 0;
+    }
     if (!isFinite(Number(p.xIn)) || !isFinite(Number(p.heightIn)) || Number(p.heightIn) <= 0) return false;
-    // Compact posts are re-anchored at render time — accept them regardless of stale stepIndex/surfaceType.
-    if (p.compactSlot === 'post1' || p.compactSlot === 'post2') return true;
     if (p.surfaceType === 'bottomLanding' || p.surfaceType === 'topLanding') return true;
     if (p.stepIndex == null) return false;
     if (!(calc.treadPositions || [])[p.stepIndex]) return false;

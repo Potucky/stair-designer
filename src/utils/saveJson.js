@@ -70,6 +70,11 @@ function isValidManualDimension(d) {
 
 function isValidManualPost(p) {
   if (!p || typeof p !== 'object' || typeof p.id !== 'string') return false;
+  // Compact posts may have stale/missing xIn, zIn, offsets, surfaceType, stepIndex.
+  // Pass them through so the anchor resolver can repair them at runtime.
+  if (p.compactSlot === 'post1' || p.compactSlot === 'post2') {
+    return typeof p.heightIn === 'number' && Number.isFinite(p.heightIn) && p.heightIn > 0;
+  }
   if (typeof p.xIn !== 'number' || !Number.isFinite(p.xIn)) return false;
   if (typeof p.zIn !== 'number' || !Number.isFinite(p.zIn)) return false;
   if (typeof p.offsetXIn !== 'number' || !Number.isFinite(p.offsetXIn)) return false;
