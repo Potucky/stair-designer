@@ -141,12 +141,10 @@ function DimensionDraftInput({ value, onCommit, units, className, style, allowZe
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, warnings, materials, onNewProject, onSaveProject, onOpenProject, onExportPdf, units, activeTool, manualDimensions, onUpdateManualDimension, onDeleteManualDimension, manualPosts, postPlacementMode, onTogglePostPlacement, compactPostTarget, onToggleCompactPostPlacement, selectedManualPostId, onUpdateManualPost, onDeleteManualPost, topRailMode, onToggleTopRailMode, topRailFirstPostId, manualTopRails, onDeleteManualTopRail, selectedManualTopRailId, onSelectManualTopRail, onUpdateManualTopRail, topRailPathMode, onTopRailPathModeChange, structureMoveSelected, onToggleStructureMove, onMoveForward, onMoveBack, onMoveLeft, onMoveRight, onResetStructureOffset, structureOffsetXIn, structureOffsetZIn, fastRailsMode, fastRailsPrevPostId, onToggleFastRailsMode, manualTextAnnotations, onUpdateManualTextAnnotation, onDeleteManualTextAnnotation, pdfMirrored, onTogglePdfMirrored, activePdfDraftMode, pdfDrafts, selectedPdfDraftDimensionId, onUpdatePdfDraftDimension, onDeletePdfDraftDimension, onDeleteLastPdfDraftDimension, onClearAllPdfDraftDimensions }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, onNewProject, onSaveProject, onOpenProject, units, compactPostTarget, onToggleCompactPostPlacement, activePdfDraftMode, pdfDrafts, selectedPdfDraftDimensionId, onUpdatePdfDraftDimension, onDeletePdfDraftDimension, onDeleteLastPdfDraftDimension, onClearAllPdfDraftDimensions }) {
   const [saveStatus, setSaveStatus] = useState(null);
 
   const str = (field) => (e) => setProject((p) => ({ ...p, [field]: e.target.value }));
-  const toggle = (field) => (e) => setStairConfig((s) => ({ ...s, [field]: e.target.checked }));
-  const sel = (field) => (e) => setStairConfig((s) => ({ ...s, [field]: e.target.value }));
 
   const commitDim = (field) => (v) =>
     setStairConfig((s) => ({ ...s, [field]: v }));

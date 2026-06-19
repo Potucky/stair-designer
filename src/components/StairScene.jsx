@@ -623,7 +623,7 @@ function CompactHandrailRenderer({ manualPosts, treadPositions, riserHeight, run
 
 // Compact U-channel (bottom channel): П-shaped, open on the bottom, between Post 1 and Post 2.
 // Built from 3 rectangular pieces: top web + left wall + right wall. Wall thickness: 0.125 in (visual only).
-function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight, run, bottomChannelSection, bottomRailHeight, railingColorMode, width, railingSideMode }) {
+function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight, run, bottomChannelSection, railingColorMode }) {
   const INtoU = 0.5;
   const { w: chanWIn, h: chanHIn } = parseSectionIn(bottomChannelSection, 2, 1);
   const chanW = chanWIn * INtoU;
@@ -695,7 +695,7 @@ function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight
 
 // Renders vertical pickets or horizontal pickets/cables between Post 1 and Post 2.
 // Count is derived automatically so every clear gap stays within 3 7/8" (3.875").
-function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, handrailHeight, bottomRailHeightIn, tubeSize, railingColorMode, compactTopHandrailEnabled = true, compactBottomChannelEnabled = true, width, railingSideMode, bottomChannelSection }) {
+function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, bottomRailHeightIn, tubeSize, railingColorMode, compactTopHandrailEnabled = true, compactBottomChannelEnabled = true }) {
   const INtoU = INtoU_GEO;
 
   const meshSpecs = useMemo(() => {
@@ -823,7 +823,7 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
     }
 
     return specs;
-  }, [manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, handrailHeight, bottomRailHeightIn, tubeSize, INtoU, compactTopHandrailEnabled, compactBottomChannelEnabled, width, railingSideMode, bottomChannelSection]);
+  }, [manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, bottomRailHeightIn, tubeSize, INtoU, compactTopHandrailEnabled, compactBottomChannelEnabled]);
 
   if (meshSpecs.length === 0) return null;
 
@@ -1555,7 +1555,7 @@ function PdfModePanel({ mode, pdfDraft, activeTool, onAddPdfDimension, onAddPdfT
 }
 
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation, capture3dRef = null, activePdfDraftMode = null, pdfDrafts = null, onAddPdfDimension, onAddPdfText, onDeleteLastPdfAnnotation, onExitPdfMode, selectedPdfDraftDimensionId = null, onSelectPdfDraftDimension }) {
-  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, topLandingWidth, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, railingSideMode, post1Section, post2Section, post1HeightIn, post2HeightIn, compactTopHandrailEnabled, compactBottomChannelEnabled } = stairConfig;
+  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingLength, topLandingLength, topLandingWidth, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, railingSideMode, post1Section, post2Section, post1HeightIn, post2HeightIn, compactTopHandrailEnabled, compactBottomChannelEnabled } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'color';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
 
@@ -1728,10 +1728,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
               riserHeight={calc.riserHeight}
               run={run}
               bottomChannelSection={stairConfig.bottomChannelSection}
-              bottomRailHeight={stairConfig.bottomRailHeight ?? 1}
               railingColorMode={effectiveColorMode}
-              width={width}
-              railingSideMode={railingSideMode}
             />
           )}
 
@@ -1744,15 +1741,11 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             verticalPicketThicknessIn={stairConfig.verticalPicketThicknessIn ?? 1}
             horizontalPicketThicknessIn={stairConfig.horizontalPicketThicknessIn ?? 1}
             horizontalCableDiameterIn={stairConfig.horizontalCableDiameterIn ?? 0.125}
-            handrailHeight={handrailHeight}
             bottomRailHeightIn={stairConfig.bottomRailHeight ?? 1}
             tubeSize={tubeSize}
             railingColorMode={effectiveColorMode}
             compactTopHandrailEnabled={compactTopHandrailEnabled !== false}
             compactBottomChannelEnabled={compactBottomChannelEnabled !== false}
-            width={width}
-            railingSideMode={railingSideMode}
-            bottomChannelSection={stairConfig.bottomChannelSection}
           />
         </group>
 
