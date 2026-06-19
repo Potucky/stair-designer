@@ -318,17 +318,17 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             onClick={() => setStairConfig(s => ({ ...s, railingSideMode: 'left' }))}
           >Left</button>
         </div>
-        <div className="stair-kv-row" style={projectMode === 'measure' ? { opacity: 0.45, pointerEvents: 'none' } : {}}>
-          <span className="chip-label">Step Width</span>
-          <DimensionDraftInput className="field-input" units={units} value={stairConfig.width} onCommit={commitDim('width')} />
+        <div className="stair-kv-row">
+          <span className="chip-label" style={projectMode === 'measure' ? { opacity: 0.45 } : {}}>Step Width</span>
+          <DimensionDraftInput className="field-input" style={projectMode === 'measure' ? { opacity: 0.45, pointerEvents: 'none' } : {}} units={units} value={stairConfig.width} onCommit={commitDim('width')} />
           <button
             className={`panel-btn${(stairConfig.railingSideMode ?? 'left') === 'right' ? ' panel-btn-active' : ''}`}
             onClick={() => setStairConfig(s => ({ ...s, railingSideMode: 'right' }))}
           >Right</button>
         </div>
-        <div className="stair-kv-row" style={projectMode === 'measure' ? { opacity: 0.45, pointerEvents: 'none' } : {}}>
-          <span className="chip-label">Step Height</span>
-          <DimensionDraftInput className="field-input" units={units} value={calc.riserHeight} onCommit={v => setStairConfig(s => ({ ...s, height: v * s.steps }))} />
+        <div className="stair-kv-row">
+          <span className="chip-label" style={projectMode === 'measure' ? { opacity: 0.45 } : {}}>Step Height</span>
+          <DimensionDraftInput className="field-input" style={projectMode === 'measure' ? { opacity: 0.45, pointerEvents: 'none' } : {}} units={units} value={calc.riserHeight} onCommit={v => setStairConfig(s => ({ ...s, height: v * s.steps }))} />
           <button
             className={`panel-btn${(stairConfig.railingColorMode ?? 'color') !== 'black' ? ' panel-btn-active' : ''}`}
             onClick={() => setStairConfig(s => ({ ...s, railingColorMode: 'color' }))}
