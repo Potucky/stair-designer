@@ -4,7 +4,7 @@ const PROFILE_SIZES = (() => {
   const steps = [1, 1.5, 2, 2.5, 3, 3.5, 4];
   const sizes = [];
   for (const w of steps) {
-    for (const h of steps) sizes.push(`${w} x ${h}`);
+    for (const h of steps) sizes.push(`${w}x${h}`);
   }
   return sizes;
 })();
@@ -297,7 +297,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             onClick={() => onToggleCompactPostPlacement(1)}
           >Post 1</button>
           <DimensionDraftInput className="field-input" units={units} value={stairConfig.post1HeightIn ?? 36} onCommit={v => setStairConfig(s => ({ ...s, post1HeightIn: v }))} />
-          <select className="field-input" value={stairConfig.post1Section ?? '2 x 2'} onChange={e => setStairConfig(s => ({ ...s, post1Section: e.target.value }))}>
+          <select className="field-input" value={stairConfig.post1Section ?? '2x2'} onChange={e => setStairConfig(s => ({ ...s, post1Section: e.target.value }))}>
             {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
           </select>
           <select className="field-input" value={stairConfig.post1Thickness ?? '1.8'} onChange={e => setStairConfig(s => ({ ...s, post1Thickness: e.target.value }))}>
@@ -315,7 +315,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             onClick={() => onToggleCompactPostPlacement(2)}
           >Post 2</button>
           <DimensionDraftInput className="field-input" units={units} value={stairConfig.post2HeightIn ?? 36} onCommit={v => setStairConfig(s => ({ ...s, post2HeightIn: v }))} />
-          <select className="field-input" value={stairConfig.post2Section ?? '2 x 2'} onChange={e => setStairConfig(s => ({ ...s, post2Section: e.target.value }))}>
+          <select className="field-input" value={stairConfig.post2Section ?? '2x2'} onChange={e => setStairConfig(s => ({ ...s, post2Section: e.target.value }))}>
             {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
           </select>
           <select className="field-input" value={stairConfig.post2Thickness ?? '1.8'} onChange={e => setStairConfig(s => ({ ...s, post2Thickness: e.target.value }))}>
@@ -332,7 +332,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             onClick={() => setStairConfig(s => ({ ...s, compactTopHandrailEnabled: !(s.compactTopHandrailEnabled ?? true) }))}
           >Top Handrail</button>
           <div className="rc-empty-cell" />
-          <select className="field-input" value={stairConfig.handrailSection ?? '2 x 1'} onChange={e => setStairConfig(s => ({ ...s, handrailSection: e.target.value }))}>
+          <select className="field-input" value={stairConfig.handrailSection ?? '2x1'} onChange={e => setStairConfig(s => ({ ...s, handrailSection: e.target.value }))}>
             {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
           </select>
           <select className="field-input" value={stairConfig.handrailThickness ?? '1.8'} onChange={e => setStairConfig(s => ({ ...s, handrailThickness: e.target.value }))}>
@@ -346,7 +346,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             onClick={() => setStairConfig(s => ({ ...s, compactBottomChannelEnabled: !(s.compactBottomChannelEnabled ?? true) }))}
           >Bottom Channel</button>
           <div className="rc-empty-cell" />
-          <select className="field-input" value={stairConfig.bottomChannelSection ?? '2 x 1'} onChange={e => setStairConfig(s => ({ ...s, bottomChannelSection: e.target.value }))}>
+          <select className="field-input" value={stairConfig.bottomChannelSection ?? '2x1'} onChange={e => setStairConfig(s => ({ ...s, bottomChannelSection: e.target.value }))}>
             {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
           </select>
           <select className="field-input" value={stairConfig.bottomChannelThickness ?? '1.8'} onChange={e => setStairConfig(s => ({ ...s, bottomChannelThickness: e.target.value }))}>
@@ -360,7 +360,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             onClick={() => setStairConfig(s => ({ ...s, infillType: 'vertical' }))}
           >Picket Vertical</button>
           <div className="rc-empty-cell" />
-          <select className="field-input" value={stairConfig.picketVerticalSection ?? '1 x 1'} onChange={e => setStairConfig(s => ({ ...s, picketVerticalSection: e.target.value }))}>
+          <select className="field-input" value={stairConfig.picketVerticalSection ?? '1x1'} onChange={e => setStairConfig(s => ({ ...s, picketVerticalSection: e.target.value }))}>
             {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
           </select>
           <select className="field-input" value={stairConfig.picketVerticalThickness ?? '1.8'} onChange={e => setStairConfig(s => ({ ...s, picketVerticalThickness: e.target.value }))}>
@@ -374,7 +374,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             onClick={() => setStairConfig(s => ({ ...s, infillType: 'horizontalPicket' }))}
           >Picket Horizontal</button>
           <div className="rc-empty-cell" />
-          <select className="field-input" value={stairConfig.picketHorizontalSection ?? '1 x 1'} onChange={e => setStairConfig(s => ({ ...s, picketHorizontalSection: e.target.value }))}>
+          <select className="field-input" value={stairConfig.picketHorizontalSection ?? '1x1'} onChange={e => setStairConfig(s => ({ ...s, picketHorizontalSection: e.target.value }))}>
             {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
           </select>
           <select className="field-input" value={stairConfig.picketHorizontalThickness ?? '1.8'} onChange={e => setStairConfig(s => ({ ...s, picketHorizontalThickness: e.target.value }))}>

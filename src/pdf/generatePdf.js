@@ -68,6 +68,12 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     return p1 && p2 ? { p1, p2 } : null;
   };
 
+  const resolvePostHeight = (post) => {
+    if (post.compactSlot === 'post1' && stairConfig.post1HeightIn != null) return Number(stairConfig.post1HeightIn);
+    if (post.compactSlot === 'post2' && stairConfig.post2HeightIn != null) return Number(stairConfig.post2HeightIn);
+    return Number(post.heightIn);
+  };
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   const setStyle = (size, style = 'normal', color = '#000000') => {
@@ -440,7 +446,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       }
 
       const pxX   = mx(ox + (Number(post.xIn) + Number(post.offsetXIn || 0)) * sc);
-      const postH = Number(post.heightIn) * sc;
+      const postH = resolvePostHeight(post) * sc;
       if (postH <= 0) return;
 
       const topY = baseY - postH;
@@ -527,10 +533,12 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
     if (compact && (compactTopEnabled || compactBottomEnabled || infillType !== 'none')) {
       const { p1, p2 } = compact;
-      const p1Base = getManualPostBase(p1, calc.treadPositions, calc.riserHeight, stairConfig.run);
-      const p2Base = getManualPostBase(p2, calc.treadPositions, calc.riserHeight, stairConfig.run);
-      const p1Top = getManualPostTop(p1, calc.treadPositions, calc.riserHeight, stairConfig.run);
-      const p2Top = getManualPostTop(p2, calc.treadPositions, calc.riserHeight, stairConfig.run);
+      const p1Resolved = { ...p1, heightIn: resolvePostHeight(p1) };
+      const p2Resolved = { ...p2, heightIn: resolvePostHeight(p2) };
+      const p1Base = getManualPostBase(p1Resolved, calc.treadPositions, calc.riserHeight, stairConfig.run);
+      const p2Base = getManualPostBase(p2Resolved, calc.treadPositions, calc.riserHeight, stairConfig.run);
+      const p1Top = getManualPostTop(p1Resolved, calc.treadPositions, calc.riserHeight, stairConfig.run);
+      const p2Top = getManualPostTop(p2Resolved, calc.treadPositions, calc.riserHeight, stairConfig.run);
 
       if (p1Base && p2Base && p1Top && p2Top) {
         const sxToPdf = mirrored
@@ -690,7 +698,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
       }
 
       const pxX   = mx(ox + (Number(post.xIn) + Number(post.offsetXIn || 0)) * sc);
-      const postH = Number(post.heightIn) * sc;
+      const postH = resolvePostHeight(post) * sc;
       if (postH <= 0) return;
 
       const topY = baseY - postH;
@@ -1048,7 +1056,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
           mount   = post.mount || 'top';
           side    = post.side  || 'center';
         }
-        const ht      = fmtDim(Number(post.heightIn), 2);
+        const ht      = fmtDim(resolvePostHeight(post), 2);
         const runPos  = fmtDim(Number(post.xIn) + Number(post.offsetXIn || 0), 2);
 
         doc.setFontSize(8);

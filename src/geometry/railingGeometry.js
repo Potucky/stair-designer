@@ -3,15 +3,29 @@ import { TUBE_PROFILES } from '../data/materialProfiles.js';
 export const INtoU = 0.5;       // scene units per inch
 export const TREAD_THICK = 0.3; // visual tread thickness in scene units
 
+// Normalizes any section/profile string to canonical compact lowercase form (e.g. "2x2").
+// Accepts "2 x 2", "2X2", "2 X 2", "2x2", "1.5 x 2", etc.
+// Falls back to `fallback` if the input is missing or unparseable.
+export function normalizeSection(section, fallback = '2x2') {
+  if (!section) return fallback;
+  const s = String(section).trim().toLowerCase().replace(/\s*x\s*/g, 'x');
+  if (/^\d+(\.\d+)?x\d+(\.\d+)?$/.test(s)) return s;
+  return fallback;
+}
+
 export function getTubeProfile(tubeSize) {
-  return TUBE_PROFILES[tubeSize] || TUBE_PROFILES['2x2'];
+  const key = normalizeSection(tubeSize, '2x2');
+  return TUBE_PROFILES[key] || TUBE_PROFILES['2x2'];
 }
 
 // Resolves the section label for a manual post, respecting compact-slot overrides.
+// Always returns a normalized canonical section string (e.g. "2x2").
 export function resolveManualPostSection(post, post1Section, post2Section, fallbackTubeSize) {
-  if (post.compactSlot === 'post1') return post1Section ?? post.section ?? fallbackTubeSize;
-  if (post.compactSlot === 'post2') return post2Section ?? post.section ?? fallbackTubeSize;
-  return post.section ?? fallbackTubeSize;
+  let section;
+  if (post.compactSlot === 'post1') section = post1Section ?? post.section ?? fallbackTubeSize;
+  else if (post.compactSlot === 'post2') section = post2Section ?? post.section ?? fallbackTubeSize;
+  else section = post.section ?? fallbackTubeSize;
+  return normalizeSection(section, fallbackTubeSize ?? '2x2');
 }
 
 // Base center of a post in scene units (world coords: X offset by -run*INtoU/2)

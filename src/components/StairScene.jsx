@@ -1555,7 +1555,7 @@ function PdfModePanel({ mode, pdfDraft, activeTool, onAddPdfDimension, onAddPdfT
 }
 
 export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation, capture3dRef = null, activePdfDraftMode = null, pdfDrafts = null, onAddPdfDimension, onAddPdfText, onDeleteLastPdfAnnotation, onExitPdfMode, selectedPdfDraftDimensionId = null, onSelectPdfDraftDimension }) {
-  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, topLandingWidth, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, railingSideMode, post1Section, post2Section, compactTopHandrailEnabled, compactBottomChannelEnabled } = stairConfig;
+  const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingEnabled, bottomLandingLength, topLandingEnabled, topLandingLength, topLandingWidth, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, railingSideMode, post1Section, post2Section, post1HeightIn, post2HeightIn, compactTopHandrailEnabled, compactBottomChannelEnabled } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'color';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
 
@@ -1563,10 +1563,20 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
   // Offset by half the post's Z-section so the OUTER FACE is flush with the stair edge, not the center.
   // This is a render-time transform — stored post data is not mutated.
   const effectivePosts = useMemo(() => {
-    if (!railingSideMode) return manualPosts || [];
+    // Resolve compact post heights live from stairConfig so UI changes take effect immediately.
+    const resolveHeight = (post) => {
+      if (post.compactSlot === 'post1' && post1HeightIn != null) return Number(post1HeightIn);
+      if (post.compactSlot === 'post2' && post2HeightIn != null) return Number(post2HeightIn);
+      return post.heightIn;
+    };
+    const posts = (manualPosts || []).map(post => {
+      const h = resolveHeight(post);
+      return h !== post.heightIn ? { ...post, heightIn: h } : post;
+    });
+    if (!railingSideMode) return posts;
     const isRight = railingSideMode === 'right';
     const profile = getTubeProfile(tubeSize);
-    return (manualPosts || []).map(post => {
+    return posts.map(post => {
       const resolvedSection = resolveManualPostSection(post, post1Section, post2Section, tubeSize);
       // secD is the Z extent of the post (second number in "W x H" section string)
       const { h: secD } = parseSectionIn(resolvedSection, profile.width, profile.width);
@@ -1575,7 +1585,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
       const zIn = isRight ? width / 2 - postHalfZIn : -width / 2 + postHalfZIn;
       return { ...post, zIn };
     });
-  }, [manualPosts, railingSideMode, width, tubeSize, post1Section, post2Section]);
+  }, [manualPosts, railingSideMode, width, tubeSize, post1Section, post2Section, post1HeightIn, post2HeightIn]);
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
   // In PDF mode, disable 3D dim/text tools so PDF overlay handles annotation capture instead

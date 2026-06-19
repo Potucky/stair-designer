@@ -16,7 +16,9 @@ import { printViewportPdf } from './pdf/printViewport.js';
 import { saveProject } from './lib/saveProject.js';
 import { loadProject } from './lib/loadProject.js';
 import { DEFAULT_STAIR, DEFAULT_PROJECT } from './constants/defaults.js';
-import { normalizeRailEndpoints } from './geometry/railingGeometry.js';
+import { normalizeRailEndpoints, normalizeSection } from './geometry/railingGeometry.js';
+
+const SECTION_KEYS = ['post1Section', 'post2Section', 'handrailSection', 'bottomChannelSection', 'picketVerticalSection', 'picketHorizontalSection'];
 
 const LS_KEY = 'stairDesigner_autosave';
 
@@ -39,9 +41,12 @@ export default function App() {
   });
   const [stairConfig, setStairConfig] = useState(() => {
     const d = loadInitialDraft();
-    const cfg = d?.stairConfig ? { ...DEFAULT_STAIR, ...d.stairConfig } : DEFAULT_STAIR;
+    const cfg = d?.stairConfig ? { ...DEFAULT_STAIR, ...d.stairConfig } : { ...DEFAULT_STAIR };
     cfg.bottomLandingEnabled = true;
     cfg.topLandingEnabled = true;
+    for (const key of SECTION_KEYS) {
+      if (cfg[key]) cfg[key] = normalizeSection(cfg[key], DEFAULT_STAIR[key]);
+    }
     return cfg;
   });
   const [units, setUnits] = useState(() => {
@@ -287,9 +292,11 @@ export default function App() {
       const height = compactPostTarget === 1
         ? (stairConfig.post1HeightIn ?? stairConfig.handrailHeight ?? 36)
         : (stairConfig.post2HeightIn ?? stairConfig.handrailHeight ?? 36);
-      const section = compactPostTarget === 1
-        ? (stairConfig.post1Section ?? '2 x 2')
-        : (stairConfig.post2Section ?? '2 x 2');
+      const section = normalizeSection(
+        compactPostTarget === 1
+          ? (stairConfig.post1Section ?? '2x2')
+          : (stairConfig.post2Section ?? '2x2')
+      );
       const thickness = compactPostTarget === 1
         ? (stairConfig.post1Thickness ?? '1.8')
         : (stairConfig.post2Thickness ?? '1.8');
@@ -541,7 +548,11 @@ export default function App() {
     const sc = v.stair_config ?? {};
     skipAutosaveRestoreRef.current = true;
     setProject({ name: p.project_name ?? '', client: p.client_name ?? '' });
-    setStairConfig({ ...DEFAULT_STAIR, ...sc });
+    const normalizedSc = { ...DEFAULT_STAIR, ...sc };
+    for (const key of SECTION_KEYS) {
+      if (normalizedSc[key]) normalizedSc[key] = normalizeSection(normalizedSc[key], DEFAULT_STAIR[key]);
+    }
+    setStairConfig(normalizedSc);
     setManualDimensions(Array.isArray(sc.manualDimensions) ? sc.manualDimensions : []);
     setManualTextAnnotations(Array.isArray(sc.manualTextAnnotations) ? sc.manualTextAnnotations : []);
     setManualPosts(Array.isArray(v.manual_posts) ? v.manual_posts : []);

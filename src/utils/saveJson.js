@@ -1,4 +1,7 @@
 import { DEFAULT_STAIR } from '../constants/defaults.js';
+import { normalizeSection } from '../geometry/railingGeometry.js';
+
+const SECTION_KEYS = ['post1Section', 'post2Section', 'handrailSection', 'bottomChannelSection', 'picketVerticalSection', 'picketHorizontalSection'];
 
 const NUMERIC_KEYS = new Set([
   'height', 'run', 'width', 'handrailHeight', 'pinOpening', 'postSpacing', 'manualRailingRun', 'bottomLandingLength', 'topLandingLength', 'topLandingWidth', 'bottomRailHeight', 'railLowerExtensionIn', 'railUpperExtensionIn',
@@ -130,6 +133,9 @@ export function openProjectJson(onLoad, onError) {
               .filter(isValidManualTopRail)
               .map(r => (r.profile ? r : { ...r, profile: '2x1' }))
           : [];
+        for (const key of SECTION_KEYS) {
+          if (stairConfig[key]) stairConfig[key] = normalizeSection(stairConfig[key], DEFAULT_STAIR[key]);
+        }
         stairConfig.bottomLandingEnabled = true;
         stairConfig.topLandingEnabled = true;
         if (!('bottomRailEnabled' in stairConfig)) stairConfig.bottomRailEnabled = false;
