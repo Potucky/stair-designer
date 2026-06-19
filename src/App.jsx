@@ -55,13 +55,19 @@ export default function App() {
     return u === 'mm' ? 'mm' : u === 'in16' ? 'in16' : 'in8';
   });
   const [projectMode, setProjectMode] = useState('build');
-  const [iMeasureConfig, setIMeasureConfig] = useState({
-    angleDeg: 38,
-    postCenterDistanceIn: 72,
-    overallHeightIn: 36,
-    bcLowP1In: 5,
-    bcLowP2In: 5,
-    bcHeightIn: 5,
+  const [iMeasureConfig, setIMeasureConfig] = useState(() => {
+    const d = loadInitialDraft();
+    return {
+      angleDeg: 38,
+      postCenterDistanceIn: 72,
+      overallHeightIn: 36,
+      bcLowP1In: 5,
+      bcLowP2In: 5,
+      bcHeightIn: 5,
+      stepSizeRangeText: '1-6',
+      stepSizeDistanceIn: 0,
+      ...(d?.iMeasureConfig ?? {}),
+    };
   });
   const [activeTool, setActiveTool] = useState('select');
   const [view, setView] = useState('3d');
@@ -209,6 +215,7 @@ export default function App() {
           topRailPathMode,
           currentProjectId,
           pdfDrafts,
+          iMeasureConfig,
         };
         localStorage.setItem(LS_KEY, JSON.stringify(snapshot));
       } catch {
@@ -216,7 +223,7 @@ export default function App() {
       }
     }, 500);
     return () => clearTimeout(id);
-  }, [project, stairConfig, units, manualDimensions, manualTextAnnotations, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, currentProjectId, pdfDrafts]);
+  }, [project, stairConfig, units, manualDimensions, manualTextAnnotations, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, currentProjectId, pdfDrafts, iMeasureConfig]);
 
   const calc = useMemo(() => calcStair(stairConfig), [stairConfig]);
 

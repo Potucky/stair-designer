@@ -84,6 +84,61 @@ function NumericDraftInput({ value, onCommit, className, style, inputMode = 'dec
   );
 }
 
+function StepRangeChipInput({ value, onCommit }) {
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState('');
+  const cancelRef = useRef(false);
+  const valueAtFocusRef = useRef(null);
+
+  const parseRange = (raw) => {
+    const trimmed = raw.trim().replace(/\s+to\s+/i, '-').replace(/\s/g, '');
+    const m = trimmed.match(/^(\d+)-(\d+)$/);
+    if (!m) return null;
+    let start = Math.max(1, parseInt(m[1], 10));
+    let end = Math.min(99, parseInt(m[2], 10));
+    if (end < 2) end = 2;
+    if (start >= end) return null;
+    return `${start}-${end}`;
+  };
+
+  const handleFocus = (e) => {
+    cancelRef.current = false;
+    valueAtFocusRef.current = value;
+    setDraft(value);
+    setFocused(true);
+    requestAnimationFrame(() => { e.target.select(); });
+  };
+
+  const handleBlur = () => {
+    if (!cancelRef.current) {
+      const result = parseRange(draft);
+      onCommit(result ?? valueAtFocusRef.current ?? '1-6');
+    } else {
+      onCommit(valueAtFocusRef.current ?? '1-6');
+    }
+    cancelRef.current = false;
+    setFocused(false);
+    setDraft('');
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') e.target.blur();
+    else if (e.key === 'Escape') { cancelRef.current = true; e.target.blur(); }
+  };
+
+  return (
+    <input
+      className="chip-label step-range-chip-input"
+      type="text"
+      value={focused ? draft : `Step ${value}`}
+      onChange={e => setDraft(e.target.value)}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+    />
+  );
+}
+
 // Editable field for inch/mm dimension values. Displays formatted fractions or mm.
 // Parses user input on blur/Enter; does not reformat on every keystroke.
 function DimensionDraftInput({ value, onCommit, units, className, style, allowZero = false }) {
@@ -268,7 +323,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               onCommit={commitIMeasure('postCenterDistanceIn')}
             />
 
-            {/* Row 2: Height | empty */}
+            {/* Row 2: Height | Step Range chip | Step Distance */}
             <span className="chip-label">Height</span>
             <DimensionDraftInput
               className="field-input"
@@ -276,8 +331,17 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               value={iMeasureConfig?.overallHeightIn ?? 36}
               onCommit={commitIMeasure('overallHeightIn')}
             />
-            <span className="chip-label" style={{ opacity: 0.25 }}>&nbsp;</span>
-            <span className="field-input" style={{ opacity: 0.25 }}>&nbsp;</span>
+            <StepRangeChipInput
+              value={iMeasureConfig?.stepSizeRangeText ?? '1-6'}
+              onCommit={commitIMeasure('stepSizeRangeText')}
+            />
+            <DimensionDraftInput
+              className="field-input"
+              units={units}
+              allowZero={true}
+              value={iMeasureConfig?.stepSizeDistanceIn ?? 0}
+              onCommit={commitIMeasure('stepSizeDistanceIn')}
+            />
 
             {/* Row 3: BC Low | BC Height */}
             <span className="chip-label">BC Low</span>
@@ -304,6 +368,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             <span className="field-input im-value-preview">
               {formatDimensionByUnit((iMeasureConfig?.postCenterDistanceIn ?? 72) * Math.sin((iMeasureConfig?.angleDeg ?? 38) * Math.PI / 180), units)}
             </span>
+
           </div>
         </section>
       )}
