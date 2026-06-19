@@ -63,6 +63,29 @@ export function getManualPostTop(post, treadPositions, riserHeight, run) {
   return { x: base.x, y: base.y + post.heightIn * INtoU, z: base.z };
 }
 
+// Returns true if the post occupies a compact railing slot (post1 or post2).
+export function isCompactPost(post) {
+  return post?.compactSlot === 'post1' || post?.compactSlot === 'post2';
+}
+
+// Finds a post by id in the given array; returns null if not found.
+export function getPostById(posts, id) {
+  return posts.find(p => p.id === id) ?? null;
+}
+
+// Returns true if this rail connects exactly compact Post 1 and compact Post 2,
+// making it a legacy duplicate of the compact railing assembly.
+// Works with both old { startPostId, endPostId } and new { startEndpoint, endEndpoint } formats.
+export function isLegacyCompactDuplicateRail(rail, posts) {
+  const r = normalizeRailEndpoints(rail);
+  if (r.startEndpoint?.anchorType !== 'post' || r.endEndpoint?.anchorType !== 'post') return false;
+  const startPost = getPostById(posts, r.startEndpoint.postId);
+  const endPost = getPostById(posts, r.endEndpoint.postId);
+  if (!startPost || !endPost) return false;
+  const slots = new Set([startPost.compactSlot, endPost.compactSlot]);
+  return slots.has('post1') && slots.has('post2');
+}
+
 // Normalize an old-format rail { startPostId, endPostId } to the new endpoint shape.
 // Idempotent: returns rail unchanged if endpoints already exist.
 export function normalizeRailEndpoints(rail) {

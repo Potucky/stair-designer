@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getTubeProfile, getManualPostBase, getManualPostTop, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, calcInfillCount, INtoU, TREAD_THICK, normalizeRailEndpoints, resolveManualPostSection } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualPostBase, getManualPostTop, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, calcInfillCount, INtoU, TREAD_THICK, normalizeRailEndpoints, resolveManualPostSection, isLegacyCompactDuplicateRail } from '../geometry/railingGeometry.js';
 import { formatInchesFraction } from '../utils/units.js';
 
 function parseSectionIn(section, defaultW, defaultH) {
@@ -67,6 +67,11 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     const p2 = effectiveManualPosts.find(p => p.compactSlot === 'post2') ?? effectiveManualPosts[1];
     return p1 && p2 ? { p1, p2 } : null;
   };
+
+  // Legacy manual rails that connect compact Post 1 and Post 2 are excluded from all
+  // manual rail drawing paths — the compact assembly already renders those.
+  const filteredManualTopRails = (Array.isArray(manualTopRails) ? manualTopRails : [])
+    .filter(r => !isLegacyCompactDuplicateRail(r, effectiveManualPosts));
 
   const resolvePostHeight = (post) => {
     if (post.compactSlot === 'post1' && stairConfig.post1HeightIn != null) return Number(stairConfig.post1HeightIn);
@@ -360,7 +365,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
   if (stairConfig.bottomRailEnabled) {
     const bottomRailHeight = stairConfig.bottomRailHeight ?? 1;
     const brSegs = getManualBottomRailSegments(
-      Array.isArray(manualTopRails) ? manualTopRails : [],
+      filteredManualTopRails,
       effectiveManualPosts,
       calc.treadPositions,
       calc.riserHeight,
@@ -402,7 +407,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
       effectiveMiddleRailHeights.forEach((height) => {
         const mrSegs = getManualMiddleRailSegments(
-          Array.isArray(manualTopRails) ? manualTopRails : [],
+          filteredManualTopRails,
           effectiveManualPosts,
           calc.treadPositions,
           calc.riserHeight,
@@ -473,7 +478,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     const overlapPts = 0.25 * sc;
 
     const railSegs = resolveTopRailSegments(
-      Array.isArray(manualTopRails) ? manualTopRails : [],
+      filteredManualTopRails,
       effectiveManualPosts,
       calc.treadPositions,
       calc.riserHeight,
@@ -487,7 +492,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     const postW = Math.max(3, postProfile.width * sc);
 
     // Open-end flags used for post-face extension on straight segments only
-    const normRails = (Array.isArray(manualTopRails) ? manualTopRails : []).map(normalizeRailEndpoints);
+    const normRails = filteredManualTopRails.map(normalizeRailEndpoints);
     const endPostIds   = new Set(normRails.filter(r => r.endEndpoint.anchorType   === 'post').map(r => r.endEndpoint.postId));
     const startPostIds = new Set(normRails.filter(r => r.startEndpoint.anchorType === 'post').map(r => r.startEndpoint.postId));
     const isOpenStart = (ep) => ep.anchorType !== 'post' || !endPostIds.has(ep.postId);
@@ -994,7 +999,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
     y = kv('Manual Posts:', String(validManualPosts.length), M, y);
   }
   const resolvedRailSegs = resolveTopRailSegments(
-    Array.isArray(manualTopRails) ? manualTopRails : [],
+    filteredManualTopRails,
     validManualPosts,
     calc.treadPositions,
     calc.riserHeight,

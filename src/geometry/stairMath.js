@@ -1,4 +1,4 @@
-import { resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, resolveManualPostSection } from './railingGeometry.js';
+import { resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, resolveManualPostSection, isLegacyCompactDuplicateRail } from './railingGeometry.js';
 
 export function calcStair({ height, run, width, steps, railingEnabled, handrailHeight, postSpacing, railingRunMode = 'matchStair', manualRailingRun }) {
   const riserHeight = steps > 0 ? height / steps : 0;
@@ -119,29 +119,32 @@ export function buildMaterialList({ width, steps, stringerLength, tubeSize, post
     }
   }
 
-  if (manualTopRails.length > 0) {
-    const segments = resolveTopRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn, topRailPathMode);
+  // Exclude legacy manual rails that duplicate the compact Post 1 → Post 2 pair.
+  const filteredManualTopRails = manualTopRails.filter(r => !isLegacyCompactDuplicateRail(r, manualPosts));
+
+  if (filteredManualTopRails.length > 0) {
+    const segments = resolveTopRailSegments(filteredManualTopRails, manualPosts, treadPositions, riserHeight, run, railLowerExtensionIn, railUpperExtensionIn, topRailPathMode);
     if (segments.length > 0) {
       const totalLen = segments.reduce((s, seg) => s + seg.lengthIn, 0);
       items.push({ part: 'Top Rail', qty: segments.length, lengthIn: totalLen.toFixed(2), profile: '2x1 Rect Tube', note: 'Total length' });
     }
   }
 
-  if (bottomRailEnabled && manualTopRails.length > 0) {
-    const segments = getManualBottomRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight, 0, 0);
+  if (bottomRailEnabled && filteredManualTopRails.length > 0) {
+    const segments = getManualBottomRailSegments(filteredManualTopRails, manualPosts, treadPositions, riserHeight, run, bottomRailHeight, 0, 0);
     if (segments.length > 0) {
       const totalLen = segments.reduce((s, seg) => s + seg.lengthIn, 0);
       items.push({ part: 'Bottom Rail', qty: segments.length, lengthIn: totalLen.toFixed(2), profile: '2x1 Rect Tube', note: 'Total length' });
     }
   }
 
-  if (middleRailEnabled && manualTopRails.length > 0) {
+  if (middleRailEnabled && filteredManualTopRails.length > 0) {
     const effectiveMiddleRailHeights = (Array.isArray(middleRailHeights) && middleRailHeights.length > 0)
       ? middleRailHeights
       : (middleRailHeight != null ? [middleRailHeight] : []);
     if (effectiveMiddleRailHeights.length > 0) {
       const allSegments = effectiveMiddleRailHeights.flatMap(h =>
-        getManualMiddleRailSegments(manualTopRails, manualPosts, treadPositions, riserHeight, run, h, 0, 0)
+        getManualMiddleRailSegments(filteredManualTopRails, manualPosts, treadPositions, riserHeight, run, h, 0, 0)
       );
       if (allSegments.length > 0) {
         const totalLen = allSegments.reduce((s, seg) => s + seg.lengthIn, 0);

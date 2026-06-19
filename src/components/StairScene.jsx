@@ -3,7 +3,7 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { fmtUnit } from '../utils/format.js';
-import { getTubeProfile, getManualPostBase, getManualPostTop, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, calcInfillCount, resolveManualPostSection, INtoU as INtoU_GEO } from '../geometry/railingGeometry.js';
+import { getTubeProfile, getManualPostBase, getManualPostTop, resolveTopRailSegments, getManualBottomRailSegments, getManualMiddleRailSegments, calcInfillCount, resolveManualPostSection, isLegacyCompactDuplicateRail, INtoU as INtoU_GEO } from '../geometry/railingGeometry.js';
 
 // Stair center Y in scene units for default config: 108in * 0.5 (INtoU) / 2 = 27
 const SCENE_CENTER_Y = 27;
@@ -1586,6 +1586,13 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
       return { ...post, zIn };
     });
   }, [manualPosts, railingSideMode, width, tubeSize, post1Section, post2Section, post1HeightIn, post2HeightIn]);
+
+  // Exclude legacy manual rails that duplicate the compact Post 1 → Post 2 pair.
+  const filteredManualTopRails = useMemo(
+    () => (manualTopRails || []).filter(r => !isLegacyCompactDuplicateRail(r, effectivePosts)),
+    [manualTopRails, effectivePosts]
+  );
+
   const orbitRef = useRef();
   const isMeasure = activeTool === 'measure';
   // In PDF mode, disable 3D dim/text tools so PDF overlay handles annotation capture instead
@@ -1664,7 +1671,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           />
 
           <ManualTopRailsRenderer
-            manualTopRails={manualTopRails || []}
+            manualTopRails={filteredManualTopRails}
             manualPosts={effectivePosts}
             treadPositions={calc.treadPositions}
             riserHeight={calc.riserHeight}
@@ -1678,7 +1685,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
 
           {bottomRailEnabled && (
             <ManualBottomRailsRenderer
-              manualTopRails={manualTopRails || []}
+              manualTopRails={filteredManualTopRails}
               manualPosts={effectivePosts}
               treadPositions={calc.treadPositions}
               riserHeight={calc.riserHeight}
@@ -1691,7 +1698,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
 
           {middleRailEnabled && effectiveMiddleRailHeights.length > 0 && (
             <ManualMiddleRailsRenderer
-              manualTopRails={manualTopRails || []}
+              manualTopRails={filteredManualTopRails}
               manualPosts={effectivePosts}
               treadPositions={calc.treadPositions}
               riserHeight={calc.riserHeight}
