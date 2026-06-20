@@ -277,6 +277,15 @@ html, body, #root {
   margin-bottom: 4px;
 }
 
+/* ─── Project / Client label alignment ───────────────────────────────── */
+.project-label-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+
 /* ─── Stair Setup Aligned Rows (4 top rows) ─────────────────────────── */
 .stair-kv-row {
   display: grid;
