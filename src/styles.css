@@ -343,7 +343,7 @@ html, body, #root {
   cursor: text;
   -webkit-user-select: text;
   user-select: text;
-  text-align: center;
+  text-align: left;
   color: #fff;
   caret-color: #fff;
   min-width: 0;
@@ -679,16 +679,17 @@ html, body, #root {
 /* ─── Railing Component Grid ───────────────────────────────────────── */
 .rc-comp-row {
   display: grid;
-  grid-template-columns: 90px 34px 56px 54px;
-  gap: 2px;
+  grid-template-columns: 100px 1fr 1fr 1fr;
+  gap: 5px;
   align-items: center;
   margin-bottom: 4px;
 }
 .rc-comp-row .chip-label,
 .rc-comp-row .chip-label-btn {
-  font-size: 9px;
-  padding: 2px 5px;
+  font-size: 10px;
   overflow: hidden;
+  text-align: left;
+  justify-content: flex-start;
 }
 .rc-comp-row .field-input {
   font-size: 10px;
@@ -697,15 +698,15 @@ html, body, #root {
 .rc-comp-row-ext {
   display: grid;
   grid-template-columns: 1fr 56px 1fr 56px;
-  gap: 2px;
+  gap: 5px;
   align-items: center;
   margin-bottom: 4px;
 }
 .rc-comp-row-ext .chip-label {
-  font-size: 9px;
-  padding: 2px 5px;
+  font-size: 10px;
   overflow: hidden;
   white-space: nowrap;
+  text-align: left;
 }
 .rc-comp-row-ext .field-input {
   font-size: 10px;

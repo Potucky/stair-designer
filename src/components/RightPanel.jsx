@@ -304,8 +304,6 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
 
       {projectMode === 'measure' && (
         <section className="panel-section">
-          <h3 className="section-title">iMeasure Reference</h3>
-
           <div className="im-grid">
             {/* Row 1: Angle | Post C-C */}
             <span className="chip-label">Angle</span>
@@ -489,7 +487,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           <button
             className={`chip-label chip-label-btn${(stairConfig.infillType ?? 'none') === 'vertical' ? ' chip-label-active' : ''}`}
             onClick={() => setStairConfig(s => ({ ...s, infillType: 'vertical' }))}
-          >Picket Vertical</button>
+          >Picket Vertica</button>
           <div className="rc-empty-cell" />
           <select className="field-input" value={stairConfig.picketVerticalSection ?? '1x1'} onChange={e => setStairConfig(s => ({ ...s, picketVerticalSection: e.target.value }))}>
             {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
@@ -503,7 +501,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           <button
             className={`chip-label chip-label-btn${(stairConfig.infillType ?? 'none') === 'horizontalPicket' ? ' chip-label-active' : ''}`}
             onClick={() => setStairConfig(s => ({ ...s, infillType: 'horizontalPicket' }))}
-          >Picket Horizontal</button>
+          >Picket Horizon</button>
           <div className="rc-empty-cell" />
           <select className="field-input" value={stairConfig.picketHorizontalSection ?? '1x1'} onChange={e => setStairConfig(s => ({ ...s, picketHorizontalSection: e.target.value }))}>
             {PROFILE_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
@@ -517,7 +515,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           <button
             className={`chip-label chip-label-btn${(stairConfig.infillType ?? 'none') === 'horizontalCable' ? ' chip-label-active' : ''}`}
             onClick={() => setStairConfig(s => ({ ...s, infillType: 'horizontalCable' }))}
-          >Cable Horizontal</button>
+          >Cable Horizon</button>
           <div className="rc-empty-cell" />
           <select className="field-input" value={stairConfig.cableSize ?? '1/8'} onChange={e => setStairConfig(s => ({ ...s, cableSize: e.target.value }))}>
             <option value="1/8">1/8</option>
