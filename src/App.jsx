@@ -20,6 +20,26 @@ import { normalizeRailEndpoints, normalizeSection, resolveCompactPostAnchors } f
 
 const SECTION_KEYS = ['post1Section', 'post2Section', 'handrailSection', 'bottomChannelSection', 'picketVerticalSection', 'picketHorizontalSection'];
 
+const STAIR_CHECK_KEYS = [
+  'height', 'run', 'width', 'steps', 'tubeSize',
+  'railingEnabled', 'handrailHeight', 'pinOpening', 'postSpacing',
+  'railingRunMode', 'manualRailingRun',
+  'bottomLandingEnabled', 'bottomLandingLength',
+  'topLandingEnabled', 'topLandingLength', 'topLandingWidth',
+  'bottomRailEnabled', 'bottomRailHeight', 'middleRailEnabled',
+  'railingColorMode', 'railingSideMode',
+  'railLowerExtensionIn', 'railUpperExtensionIn',
+  'post1HeightIn', 'post1Section', 'post1Thickness',
+  'post2HeightIn', 'post2Section', 'post2Thickness',
+  'compactTopHandrailEnabled', 'handrailSection',
+  'compactBottomChannelEnabled', 'bottomChannelSection',
+  'infillType', 'cableSize', 'cableFinish',
+  'picketVerticalSection', 'picketVerticalThickness',
+  'picketHorizontalSection', 'picketHorizontalThickness',
+  'verticalPicketThicknessIn', 'horizontalPicketThicknessIn',
+  'horizontalCableDiameterIn',
+];
+
 const LS_KEY = 'stairDesigner_autosave';
 
 let _cachedDraft;
@@ -473,8 +493,23 @@ export default function App() {
   const handleResetStructureOffset = () => { setStructureOffsetXIn(0); setStructureOffsetZIn(0); };
 
   const handleNewProject = () => {
-    const hasObjects = manualPosts.length > 0 || manualTopRails.length > 0 || manualDimensions.length > 0 || manualTextAnnotations.length > 0;
-    if (hasObjects && !window.confirm('Start a new project? Current unsaved changes will be cleared.')) return;
+    const hasMeaningfulState = () => {
+      if (project.name !== DEFAULT_PROJECT.name) return true;
+      if (project.client !== DEFAULT_PROJECT.client) return true;
+      for (const key of STAIR_CHECK_KEYS) {
+        if (stairConfig[key] !== DEFAULT_STAIR[key]) return true;
+      }
+      if (manualPosts.length > 0) return true;
+      if (manualTopRails.length > 0) return true;
+      if (manualDimensions.length > 0) return true;
+      if (manualTextAnnotations.length > 0) return true;
+      if (structureOffsetXIn !== 0 || structureOffsetZIn !== 0) return true;
+      if (pdfDrafts.side.dimensions.length > 0 || pdfDrafts.side.texts.length > 0) return true;
+      if (pdfDrafts.threeD.dimensions.length > 0 || pdfDrafts.threeD.texts.length > 0 || pdfDrafts.threeD.backgroundImage !== null) return true;
+      if (currentProjectId !== null) return true;
+      return false;
+    };
+    if (hasMeaningfulState() && !window.confirm('Start a new project? Current unsaved changes will be cleared.')) return;
     localStorage.removeItem(LS_KEY);
     setProject(DEFAULT_PROJECT);
     setStairConfig({ ...DEFAULT_STAIR, steps: 6, bottomLandingEnabled: true, topLandingEnabled: true, topLandingWidth: DEFAULT_STAIR.width });
@@ -487,6 +522,7 @@ export default function App() {
     setTopRailFirstPostId(null);
     setFastRailsPrevPostId(null);
     setPostPlacementMode(false);
+    setCompactPostTarget(null);
     setTopRailMode(false);
     setFastRailsMode(false);
     setTopRailPathMode('standard');
@@ -501,6 +537,18 @@ export default function App() {
     });
     setActivePdfDraftMode(null);
     setSelectedPdfDraftDimensionId(null);
+    setActiveTool('select');
+    setProjectMode('build');
+    setIMeasureConfig({
+      angleDeg: 38,
+      postCenterDistanceIn: 72,
+      overallHeightIn: 36,
+      bcLowP1In: 5,
+      bcLowP2In: 5,
+      bcHeightIn: 5,
+      stepSizeRangeText: '1-6',
+      stepSizeDistanceIn: 0,
+    });
   };
 
   const handleOpenJson = () =>
