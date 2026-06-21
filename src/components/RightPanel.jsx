@@ -308,14 +308,14 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             <NumericDraftInput
               className="field-input"
               inputMode="decimal"
-              value={iMeasureConfig?.angleDeg ?? 38}
+              value={iMeasureConfig?.angleDeg ?? 0}
               onCommit={commitIMeasure('angleDeg')}
             />
             <span className="chip-label">Post C-C</span>
             <DimensionDraftInput
               className="field-input"
               units={units}
-              value={iMeasureConfig?.postCenterDistanceIn ?? 72}
+              value={iMeasureConfig?.postCenterDistanceIn ?? 0}
               onCommit={commitIMeasure('postCenterDistanceIn')}
             />
 
@@ -328,7 +328,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               onCommit={commitIMeasure('overallHeightIn')}
             />
             <StepRangeChipInput
-              value={iMeasureConfig?.stepSizeRangeText ?? '1-6'}
+              value={iMeasureConfig?.stepSizeRangeText ?? ''}
               onCommit={commitIMeasure('stepSizeRangeText')}
             />
             <DimensionDraftInput
@@ -344,25 +344,25 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             <DimensionDraftInput
               className="field-input"
               units={units}
-              value={iMeasureConfig?.bcLowP1In ?? 5}
+              value={iMeasureConfig?.bcLowP1In ?? 0}
               onCommit={commitIMeasure('bcLowP1In')}
             />
             <span className="chip-label">BC Height</span>
             <DimensionDraftInput
               className="field-input"
               units={units}
-              value={iMeasureConfig?.bcHeightIn ?? 5}
+              value={iMeasureConfig?.bcHeightIn ?? 0}
               onCommit={commitIMeasure('bcHeightIn')}
             />
 
             {/* Row 4: Horizontal | Vertical (read-only calculated) */}
             <span className="chip-label">Horizontal</span>
             <span className="field-input im-value-preview">
-              {formatDimensionByUnit((iMeasureConfig?.postCenterDistanceIn ?? 72) * Math.cos((iMeasureConfig?.angleDeg ?? 38) * Math.PI / 180), units)}
+              {formatDimensionByUnit((iMeasureConfig?.postCenterDistanceIn ?? 0) * Math.cos((iMeasureConfig?.angleDeg ?? 0) * Math.PI / 180), units)}
             </span>
             <span className="chip-label">Vertical</span>
             <span className="field-input im-value-preview">
-              {formatDimensionByUnit((iMeasureConfig?.postCenterDistanceIn ?? 72) * Math.sin((iMeasureConfig?.angleDeg ?? 38) * Math.PI / 180), units)}
+              {formatDimensionByUnit((iMeasureConfig?.postCenterDistanceIn ?? 0) * Math.sin((iMeasureConfig?.angleDeg ?? 0) * Math.PI / 180), units)}
             </span>
 
           </div>

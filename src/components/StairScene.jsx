@@ -1832,7 +1832,7 @@ function PdfModePanel({ mode, pdfDraft, activeTool, onAddPdfDimension, onAddPdfT
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation, capture3dRef = null, activePdfDraftMode = null, pdfDrafts = null, onAddPdfDimension, onAddPdfText, onDeleteLastPdfAnnotation, onExitPdfMode, selectedPdfDraftDimensionId = null, onSelectPdfDraftDimension }) {
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, projectMode = 'build', manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation, capture3dRef = null, activePdfDraftMode = null, pdfDrafts = null, onAddPdfDimension, onAddPdfText, onDeleteLastPdfAnnotation, onExitPdfMode, selectedPdfDraftDimensionId = null, onSelectPdfDraftDimension }) {
   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingLength, topLandingLength, topLandingWidth, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, railingSideMode, post1Section, post2Section, post1HeightIn, post2HeightIn, compactTopHandrailEnabled, compactBottomChannelEnabled } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'color';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
@@ -1886,6 +1886,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
   const isText = activeTool === 'text' && !activePdfDraftMode;
   const isPdfAnnotationTool = !!activePdfDraftMode && (activeTool === 'dimension' || activeTool === 'text');
   const activeCursor = isMeasure || isDims || isText || isPdfAnnotationTool || postPlacementMode || topRailMode || fastRailsMode ? 'crosshair' : undefined;
+  const isIMeasureMode = projectMode === 'measure';
 
   return (
     <div id="print-viewport" className="scene-container" style={activeCursor ? { cursor: activeCursor } : undefined}>
@@ -1917,6 +1918,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           infiniteGrid
         />
 
+        {!isIMeasureMode && (<>
         <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength ?? 36} treadDepth={calc.treadDepth} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
         <TopLanding run={run} width={width} topLandingWidth={topLandingWidth ?? width} height={height} steps={steps} topLandingLength={topLandingLength ?? 36} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} treadPositions={calc.treadPositions} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
 
@@ -2059,6 +2061,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           view={view}
         />
         <ManualTextAnnotationsRenderer annotations={manualTextAnnotations} />
+        </>)}
 
         <OrbitControls
           ref={orbitRef}
@@ -2070,7 +2073,12 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           panSpeed={1.2}
         />
       </Canvas>
-      {activePdfDraftMode && (
+      {isIMeasureMode && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 1 }}>
+          <span style={{ fontSize: 24, fontWeight: 700, color: '#1e3a5f', letterSpacing: 1 }}>Hello POTUCKY</span>
+        </div>
+      )}
+      {!isIMeasureMode && activePdfDraftMode && (
         <PdfModePanel
           mode={activePdfDraftMode}
           pdfDraft={activePdfDraftMode === 'side' ? pdfDrafts?.side : pdfDrafts?.threeD}

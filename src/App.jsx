@@ -128,17 +128,7 @@ export default function App() {
 
   const [iMeasureConfig, setIMeasureConfig] = useState(() => {
     const d = loadInitialDraft();
-    return {
-      angleDeg: 38,
-      postCenterDistanceIn: 72,
-      overallHeightIn: 36,
-      bcLowP1In: 5,
-      bcLowP2In: 5,
-      bcHeightIn: 5,
-      stepSizeRangeText: '1-6',
-      stepSizeDistanceIn: 0,
-      ...(d?.iMeasureConfig ?? {}),
-    };
+    return { ...createDefaultIMeasureConfig(), ...(d?.iMeasureConfig ?? {}) };
   });
   const [activeTool, setActiveTool] = useState('select');
   const [view, setView] = useState('3d');
@@ -590,16 +580,7 @@ export default function App() {
     setSelectedPdfDraftDimensionId(null);
     setActiveTool('select');
     setProjectMode('build');
-    setIMeasureConfig({
-      angleDeg: 38,
-      postCenterDistanceIn: 72,
-      overallHeightIn: 36,
-      bcLowP1In: 5,
-      bcLowP2In: 5,
-      bcHeightIn: 5,
-      stepSizeRangeText: '1-6',
-      stepSizeDistanceIn: 0,
-    });
+    setIMeasureConfig(createDefaultIMeasureConfig());
   };
 
   const handleOpenJson = () =>
@@ -818,6 +799,7 @@ export default function App() {
         showDimensions={showDimensions}
         modalOpen={openProjectModalOpen}
         activeTool={activeTool}
+        projectMode={projectMode}
         manualDimensions={manualDimensions}
         onAddManualDimension={handleAddManualDimension}
         manualTextAnnotations={manualTextAnnotations}
