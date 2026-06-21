@@ -20,6 +20,17 @@ function parseSectionIn(section, defaultW, defaultH) {
   return { w: defaultW, h: defaultH };
 }
 
+// Parse cable size fraction string (e.g. "1/8") into decimal inches. Falls back to 0.125.
+function parseCableDiameterIn(cableSize) {
+  if (cableSize) {
+    const parts = String(cableSize).split('/').map(s => parseFloat(s.trim()));
+    if (parts.length === 2 && parts.every(n => Number.isFinite(n) && n > 0)) return parts[0] / parts[1];
+    const val = parseFloat(cableSize);
+    if (Number.isFinite(val) && val > 0) return val;
+  }
+  return 0.125;
+}
+
 // Visual tread thickness in scene units (shared by StairModel and ManualPostsRenderer)
 const TREAD_THICK = 0.3;
 
@@ -694,7 +705,7 @@ function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight
 
 // Renders vertical pickets or horizontal pickets/cables between Post 1 and Post 2.
 // Count is derived automatically so every clear gap stays within 3 7/8" (3.875").
-function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, bottomRailHeightIn, tubeSize, railingColorMode, compactTopHandrailEnabled = true, compactBottomChannelEnabled = true }) {
+function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, verticalPicketDepthIn, horizontalPicketThicknessIn, horizontalPicketWidthIn, horizontalCableDiameterIn, bottomRailHeightIn, tubeSize, railingColorMode, compactTopHandrailEnabled = true, compactBottomChannelEnabled = true }) {
   const INtoU = INtoU_GEO;
 
   const meshSpecs = useMemo(() => {
@@ -783,7 +794,7 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
         const h = topY - btmY;
         if (h < 0.01) continue;
 
-        specs.push({ kind: 'box', key: `vp-${i}`, x: px, y: (btmY + topY) / 2, z: pz, length: thickIn * INtoU, height: h, depth: thickIn * INtoU, ux: 0, uy: 1, uz: 0 });
+        specs.push({ kind: 'box', key: `vp-${i}`, x: px, y: (btmY + topY) / 2, z: pz, length: thickIn * INtoU, height: h, depth: verticalPicketDepthIn * INtoU, ux: 0, uy: 1, uz: 0 });
       }
 
     } else if (infillType === 'horizontalPicket' || infillType === 'horizontalCable') {
@@ -815,7 +826,7 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
           x: (sx + ex) / 2, y: (sy + ey) / 2, z: (sz + ez) / 2,
           length: seg,
           height: thickIn * INtoU,
-          depth: thickIn * INtoU,
+          depth: (infillType === 'horizontalPicket' ? horizontalPicketWidthIn : thickIn) * INtoU,
           ux: (ex - sx) / seg,
           uy: (ey - sy) / seg,
           uz: (ez - sz) / seg,
@@ -824,7 +835,7 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
     }
 
     return specs;
-  }, [manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, horizontalPicketThicknessIn, horizontalCableDiameterIn, bottomRailHeightIn, tubeSize, INtoU, compactTopHandrailEnabled, compactBottomChannelEnabled]);
+  }, [manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, verticalPicketDepthIn, horizontalPicketThicknessIn, horizontalPicketWidthIn, horizontalCableDiameterIn, bottomRailHeightIn, tubeSize, INtoU, compactTopHandrailEnabled, compactBottomChannelEnabled]);
 
   if (meshSpecs.length === 0) return null;
 
@@ -1745,9 +1756,11 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             riserHeight={calc.riserHeight}
             run={run}
             infillType={stairConfig.infillType ?? 'none'}
-            verticalPicketThicknessIn={stairConfig.verticalPicketThicknessIn ?? 1}
-            horizontalPicketThicknessIn={stairConfig.horizontalPicketThicknessIn ?? 1}
-            horizontalCableDiameterIn={stairConfig.horizontalCableDiameterIn ?? 0.125}
+            verticalPicketThicknessIn={parseSectionIn(stairConfig.picketVerticalSection, 1, 1).w}
+            verticalPicketDepthIn={parseSectionIn(stairConfig.picketVerticalSection, 1, 1).h}
+            horizontalPicketThicknessIn={parseSectionIn(stairConfig.picketHorizontalSection, 1, 1).h}
+            horizontalPicketWidthIn={parseSectionIn(stairConfig.picketHorizontalSection, 1, 1).w}
+            horizontalCableDiameterIn={parseCableDiameterIn(stairConfig.cableSize)}
             bottomRailHeightIn={stairConfig.bottomRailHeight ?? 1}
             tubeSize={tubeSize}
             railingColorMode={effectiveColorMode}

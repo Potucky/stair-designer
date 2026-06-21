@@ -12,6 +12,17 @@ function parseSectionIn(section, defaultW, defaultH) {
   return { w: defaultW, h: defaultH };
 }
 
+// Parse cable size fraction string (e.g. "1/8") into decimal inches. Falls back to 0.125.
+function parseCableDiameterIn(cableSize) {
+  if (cableSize) {
+    const parts = String(cableSize).split('/').map(s => parseFloat(s.trim()));
+    if (parts.length === 2 && parts.every(n => Number.isFinite(n) && n > 0)) return parts[0] / parts[1];
+    const val = parseFloat(cableSize);
+    if (Number.isFinite(val) && val > 0) return val;
+  }
+  return 0.125;
+}
+
 export function generatePdf({ project, stairConfig, calc, warnings, materials, units = 'in', manualDimensions = [], manualPosts = [], manualTopRails = [], manualTextAnnotations = [], pdfMirrored = false, topRailPathMode = 'standard', mode = 'save', pdfDrafts = null, primaryPageType = 'side' }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [792, 612] });
   const INCH_TO_MM = 25.4;
@@ -635,7 +646,7 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
                 : '#2F7D7A';
 
           if (spanIn > 0.1 && (infillType === 'vertical' || infillType === 'verticalPicket')) {
-            const thickIn = Number(stairConfig.verticalPicketThicknessIn ?? 1);
+            const thickIn = parseSectionIn(stairConfig.picketVerticalSection, 1, 1).w;
             const clearIn = spanIn - postWidthIn;
             const n = Number.isFinite(thickIn) && thickIn > 0 ? calcInfillCount(clearIn, thickIn) : 0;
             if (n > 0) {
@@ -655,9 +666,9 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
               }
             }
           } else if (infillType === 'horizontalPicket' || infillType === 'horizontalCable') {
-            const thickIn = Number(infillType === 'horizontalPicket'
-              ? stairConfig.horizontalPicketThicknessIn ?? 1
-              : stairConfig.horizontalCableDiameterIn ?? 0.125);
+            const thickIn = infillType === 'horizontalPicket'
+              ? parseSectionIn(stairConfig.picketHorizontalSection, 1, 1).h
+              : parseCableDiameterIn(stairConfig.cableSize);
             const openingIn = (p1Top.y - bottomFace.p1.y) / INtoU;
             const n = Number.isFinite(thickIn) && thickIn > 0 ? calcInfillCount(openingIn, thickIn) : 0;
             if (n > 0 && openingIn > 0) {
