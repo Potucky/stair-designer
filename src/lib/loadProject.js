@@ -1,12 +1,14 @@
 import supabase from './supabaseClient.js';
 
-export async function listProjects() {
+export async function listProjects({ projectType } = {}) {
   if (!supabase) return { ok: false, error: 'Supabase is not configured.', projects: [] };
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('stair_projects')
       .select('id, project_name, client_name, created_at, updated_at')
       .order('updated_at', { ascending: false });
+    if (projectType) query = query.eq('project_type', projectType);
+    const { data, error } = await query;
     if (error) return { ok: false, error: error.message, projects: [] };
     return { ok: true, projects: data ?? [] };
   } catch {

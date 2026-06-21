@@ -1022,6 +1022,7 @@ export default function App() {
         <OpenProjectModal
           onSelect={handleSelectProject}
           onClose={() => setOpenProjectModalOpen(false)}
+          projectType="build"
         />
       )}
     </div>

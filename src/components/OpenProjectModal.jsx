@@ -7,13 +7,13 @@ function fmtDate(iso) {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-export default function OpenProjectModal({ onSelect, onClose }) {
+export default function OpenProjectModal({ onSelect, onClose, projectType }) {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    listProjects().then((result) => {
+    listProjects({ projectType }).then((result) => {
       if (result.ok) {
         setProjects(result.projects);
       } else {
