@@ -761,10 +761,6 @@ export default function App() {
   };
 
   const handleOpenProject = () => {
-    if (projectMode === 'measure') {
-      alert('iMeasure cloud open will be enabled after project_type migration.');
-      return;
-    }
     setOpenProjectModalOpen(true);
   };
 
@@ -777,6 +773,16 @@ export default function App() {
     }
     const { project: p, version: v } = result;
     const sc = v.stair_config ?? {};
+    if (projectMode === 'measure') {
+      setMeasureProjectShell(shell => ({
+        ...shell,
+        projectName: p.project_name ?? '',
+        clientName: p.client_name ?? '',
+        currentProjectId: p.id,
+        iMeasureConfig: { ...createDefaultIMeasureConfig(), ...(sc.iMeasureConfig ?? {}) },
+      }));
+      return;
+    }
     skipAutosaveRestoreRef.current = true;
     setProject({ name: p.project_name ?? '', client: p.client_name ?? '' });
     const normalizedSc = { ...DEFAULT_STAIR, ...sc };
@@ -1043,7 +1049,7 @@ export default function App() {
         <OpenProjectModal
           onSelect={handleSelectProject}
           onClose={() => setOpenProjectModalOpen(false)}
-          projectType="build"
+          projectType={projectMode === 'measure' ? 'measure' : 'build'}
         />
       )}
     </div>
