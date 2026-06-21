@@ -54,6 +54,51 @@ function loadInitialDraft() {
   return _cachedDraft;
 }
 
+// --- Department separation helpers (Step 1: state boundary foundation) ---
+// iBuild and iMeasure are separate departments sharing the same geometry engine.
+// Step 1 creates internal state shells; later steps will route scene/save/autosave by department.
+
+function createDefaultIMeasureConfig() {
+  return {
+    angleDeg: 0,
+    postCenterDistanceIn: 0,
+    overallHeightIn: 36,
+    bcLowP1In: 0,
+    bcLowP2In: 0,
+    bcHeightIn: 0,
+    stepSizeRangeText: '',
+    stepSizeDistanceIn: 0,
+  };
+}
+
+function createDefaultBuildShell() {
+  return {
+    projectName: '',
+    clientName: '',
+    currentProjectId: null,
+    // iBuild domain state lives in existing top-level state vars (project, stairConfig, etc.)
+  };
+}
+
+function createDefaultMeasureShell() {
+  return {
+    projectName: '',
+    clientName: '',
+    currentProjectId: null,
+    iMeasureConfig: createDefaultIMeasureConfig(),
+    // Future: progressive iMeasure geometry will be derived and stored here.
+  };
+}
+
+// projectMode already drives the UI switch; treat it as the canonical department flag.
+function getActiveDepartment(projectMode) {
+  return projectMode === 'measure' ? 'measure' : 'build';
+}
+
+function getActiveProjectShell(department, buildShell, measureShell) {
+  return department === 'measure' ? measureShell : buildShell;
+}
+
 export default function App() {
   const [project, setProject] = useState(() => {
     const d = loadInitialDraft();
@@ -75,6 +120,12 @@ export default function App() {
     return u === 'mm' ? 'mm' : u === 'in16' ? 'in16' : 'in8';
   });
   const [projectMode, setProjectMode] = useState('build');
+
+  // Step 1: Department shell state. Not yet used for routing — exists as a clean boundary.
+  // iBuild source-of-truth remains in existing state vars; shells hold only metadata.
+  const [buildProjectShell, setBuildProjectShell] = useState(createDefaultBuildShell);
+  const [measureProjectShell, setMeasureProjectShell] = useState(createDefaultMeasureShell);
+
   const [iMeasureConfig, setIMeasureConfig] = useState(() => {
     const d = loadInitialDraft();
     return {
