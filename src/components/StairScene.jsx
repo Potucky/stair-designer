@@ -642,18 +642,17 @@ function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight
   const chanCenterZ = p1Base.z;
 
   // Stair surface reference: use nosing-line Y at each post's actual X position.
-  // p1Base.y is the tread surface at the post's step, but compact posts sit at the
-  // center of their treads, so the nosing line there is 0.5*riserHeight above p1Base.y.
-  // Without this correction, the channel bottom face drops below the tread surface
-  // at intermediate nosing points between the two posts.
-  // Formula mirrors resolveBottomRailEndpoint in railingGeometry.js.
+  // For landing posts use the flat landing surface (p_Base.y from getManualPostBase)
+  // instead of the nosing-slope formula, which would overshoot a flat landing.
   const r_u = run * INtoU;
   const rH_u = riserHeight * INtoU;
   const steps = treadPositions.length;
   const tD_u = steps > 0 ? (run / steps) * INtoU : 0;
   const nosingSlope = tD_u > 0 ? rH_u / tD_u : 0;
-  const p1SurfaceY = tD_u > 0 ? nosingSlope * (p1Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK : p1Base.y;
-  const p2SurfaceY = tD_u > 0 ? nosingSlope * (p2Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK : p2Base.y;
+  const p1IsLanding = p1.surfaceType === 'bottomLanding' || p1.surfaceType === 'topLanding';
+  const p2IsLanding = p2.surfaceType === 'bottomLanding' || p2.surfaceType === 'topLanding';
+  const p1SurfaceY = p1IsLanding ? p1Base.y : (tD_u > 0 ? nosingSlope * (p1Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK : p1Base.y);
+  const p2SurfaceY = p2IsLanding ? p2Base.y : (tD_u > 0 ? nosingSlope * (p2Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK : p2Base.y);
 
   // Channel center: 1.0 inch clearance above stair surface + half channel height.
   // This places the bottom lower edge exactly 1.0 inch above the stair tread corner reference line.
@@ -738,10 +737,12 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
     let btmP1y, btmP2y;
     if (compactBottomChannelEnabled && tD_u > 0) {
       const nosingSlope = rH_u / tD_u;
-      const p1NosingY = nosingSlope * (p1Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK;
-      const p2NosingY = nosingSlope * (p2Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK;
-      btmP1y = p1NosingY + 1.0 * INtoU;
-      btmP2y = p2NosingY + 1.0 * INtoU;
+      const btmP1IsLanding = p1.surfaceType === 'bottomLanding' || p1.surfaceType === 'topLanding';
+      const btmP2IsLanding = p2.surfaceType === 'bottomLanding' || p2.surfaceType === 'topLanding';
+      const p1SurfY = btmP1IsLanding ? p1Base.y : nosingSlope * (p1Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK;
+      const p2SurfY = btmP2IsLanding ? p2Base.y : nosingSlope * (p2Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK;
+      btmP1y = p1SurfY + 1.0 * INtoU;
+      btmP2y = p2SurfY + 1.0 * INtoU;
     } else {
       btmP1y = p1Base.y + safeBottomRailHeightIn * INtoU;
       btmP2y = p2Base.y + safeBottomRailHeightIn * INtoU;

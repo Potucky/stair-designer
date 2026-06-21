@@ -581,6 +581,8 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
           const rH_u = calc.riserHeight * INtoU;
           const stepCount = calc.treadPositions.length;
           const tD_u = stepCount > 0 ? (stairConfig.run / stepCount) * INtoU : 0;
+          const p1IsLanding = p1Resolved.surfaceType === 'bottomLanding' || p1Resolved.surfaceType === 'topLanding';
+          const p2IsLanding = p2Resolved.surfaceType === 'bottomLanding' || p2Resolved.surfaceType === 'topLanding';
           if (tD_u <= 0) {
             return {
               p1: { x: p1Base.x, y: p1Base.y + 1 * INtoU, z: p1Base.z },
@@ -588,11 +590,11 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
             };
           }
           const nosingSlope = rH_u / tD_u;
-          const p1NosingY = nosingSlope * (p1Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK;
-          const p2NosingY = nosingSlope * (p2Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK;
+          const p1SurfY = p1IsLanding ? p1Base.y : nosingSlope * (p1Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK;
+          const p2SurfY = p2IsLanding ? p2Base.y : nosingSlope * (p2Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK;
           return {
-            p1: { x: p1Base.x, y: p1NosingY + 1 * INtoU, z: p1Base.z },
-            p2: { x: p2Base.x, y: p2NosingY + 1 * INtoU, z: p2Base.z },
+            p1: { x: p1Base.x, y: p1SurfY + 1 * INtoU, z: p1Base.z },
+            p2: { x: p2Base.x, y: p2SurfY + 1 * INtoU, z: p2Base.z },
           };
         };
 
