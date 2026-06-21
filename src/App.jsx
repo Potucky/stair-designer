@@ -922,11 +922,11 @@ export default function App() {
         modalOpen={openProjectModalOpen}
         activeTool={activeTool}
         projectMode={projectMode}
-        manualDimensions={manualDimensions}
+        manualDimensions={projectMode === 'measure' ? [] : manualDimensions}
         onAddManualDimension={handleAddManualDimension}
-        manualTextAnnotations={manualTextAnnotations}
+        manualTextAnnotations={projectMode === 'measure' ? [{ id: 'measure-hello', text: 'Hello POTUCKY', xIn: 0, yIn: 0, zIn: 0 }] : manualTextAnnotations}
         onAddManualTextAnnotation={handleAddManualTextAnnotation}
-        manualPosts={manualPosts}
+        manualPosts={projectMode === 'measure' ? [] : manualPosts}
         postPlacementMode={postPlacementMode}
         onAddManualPost={handleAddManualPost}
         selectedManualPostId={selectedManualPostId}
@@ -934,7 +934,7 @@ export default function App() {
         topRailMode={topRailMode}
         topRailFirstPostId={topRailFirstPostId}
         onTopRailPostClick={handleTopRailPostClick}
-        manualTopRails={manualTopRails}
+        manualTopRails={projectMode === 'measure' ? [] : manualTopRails}
         railingColorMode={stairConfig.railingColorMode}
         structureOffsetXIn={structureOffsetXIn}
         structureOffsetZIn={structureOffsetZIn}
@@ -945,7 +945,7 @@ export default function App() {
         onFastRailsPostSelect={handleFastRailsPostSelect}
         capture3dRef={capture3dRef}
         activePdfDraftMode={activePdfDraftMode}
-        pdfDrafts={pdfDrafts}
+        pdfDrafts={projectMode === 'measure' ? null : pdfDrafts}
         onAddPdfDimension={handleAddPdfDimension}
         onAddPdfText={handleAddPdfText}
         onDeleteLastPdfAnnotation={handleDeleteLastPdfAnnotation}
