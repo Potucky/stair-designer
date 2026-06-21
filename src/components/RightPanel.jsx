@@ -198,6 +198,8 @@ function DimensionDraftInput({ value, onCommit, units, className, style, allowZe
 
 export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, onNewProject, onSaveProject, onOpenProject, units, compactPostTarget, onToggleCompactPostPlacement, activePdfDraftMode, pdfDrafts, selectedPdfDraftDimensionId, onUpdatePdfDraftDimension, onDeletePdfDraftDimension, onDeleteLastPdfDraftDimension, onClearAllPdfDraftDimensions, projectMode, iMeasureConfig, onIMeasureConfigChange }) {
   const [saveStatus, setSaveStatus] = useState(null);
+  const [measureQtyDraft, setMeasureQtyDraft] = useState('');
+  const [measureQtyFocused, setMeasureQtyFocused] = useState(false);
 
   const str = (field) => (e) => setProject((p) => ({ ...p, [field]: e.target.value }));
 
@@ -373,7 +375,27 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
       <section className="panel-section">
         <div className="stair-kv-row">
           <span className="chip-label">Quantity Step</span>
-          <NumericDraftInput className="field-input" inputMode="numeric" integer={true} value={projectMode === 'measure' ? (iMeasureConfig?.quantityStep ?? 0) : stairConfig.steps} onCommit={projectMode === 'measure' ? (v) => onIMeasureConfigChange(cfg => ({ ...cfg, quantityStep: Math.max(0, Math.round(v)) })) : commitSteps} />
+          {projectMode === 'measure' ? (
+            <input
+              className="field-input"
+              inputMode="numeric"
+              value={measureQtyFocused ? measureQtyDraft : (iMeasureConfig?.quantityStep > 0 ? String(iMeasureConfig.quantityStep) : '')}
+              onFocus={() => {
+                setMeasureQtyDraft(iMeasureConfig?.quantityStep > 0 ? String(iMeasureConfig.quantityStep) : '');
+                setMeasureQtyFocused(true);
+              }}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/\D/g, '');
+                setMeasureQtyDraft(raw);
+                const v = parseInt(raw, 10);
+                onIMeasureConfigChange(cfg => ({ ...cfg, quantityStep: (Number.isFinite(v) && v > 0) ? v : 0 }));
+              }}
+              onBlur={() => setMeasureQtyFocused(false)}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+            />
+          ) : (
+            <NumericDraftInput className="field-input" inputMode="numeric" integer={true} value={stairConfig.steps} onCommit={commitSteps} />
+          )}
           <button
             className={`panel-btn${(stairConfig.railingSideMode ?? 'left') === 'left' ? ' panel-btn-active' : ''}`}
             onClick={() => setStairConfig(s => ({ ...s, railingSideMode: 'left' }))}
