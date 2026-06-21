@@ -1918,7 +1918,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           infiniteGrid
         />
 
-        {!isIMeasureMode && (<>
+        {(!isIMeasureMode || stairConfig.steps > 0) && (<>
         <BottomLanding run={run} width={width} bottomLandingLength={bottomLandingLength ?? 36} treadDepth={calc.treadDepth} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
         <TopLanding run={run} width={width} topLandingWidth={topLandingWidth ?? width} height={height} steps={steps} topLandingLength={topLandingLength ?? 36} postPlacementMode={postPlacementMode} onAddManualPost={onAddManualPost} handrailHeight={handrailHeight} treadPositions={calc.treadPositions} fastRailsMode={fastRailsMode} onFastRailsPost={onFastRailsPost} />
 
@@ -2073,7 +2073,7 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           panSpeed={1.2}
         />
       </Canvas>
-      {isIMeasureMode && (
+      {isIMeasureMode && !(stairConfig.steps > 0) && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 1 }}>
           <span style={{ fontSize: 24, fontWeight: 700, color: '#1e3a5f', letterSpacing: 1 }}>Hello POTUCKY</span>
         </div>
