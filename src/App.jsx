@@ -729,8 +729,29 @@ export default function App() {
 
   const handleSaveProject = async () => {
     if (projectMode === 'measure') {
-      alert('iMeasure cloud save will be enabled after project_type migration.');
-      return;
+      const result = await saveProject({
+        project: { name: measureProjectShell.projectName, client: measureProjectShell.clientName },
+        stairConfig: { iMeasureConfig: measureProjectShell.iMeasureConfig },
+        calc: null,
+        warnings: null,
+        materials: null,
+        manualDimensions: [],
+        manualPosts: [],
+        manualTopRails: [],
+        manualTextAnnotations: [],
+        structureOffsetXIn: 0,
+        structureOffsetZIn: 0,
+        pdfMirrored: false,
+        topRailPathMode: 'standard',
+        units,
+        currentProjectId: measureProjectShell.currentProjectId,
+        pdfDrafts: null,
+        project_type: 'measure',
+      });
+      if (result.ok && result.projectId) {
+        setMeasureProjectShell(shell => ({ ...shell, currentProjectId: result.projectId }));
+      }
+      return result;
     }
     const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualDimensions, manualPosts, manualTopRails, manualTextAnnotations, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, units, currentProjectId, pdfDrafts, project_type: 'build' });
     if (result.ok && result.projectId) {
