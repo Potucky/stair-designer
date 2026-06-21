@@ -40,18 +40,36 @@ const STAIR_CHECK_KEYS = [
   'horizontalCableDiameterIn',
 ];
 
-const LS_KEY = 'stairDesigner_autosave';
+const BUILD_AUTOSAVE_KEY = 'stair-designer-build-autosave';
+const MEASURE_AUTOSAVE_KEY = 'stair-designer-measure-autosave';
+const LEGACY_AUTOSAVE_KEY = 'stairDesigner_autosave';
 
-let _cachedDraft;
-function loadInitialDraft() {
-  if (_cachedDraft !== undefined) return _cachedDraft;
+let _cachedBuildDraft;
+function loadBuildDraft() {
+  if (_cachedBuildDraft !== undefined) return _cachedBuildDraft;
   try {
-    const raw = localStorage.getItem(LS_KEY);
-    _cachedDraft = raw ? JSON.parse(raw) : null;
+    const raw = localStorage.getItem(BUILD_AUTOSAVE_KEY);
+    if (raw) { _cachedBuildDraft = JSON.parse(raw); return _cachedBuildDraft; }
+  } catch { /* fall through to legacy */ }
+  try {
+    const raw = localStorage.getItem(LEGACY_AUTOSAVE_KEY);
+    _cachedBuildDraft = raw ? JSON.parse(raw) : null;
   } catch {
-    _cachedDraft = null;
+    _cachedBuildDraft = null;
   }
-  return _cachedDraft;
+  return _cachedBuildDraft;
+}
+
+let _cachedMeasureDraft;
+function loadMeasureDraft() {
+  if (_cachedMeasureDraft !== undefined) return _cachedMeasureDraft;
+  try {
+    const raw = localStorage.getItem(MEASURE_AUTOSAVE_KEY);
+    _cachedMeasureDraft = raw ? JSON.parse(raw) : null;
+  } catch {
+    _cachedMeasureDraft = null;
+  }
+  return _cachedMeasureDraft;
 }
 
 // --- Department separation helpers (Step 1: state boundary foundation) ---
@@ -101,11 +119,11 @@ function getActiveProjectShell(department, buildShell, measureShell) {
 
 export default function App() {
   const [project, setProject] = useState(() => {
-    const d = loadInitialDraft();
+    const d = loadBuildDraft();
     return d?.project ? { ...DEFAULT_PROJECT, ...d.project } : DEFAULT_PROJECT;
   });
   const [stairConfig, setStairConfig] = useState(() => {
-    const d = loadInitialDraft();
+    const d = loadBuildDraft();
     const cfg = d?.stairConfig ? { ...DEFAULT_STAIR, ...d.stairConfig } : { ...DEFAULT_STAIR };
     cfg.bottomLandingEnabled = true;
     cfg.topLandingEnabled = true;
@@ -115,7 +133,7 @@ export default function App() {
     return cfg;
   });
   const [units, setUnits] = useState(() => {
-    const d = loadInitialDraft();
+    const d = loadBuildDraft();
     const u = d?.units;
     return u === 'mm' ? 'mm' : u === 'in16' ? 'in16' : 'in8';
   });
@@ -124,10 +142,20 @@ export default function App() {
   // Step 1: Department shell state. Not yet used for routing — exists as a clean boundary.
   // iBuild source-of-truth remains in existing state vars; shells hold only metadata.
   const [buildProjectShell, setBuildProjectShell] = useState(createDefaultBuildShell);
-  const [measureProjectShell, setMeasureProjectShell] = useState(createDefaultMeasureShell);
+  const [measureProjectShell, setMeasureProjectShell] = useState(() => {
+    const d = loadMeasureDraft();
+    if (!d) return createDefaultMeasureShell();
+    return {
+      ...createDefaultMeasureShell(),
+      projectName: d.projectName ?? '',
+      clientName: d.clientName ?? '',
+      currentProjectId: d.currentProjectId ?? null,
+      iMeasureConfig: { ...createDefaultIMeasureConfig(), ...(d.iMeasureConfig ?? {}) },
+    };
+  });
 
   const [iMeasureConfig, setIMeasureConfig] = useState(() => {
-    const d = loadInitialDraft();
+    const d = loadMeasureDraft();
     return { ...createDefaultIMeasureConfig(), ...(d?.iMeasureConfig ?? {}) };
   });
   const [activeTool, setActiveTool] = useState('select');
@@ -137,22 +165,22 @@ export default function App() {
   const skipAutosaveRestoreRef = useRef(false);
 
   const [currentProjectId, setCurrentProjectId] = useState(() => {
-    const d = loadInitialDraft();
+    const d = loadBuildDraft();
     return typeof d?.currentProjectId === 'string' && d.currentProjectId ? d.currentProjectId : null;
   });
   const [openProjectModalOpen, setOpenProjectModalOpen] = useState(false);
 
   const [manualDimensions, setManualDimensions] = useState(() => {
-    const d = loadInitialDraft();
+    const d = loadBuildDraft();
     return Array.isArray(d?.manualDimensions) ? d.manualDimensions : [];
   });
   const [manualTextAnnotations, setManualTextAnnotations] = useState(() => {
-    const d = loadInitialDraft();
+    const d = loadBuildDraft();
     return Array.isArray(d?.manualTextAnnotations) ? d.manualTextAnnotations : [];
   });
 
   const [manualPosts, setManualPosts] = useState(() => {
-    const d = loadInitialDraft();
+    const d = loadBuildDraft();
     return Array.isArray(d?.manualPosts) ? d.manualPosts : [];
   });
   const [postPlacementMode, setPostPlacementMode] = useState(false);
@@ -160,14 +188,14 @@ export default function App() {
   const [selectedManualPostId, setSelectedManualPostId] = useState(null);
 
   const [manualTopRails, setManualTopRails] = useState(() => {
-    const d = loadInitialDraft();
+    const d = loadBuildDraft();
     return Array.isArray(d?.manualTopRails) ? d.manualTopRails.map(normalizeRailEndpoints) : [];
   });
   const [topRailMode, setTopRailMode] = useState(false);
   const [topRailFirstPostId, setTopRailFirstPostId] = useState(null);
   const [selectedManualTopRailId, setSelectedManualTopRailId] = useState(null);
   const [topRailPathMode, setTopRailPathMode] = useState(() => {
-    const d = loadInitialDraft();
+    const d = loadBuildDraft();
     return d?.topRailPathMode === 'manual' || d?.topRailPathMode === 'standard' ? d.topRailPathMode : 'standard';
   });
 
@@ -175,15 +203,15 @@ export default function App() {
   const [fastRailsPrevPostId, setFastRailsPrevPostId] = useState(null);
 
   const [structureOffsetXIn, setStructureOffsetXIn] = useState(() => {
-    const d = loadInitialDraft();
+    const d = loadBuildDraft();
     return typeof d?.structureOffsetXIn === 'number' ? d.structureOffsetXIn : 0;
   });
   const [structureOffsetZIn, setStructureOffsetZIn] = useState(() => {
-    const d = loadInitialDraft();
+    const d = loadBuildDraft();
     return typeof d?.structureOffsetZIn === 'number' ? d.structureOffsetZIn : 0;
   });
   const [pdfMirrored, setPdfMirrored] = useState(() => {
-    const d = loadInitialDraft();
+    const d = loadBuildDraft();
     return d?.pdfMirrored === true;
   });
   const [structureMoveSelected, setStructureMoveSelected] = useState(false);
@@ -191,7 +219,7 @@ export default function App() {
   const [selectedPdfDraftDimensionId, setSelectedPdfDraftDimensionId] = useState(null);
 
   const [pdfDrafts, setPdfDrafts] = useState(() => {
-    const d = loadInitialDraft();
+    const d = loadBuildDraft();
     const DEFAULT = {
       side: { type: 'side', dimensions: [], texts: [] },
       threeD: { type: '3d', backgroundImage: null, dimensions: [], texts: [] },
@@ -258,7 +286,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', onDeleteKey);
   }, [selectedManualPostId, selectedManualTopRailId]);
 
-  // Autosave current project state to localStorage after every change (debounced)
+  // Build autosave — iBuild state only, no iMeasure data
   useEffect(() => {
     const id = setTimeout(() => {
       try {
@@ -276,15 +304,32 @@ export default function App() {
           topRailPathMode,
           currentProjectId,
           pdfDrafts,
-          iMeasureConfig,
         };
-        localStorage.setItem(LS_KEY, JSON.stringify(snapshot));
+        localStorage.setItem(BUILD_AUTOSAVE_KEY, JSON.stringify(snapshot));
       } catch {
         // Storage full or unavailable — ignore
       }
     }, 500);
     return () => clearTimeout(id);
-  }, [project, stairConfig, units, manualDimensions, manualTextAnnotations, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, currentProjectId, pdfDrafts, iMeasureConfig]);
+  }, [project, stairConfig, units, manualDimensions, manualTextAnnotations, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, currentProjectId, pdfDrafts]);
+
+  // Measure autosave — iMeasure shell only, no iBuild data
+  useEffect(() => {
+    const id = setTimeout(() => {
+      try {
+        const snapshot = {
+          projectName: measureProjectShell.projectName,
+          clientName: measureProjectShell.clientName,
+          currentProjectId: measureProjectShell.currentProjectId,
+          iMeasureConfig: measureProjectShell.iMeasureConfig,
+        };
+        localStorage.setItem(MEASURE_AUTOSAVE_KEY, JSON.stringify(snapshot));
+      } catch {
+        // Storage full or unavailable — ignore
+      }
+    }, 500);
+    return () => clearTimeout(id);
+  }, [measureProjectShell]);
 
   const calc = useMemo(() => calcStair(stairConfig), [stairConfig]);
 
@@ -546,15 +591,12 @@ export default function App() {
     }
   };
 
-  // Department-aware iMeasureConfig handler: in measure mode writes to shell, mirrors to legacy state for autosave compat
-  // Step 4 will remove the legacy mirror once autosave is separated by department.
   const handleActiveIMeasureConfigChange = (updater) => {
     if (projectMode === 'measure') {
       setMeasureProjectShell(shell => {
         const next = typeof updater === 'function' ? updater(shell.iMeasureConfig) : updater;
         return { ...shell, iMeasureConfig: next };
       });
-      setIMeasureConfig(updater); // mirror for autosave compat until Step 4
     } else {
       setIMeasureConfig(updater);
     }
@@ -581,9 +623,8 @@ export default function App() {
         return false;
       };
       if (hasMeasureMeaningfulState() && !window.confirm('Start a new iMeasure project? Current iMeasure data will be cleared.')) return;
-      const freshMeasure = createDefaultMeasureShell();
-      setMeasureProjectShell(freshMeasure);
-      setIMeasureConfig(freshMeasure.iMeasureConfig); // mirror for autosave compat
+      setMeasureProjectShell(createDefaultMeasureShell());
+      localStorage.removeItem(MEASURE_AUTOSAVE_KEY);
       setActiveTool('select');
       // Stay in iMeasure mode — do NOT call setProjectMode
       // iBuild state (project, stairConfig, manualPosts, manualTopRails, dimensions, PDF, currentProjectId) is untouched
@@ -608,7 +649,9 @@ export default function App() {
       return false;
     };
     if (hasMeaningfulState() && !window.confirm('Start a new project? Current unsaved changes will be cleared.')) return;
-    localStorage.removeItem(LS_KEY);
+    localStorage.removeItem(BUILD_AUTOSAVE_KEY);
+    localStorage.removeItem(LEGACY_AUTOSAVE_KEY);
+    // Do NOT remove MEASURE_AUTOSAVE_KEY
     setProject(DEFAULT_PROJECT);
     setStairConfig({ ...DEFAULT_STAIR, steps: 6, bottomLandingEnabled: true, topLandingEnabled: true, topLandingWidth: DEFAULT_STAIR.width });
     setManualDimensions([]);
@@ -638,8 +681,7 @@ export default function App() {
     setActiveTool('select');
     setProjectMode('build');
     // DO NOT reset measureProjectShell — preserve iMeasure department state
-    // DO NOT reset iMeasureConfig — it mirrors measureProjectShell and must not be cleared here
-    // Note: Save/Open separation will be Step 5
+    // Note: Save/Open separation is Step 5
   };
 
   const handleOpenJson = () =>
