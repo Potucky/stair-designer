@@ -634,9 +634,12 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
           const sdz = p2Base.z - p1Base.z;
           const spanScene = Math.sqrt(sdx * sdx + sdy * sdy + sdz * sdz);
           const spanIn = spanScene / INtoU;
-          const postWidthIn = getTubeProfile(stairConfig.tubeSize).width;
-          const topShift = compactTopEnabled ? 0.25 * INtoU : 0;
-          const bottomShift = compactBottomEnabled ? 0.25 * INtoU : 0;
+          const fallbackPostWidthIn = getTubeProfile(stairConfig.tubeSize).width;
+          const post1WidthIn = parseSectionIn(stairConfig.post1Section, fallbackPostWidthIn, fallbackPostWidthIn).w;
+          const post2WidthIn = parseSectionIn(stairConfig.post2Section, fallbackPostWidthIn, fallbackPostWidthIn).w;
+          // Welding insertion depth: picket bottom penetrates the Bottom Channel by this amount.
+          const BOTTOM_CHANNEL_PICKET_INSERTION_IN = 0.5;
+          const btmInsertionU = compactBottomEnabled ? BOTTOM_CHANNEL_PICKET_INSERTION_IN * INtoU : 0;
           const infillColor = isBlackRailing
             ? '#000000'
             : infillType === 'horizontalCable'
@@ -647,22 +650,47 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
           if (spanIn > 0.1 && (infillType === 'vertical' || infillType === 'verticalPicket')) {
             const thickIn = parseSectionIn(stairConfig.picketVerticalSection, 1, 1).w;
-            const clearIn = spanIn - postWidthIn;
+            const clearIn = spanIn - post1WidthIn / 2 - post2WidthIn / 2;
             const n = Number.isFinite(thickIn) && thickIn > 0 ? calcInfillCount(clearIn, thickIn) : 0;
             if (n > 0) {
               const gapIn = (clearIn - n * thickIn) / (n + 1);
-              const halfPostIn = postWidthIn / 2;
+              const halfPostIn = post1WidthIn / 2;
               doc.setDrawColor(infillColor);
-              doc.setLineWidth(Math.max(0.8, thickIn * sc));
+              doc.setFillColor(infillColor);
+              doc.setLineWidth(0.4);
               for (let i = 0; i < n; i++) {
                 const distIn = halfPostIn + gapIn + i * (gapIn + thickIn) + thickIn / 2;
-                const t = distIn / spanIn;
-                const px = p1Base.x + t * sdx;
-                const btmY = bottomFace.p1.y + t * (bottomFace.p2.y - bottomFace.p1.y) + bottomShift;
-                const topY = p1Top.y + t * (p2Top.y - p1Top.y) + topShift;
-                if (topY <= btmY) continue;
-                const yAdj = p1YAdj + t * (p2YAdj - p1YAdj);
-                doc.line(sxToPdf(px), syToPdf(btmY) + yAdj, sxToPdf(px), syToPdf(topY) + yAdj);
+                // Per-edge normalized span positions
+                const tA = (distIn - thickIn / 2) / spanIn;
+                const tB = (distIn + thickIn / 2) / spanIn;
+
+                const pxA = p1Base.x + tA * sdx;
+                const pxB = p1Base.x + tB * sdx;
+
+                // Top Y at each edge: handrail underside
+                const topYA = p1Top.y + tA * (p2Top.y - p1Top.y);
+                const topYB = p1Top.y + tB * (p2Top.y - p1Top.y);
+
+                // Bottom Y at each edge: channel bottom + insertion depth
+                const btmYA = bottomFace.p1.y + tA * (bottomFace.p2.y - bottomFace.p1.y) + btmInsertionU;
+                const btmYB = bottomFace.p1.y + tB * (bottomFace.p2.y - bottomFace.p1.y) + btmInsertionU;
+
+                if (topYA <= btmYA || topYB <= btmYB) continue;
+
+                // Per-edge PDF-Y adjustment (landing vs stair surface)
+                const yAdjA = p1YAdj + tA * (p2YAdj - p1YAdj);
+                const yAdjB = p1YAdj + tB * (p2YAdj - p1YAdj);
+
+                const pdfXA = sxToPdf(pxA);
+                const pdfXB = sxToPdf(pxB);
+                const pdfTopYA = syToPdf(topYA) + yAdjA;
+                const pdfTopYB = syToPdf(topYB) + yAdjB;
+                const pdfBtmYA = syToPdf(btmYA) + yAdjA;
+                const pdfBtmYB = syToPdf(btmYB) + yAdjB;
+
+                // Sloped-cut quadrilateral as two filled triangles
+                doc.triangle(pdfXA, pdfBtmYA, pdfXA, pdfTopYA, pdfXB, pdfTopYB, 'F');
+                doc.triangle(pdfXA, pdfBtmYA, pdfXB, pdfTopYB, pdfXB, pdfBtmYB, 'F');
               }
             }
           } else if (infillType === 'horizontalPicket' || infillType === 'horizontalCable') {

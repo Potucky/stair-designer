@@ -705,7 +705,7 @@ function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight
 
 // Renders vertical pickets or horizontal pickets/cables between Post 1 and Post 2.
 // Count is derived automatically so every clear gap stays within 3 7/8" (3.875").
-function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, verticalPicketDepthIn, horizontalPicketThicknessIn, horizontalPicketWidthIn, horizontalCableDiameterIn, bottomRailHeightIn, tubeSize, railingColorMode, compactTopHandrailEnabled = true, compactBottomChannelEnabled = true }) {
+function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, verticalPicketDepthIn, horizontalPicketThicknessIn, horizontalPicketWidthIn, horizontalCableDiameterIn, bottomRailHeightIn, tubeSize, railingColorMode, compactTopHandrailEnabled = true, compactBottomChannelEnabled = true, post1Section, post2Section, handrailSection, bottomChannelSection }) {
   const INtoU = INtoU_GEO;
 
   const meshSpecs = useMemo(() => {
@@ -723,7 +723,9 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
 
     if (!p1Base || !p2Base || !p1Top || !p2Top) return [];
 
-    const postWidthIn = getTubeProfile(tubeSize).width;
+    const fallbackPostWidthIn = getTubeProfile(tubeSize).width;
+    const post1WidthIn = parseSectionIn(post1Section, fallbackPostWidthIn, fallbackPostWidthIn).w;
+    const post2WidthIn = parseSectionIn(post2Section, fallbackPostWidthIn, fallbackPostWidthIn).w;
     // Guard against undefined/NaN bottomRailHeightIn so geometry stays safe
     const safeBottomRailHeightIn = Number.isFinite(bottomRailHeightIn) && bottomRailHeightIn >= 0 ? bottomRailHeightIn : 1;
 
@@ -761,21 +763,30 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
     const topP1y = p1Top.y;
     const topP2y = p2Top.y;
 
+    // Clamp picket depth to the narrower of handrail / channel envelope widths.
+    const handrailEnvWIn = parseSectionIn(handrailSection, 2, 1).w;
+    const chanEnvWIn = parseSectionIn(bottomChannelSection, 2, 1).w;
+    const envelopeZIn = Math.min(
+      compactTopHandrailEnabled ? handrailEnvWIn : Infinity,
+      compactBottomChannelEnabled ? chanEnvWIn : Infinity
+    );
+    const effectiveVPicketDepthIn = Math.min(verticalPicketDepthIn, envelopeZIn);
+    const effectiveHPicketWidthIn = Math.min(horizontalPicketWidthIn, envelopeZIn);
+
     const specs = [];
 
     if (infillType === 'vertical' || infillType === 'verticalPicket') {
       const thickIn = verticalPicketThicknessIn;
-      const clearIn = spanIn - postWidthIn;   // inside face to inside face
+      const clearIn = spanIn - post1WidthIn / 2 - post2WidthIn / 2;
       const n = calcInfillCount(clearIn, thickIn);
       if (n <= 0) return [];
 
       const gapIn = (clearIn - n * thickIn) / (n + 1);
-      const halfPostIn = postWidthIn / 2;
+      const halfPostIn = post1WidthIn / 2;
 
-      // Shift picket ends 0.25 in into each rail so they appear inserted, not floating.
-      const overlapU = 0.25 * INtoU;
-      const btmShift = compactBottomChannelEnabled ? overlapU : 0;
-      const topShift = compactTopHandrailEnabled ? overlapU : 0;
+      // Welding insertion depth: picket bottom penetrates the Bottom Channel by this amount.
+      const BOTTOM_CHANNEL_PICKET_INSERTION_IN = 0.5;
+      const btmInsertionU = compactBottomChannelEnabled ? BOTTOM_CHANNEL_PICKET_INSERTION_IN * INtoU : 0;
 
       // When compact bottom channel is active, align picket Z to post centerline.
       let picketZ = null;
@@ -783,18 +794,57 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
         picketZ = p1Base.z;
       }
 
+      const depthU = effectiveVPicketDepthIn * INtoU;
+      const halfDepthU = depthU / 2;
+
       for (let i = 0; i < n; i++) {
         const distIn = halfPostIn + gapIn + i * (gapIn + thickIn) + thickIn / 2;
-        const t = distIn / spanIn;
+        // Normalized span positions of the two span-direction edges A (near) and B (far)
+        const tA = (distIn - thickIn / 2) / spanIn;
+        const tB = (distIn + thickIn / 2) / spanIn;
+        const tc = distIn / spanIn;
 
-        const px = p1Base.x + t * sdx;
-        const pz = picketZ !== null ? picketZ : p1Base.z + t * sdz;
-        const btmY = btmP1y + t * (btmP2y - btmP1y) + btmShift;
-        const topY = topP1y + t * (topP2y - topP1y) + topShift;
-        const h = topY - btmY;
-        if (h < 0.01) continue;
+        const pz = picketZ !== null ? picketZ : p1Base.z + tc * sdz;
 
-        specs.push({ kind: 'box', key: `vp-${i}`, x: px, y: (btmY + topY) / 2, z: pz, length: thickIn * INtoU, height: h, depth: verticalPicketDepthIn * INtoU, ux: 0, uy: 1, uz: 0 });
+        const xA = p1Base.x + tA * sdx;
+        const xB = p1Base.x + tB * sdx;
+
+        // Top Y: handrail underside at each edge — both edges must touch the slope
+        const topYA = topP1y + tA * (topP2y - topP1y);
+        const topYB = topP1y + tB * (topP2y - topP1y);
+
+        // Bottom Y: channel bottom opening + insertion depth at each edge
+        const btmYA = btmP1y + tA * (btmP2y - btmP1y) + btmInsertionU;
+        const btmYB = btmP1y + tB * (btmP2y - btmP1y) + btmInsertionU;
+
+        if (topYA - btmYA < 0.01 || topYB - btmYB < 0.01) continue;
+
+        const zA = pz - halfDepthU;
+        const zB = pz + halfDepthU;
+
+        // 8 vertices of the sloped-cut prism in world space
+        const verts = new Float32Array([
+          xA, topYA, zA,   // 0 top-A-front
+          xA, topYA, zB,   // 1 top-A-back
+          xB, topYB, zA,   // 2 top-B-front
+          xB, topYB, zB,   // 3 top-B-back
+          xA, btmYA, zA,   // 4 bot-A-front
+          xA, btmYA, zB,   // 5 bot-A-back
+          xB, btmYB, zA,   // 6 bot-B-front
+          xB, btmYB, zB,   // 7 bot-B-back
+        ]);
+
+        // 12 triangles (6 faces × 2): CCW winding from outside
+        const idx = new Uint16Array([
+          0, 1, 3,  0, 3, 2,   // top face
+          4, 6, 7,  4, 7, 5,   // bottom face
+          0, 4, 5,  0, 5, 1,   // side A
+          2, 3, 7,  2, 7, 6,   // side B
+          0, 2, 6,  0, 6, 4,   // front face
+          1, 5, 7,  1, 7, 3,   // back face
+        ]);
+
+        specs.push({ kind: 'sloped-prism', key: `vp-${i}`, verts, idx });
       }
 
     } else if (infillType === 'horizontalPicket' || infillType === 'horizontalCable') {
@@ -826,7 +876,7 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
           x: (sx + ex) / 2, y: (sy + ey) / 2, z: (sz + ez) / 2,
           length: seg,
           height: thickIn * INtoU,
-          depth: (infillType === 'horizontalPicket' ? horizontalPicketWidthIn : thickIn) * INtoU,
+          depth: (infillType === 'horizontalPicket' ? effectiveHPicketWidthIn : thickIn) * INtoU,
           ux: (ex - sx) / seg,
           uy: (ey - sy) / seg,
           uz: (ez - sz) / seg,
@@ -835,7 +885,7 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
     }
 
     return specs;
-  }, [manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, verticalPicketDepthIn, horizontalPicketThicknessIn, horizontalPicketWidthIn, horizontalCableDiameterIn, bottomRailHeightIn, tubeSize, INtoU, compactTopHandrailEnabled, compactBottomChannelEnabled]);
+  }, [manualPosts, treadPositions, riserHeight, run, infillType, verticalPicketThicknessIn, verticalPicketDepthIn, horizontalPicketThicknessIn, horizontalPicketWidthIn, horizontalCableDiameterIn, bottomRailHeightIn, tubeSize, INtoU, compactTopHandrailEnabled, compactBottomChannelEnabled, post1Section, post2Section, handrailSection, bottomChannelSection]);
 
   if (meshSpecs.length === 0) return null;
 
@@ -849,6 +899,22 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
   return (
     <>
       {meshSpecs.map((s) => {
+        if (s.kind === 'sloped-prism') {
+          const geo = new THREE.BufferGeometry();
+          geo.setAttribute('position', new THREE.BufferAttribute(s.verts, 3));
+          geo.setIndex(new THREE.BufferAttribute(s.idx, 1));
+          geo.computeVertexNormals();
+          return (
+            <mesh key={s.key} geometry={geo}>
+              <meshStandardMaterial
+                color={infillColor}
+                metalness={0.55}
+                roughness={0.35}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+          );
+        }
         const isAlignedY = s.ux === 0 && s.uz === 0;
         const quat = isAlignedY
           ? new THREE.Quaternion()
@@ -1766,6 +1832,10 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             railingColorMode={effectiveColorMode}
             compactTopHandrailEnabled={compactTopHandrailEnabled !== false}
             compactBottomChannelEnabled={compactBottomChannelEnabled !== false}
+            post1Section={stairConfig.post1Section}
+            post2Section={stairConfig.post2Section}
+            handrailSection={stairConfig.handrailSection}
+            bottomChannelSection={stairConfig.bottomChannelSection}
           />
         </group>
 
