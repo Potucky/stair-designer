@@ -286,8 +286,9 @@ export default function App() {
     return () => window.removeEventListener('keydown', onDeleteKey);
   }, [selectedManualPostId, selectedManualTopRailId]);
 
-  // Build autosave — iBuild state only, no iMeasure data
+  // Build autosave — iBuild state only, no iMeasure data; skipped entirely in measure mode
   useEffect(() => {
+    if (projectMode === 'measure') return;
     const id = setTimeout(() => {
       try {
         const snapshot = {
@@ -311,7 +312,7 @@ export default function App() {
       }
     }, 500);
     return () => clearTimeout(id);
-  }, [project, stairConfig, units, manualDimensions, manualTextAnnotations, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, currentProjectId, pdfDrafts]);
+  }, [projectMode, project, stairConfig, units, manualDimensions, manualTextAnnotations, manualPosts, manualTopRails, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, currentProjectId, pdfDrafts]);
 
   // Measure autosave — iMeasure shell only, no iBuild data
   useEffect(() => {
