@@ -533,7 +533,64 @@ export default function App() {
   const handleMoveRight = () => setStructureOffsetZIn(prev => prev + 6);
   const handleResetStructureOffset = () => { setStructureOffsetXIn(0); setStructureOffsetZIn(0); };
 
+  // Department-aware project setter: routes Name/Client updates to the active department shell
+  const handleSetActiveProject = (updater) => {
+    if (projectMode === 'measure') {
+      setMeasureProjectShell(shell => {
+        const view = { name: shell.projectName, client: shell.clientName };
+        const next = typeof updater === 'function' ? updater(view) : updater;
+        return { ...shell, projectName: next.name ?? '', clientName: next.client ?? '' };
+      });
+    } else {
+      setProject(updater);
+    }
+  };
+
+  // Department-aware iMeasureConfig handler: in measure mode writes to shell, mirrors to legacy state for autosave compat
+  // Step 4 will remove the legacy mirror once autosave is separated by department.
+  const handleActiveIMeasureConfigChange = (updater) => {
+    if (projectMode === 'measure') {
+      setMeasureProjectShell(shell => {
+        const next = typeof updater === 'function' ? updater(shell.iMeasureConfig) : updater;
+        return { ...shell, iMeasureConfig: next };
+      });
+      setIMeasureConfig(updater); // mirror for autosave compat until Step 4
+    } else {
+      setIMeasureConfig(updater);
+    }
+  };
+
   const handleNewProject = () => {
+    const department = getActiveDepartment(projectMode);
+
+    if (department === 'measure') {
+      const hasMeasureMeaningfulState = () => {
+        if (measureProjectShell.projectName) return true;
+        if (measureProjectShell.clientName) return true;
+        if (measureProjectShell.currentProjectId !== null) return true;
+        const def = createDefaultIMeasureConfig();
+        const cfg = measureProjectShell.iMeasureConfig;
+        // overallHeightIn = 36 alone is not dirty — it is the default
+        if (cfg.angleDeg !== def.angleDeg) return true;
+        if (cfg.postCenterDistanceIn !== def.postCenterDistanceIn) return true;
+        if (cfg.bcLowP1In !== def.bcLowP1In) return true;
+        if (cfg.bcLowP2In !== def.bcLowP2In) return true;
+        if (cfg.bcHeightIn !== def.bcHeightIn) return true;
+        if (cfg.stepSizeRangeText !== def.stepSizeRangeText) return true;
+        if (cfg.stepSizeDistanceIn !== def.stepSizeDistanceIn) return true;
+        return false;
+      };
+      if (hasMeasureMeaningfulState() && !window.confirm('Start a new iMeasure project? Current iMeasure data will be cleared.')) return;
+      const freshMeasure = createDefaultMeasureShell();
+      setMeasureProjectShell(freshMeasure);
+      setIMeasureConfig(freshMeasure.iMeasureConfig); // mirror for autosave compat
+      setActiveTool('select');
+      // Stay in iMeasure mode — do NOT call setProjectMode
+      // iBuild state (project, stairConfig, manualPosts, manualTopRails, dimensions, PDF, currentProjectId) is untouched
+      return;
+    }
+
+    // department === 'build': existing behavior, preserve iMeasure department state
     const hasMeaningfulState = () => {
       if (project.name !== DEFAULT_PROJECT.name) return true;
       if (project.client !== DEFAULT_PROJECT.client) return true;
@@ -580,7 +637,9 @@ export default function App() {
     setSelectedPdfDraftDimensionId(null);
     setActiveTool('select');
     setProjectMode('build');
-    setIMeasureConfig(createDefaultIMeasureConfig());
+    // DO NOT reset measureProjectShell — preserve iMeasure department state
+    // DO NOT reset iMeasureConfig — it mirrors measureProjectShell and must not be cleared here
+    // Note: Save/Open separation will be Step 5
   };
 
   const handleOpenJson = () =>
@@ -776,6 +835,14 @@ export default function App() {
     setViewResetToken((t) => t + 1);
   };
 
+  // Department-aware views passed to RightPanel — routed by projectMode
+  const activeProject = projectMode === 'measure'
+    ? { name: measureProjectShell.projectName, client: measureProjectShell.clientName }
+    : project;
+  const activeIMeasureConfig = projectMode === 'measure'
+    ? measureProjectShell.iMeasureConfig
+    : iMeasureConfig;
+
   return (
     <div className="app-shell">
       <Header
@@ -832,8 +899,8 @@ export default function App() {
         onSelectPdfDraftDimension={handleSelectPdfDraftDimension}
       />
       <RightPanel
-        project={project}
-        setProject={setProject}
+        project={activeProject}
+        setProject={handleSetActiveProject}
         stairConfig={stairConfig}
         setStairConfig={setStairConfig}
         calc={calc}
@@ -892,8 +959,8 @@ export default function App() {
         onDeleteLastPdfDraftDimension={handleDeleteLastPdfDraftDimension}
         onClearAllPdfDraftDimensions={handleClearAllPdfDraftDimensions}
         projectMode={projectMode}
-        iMeasureConfig={iMeasureConfig}
-        onIMeasureConfigChange={setIMeasureConfig}
+        iMeasureConfig={activeIMeasureConfig}
+        onIMeasureConfigChange={handleActiveIMeasureConfigChange}
       />
       <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} units={units} />
       {openProjectModalOpen && (
