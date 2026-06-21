@@ -697,31 +697,73 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
             const thickIn = infillType === 'horizontalPicket'
               ? parseSectionIn(stairConfig.picketHorizontalSection, 1, 1).h
               : parseCableDiameterIn(stairConfig.cableSize);
-            const openingIn = (p1Top.y - bottomFace.p1.y) / INtoU;
+            // Lower boundary = top face of Bottom Channel (channelHIn already parsed above)
+            const hPicketBtmFaceP1 = bottomFace.p1.y + channelHIn * INtoU;
+            const hPicketBtmFaceP2 = bottomFace.p2.y + channelHIn * INtoU;
+            const openingIn = (p1Top.y - hPicketBtmFaceP1) / INtoU;
             const n = Number.isFinite(thickIn) && thickIn > 0 ? calcInfillCount(openingIn, thickIn) : 0;
             if (n > 0 && openingIn > 0) {
               const gapIn = (openingIn - n * thickIn) / (n + 1);
-              doc.setDrawColor(infillColor);
-              doc.setLineWidth(Math.max(infillType === 'horizontalCable' ? 0.6 : 0.8, thickIn * sc));
+
+              // Normalized span positions of the post inside faces
+              const tStart = (post1WidthIn / 2) / spanIn;
+              const tEnd = 1 - (post2WidthIn / 2) / spanIn;
+
+              // World-space X of horizontal picket endpoints at the post inside faces
+              const hpStartX = p1Base.x + tStart * sdx;
+              const hpEndX = p1Base.x + tEnd * sdx;
+
+              // Channel top and handrail underside Y interpolated to each endpoint
+              const chanTopAtStart = hPicketBtmFaceP1 + tStart * (hPicketBtmFaceP2 - hPicketBtmFaceP1);
+              const handrailBtmAtStart = p1Top.y + tStart * (p2Top.y - p1Top.y);
+              const chanTopAtEnd = hPicketBtmFaceP1 + tEnd * (hPicketBtmFaceP2 - hPicketBtmFaceP1);
+              const handrailBtmAtEnd = p1Top.y + tEnd * (p2Top.y - p1Top.y);
+
+              // PDF-Y adjustment interpolated to each endpoint
+              const startYAdj = p1YAdj + tStart * (p2YAdj - p1YAdj);
+              const endYAdj = p1YAdj + tEnd * (p2YAdj - p1YAdj);
+
               for (let i = 0; i < n; i++) {
                 const hvIn = gapIn + i * (gapIn + thickIn) + thickIn / 2;
                 const tv = hvIn / openingIn;
-                drawSceneLineAdj(
-                  {
-                    x: p1Base.x,
-                    y: bottomFace.p1.y + tv * (p1Top.y - bottomFace.p1.y),
-                    z: p1Base.z,
-                  },
-                  {
-                    x: p2Base.x,
-                    y: bottomFace.p2.y + tv * (p2Top.y - bottomFace.p2.y),
-                    z: p2Base.z,
-                  },
-                  infillColor,
-                  Math.max(infillType === 'horizontalCable' ? 0.6 : 0.8, thickIn * sc),
-                  p1YAdj,
-                  p2YAdj
-                );
+
+                if (infillType === 'horizontalPicket') {
+                  const sy = chanTopAtStart + tv * (handrailBtmAtStart - chanTopAtStart);
+                  const ey = chanTopAtEnd + tv * (handrailBtmAtEnd - chanTopAtEnd);
+                  const halfThickSc = (thickIn * sc) / 2;
+
+                  // Mitered quadrilateral: start face at post1 inside face, end face at post2 inside face
+                  const topStartX = sxToPdf(hpStartX);
+                  const topStartY = syToPdf(sy) - halfThickSc + startYAdj;
+                  const botStartX = sxToPdf(hpStartX);
+                  const botStartY = syToPdf(sy) + halfThickSc + startYAdj;
+                  const topEndX = sxToPdf(hpEndX);
+                  const topEndY = syToPdf(ey) - halfThickSc + endYAdj;
+                  const botEndX = sxToPdf(hpEndX);
+                  const botEndY = syToPdf(ey) + halfThickSc + endYAdj;
+
+                  doc.setFillColor(infillColor);
+                  doc.triangle(topStartX, topStartY, botStartX, botStartY, botEndX, botEndY, 'F');
+                  doc.triangle(topStartX, topStartY, botEndX, botEndY, topEndX, topEndY, 'F');
+                } else {
+                  // horizontalCable: keep as line
+                  drawSceneLineAdj(
+                    {
+                      x: hpStartX,
+                      y: chanTopAtStart + tv * (handrailBtmAtStart - chanTopAtStart),
+                      z: p1Base.z,
+                    },
+                    {
+                      x: hpEndX,
+                      y: chanTopAtEnd + tv * (handrailBtmAtEnd - chanTopAtEnd),
+                      z: p2Base.z,
+                    },
+                    infillColor,
+                    Math.max(0.6, thickIn * sc),
+                    startYAdj,
+                    endYAdj
+                  );
+                }
               }
             }
           }

@@ -849,38 +849,91 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
 
     } else if (infillType === 'horizontalPicket' || infillType === 'horizontalCable') {
       const thickIn = infillType === 'horizontalPicket' ? horizontalPicketThicknessIn : horizontalCableDiameterIn;
-      const openingIn = (topP1y - btmP1y) / INtoU;  // same at P1 and P2 (both = handrailHeight - bottomRailHeightIn)
+      // Lower boundary = top face of Bottom Channel (not its bottom face)
+      const { h: chanHIn } = parseSectionIn(bottomChannelSection, 2, 1);
+      const hPicketBtmP1y = btmP1y + chanHIn * INtoU;
+      const hPicketBtmP2y = btmP2y + chanHIn * INtoU;
+      // Free vertical opening between channel top face and handrail underside
+      const openingIn = (topP1y - hPicketBtmP1y) / INtoU;
       const n = calcInfillCount(openingIn, thickIn);
       if (n <= 0) return [];
 
       const gapIn = (openingIn - n * thickIn) / (n + 1);
 
+      // Normalized span positions of the post inside faces
+      const tStart = (post1WidthIn / 2) / spanIn;
+      const tEnd = 1 - (post2WidthIn / 2) / spanIn;
+
+      // World-space X/Z endpoints at the post inside faces
+      const hpSX = p1Base.x + tStart * sdx;
+      const hpSZ = p1Base.z + tStart * sdz;
+      const hpEX = p1Base.x + tEnd * sdx;
+      const hpEZ = p1Base.z + tEnd * sdz;
+
+      // Channel top and handrail underside Y interpolated to each endpoint
+      const chanTopAtStart = hPicketBtmP1y + tStart * (hPicketBtmP2y - hPicketBtmP1y);
+      const handrailBtmAtStart = topP1y + tStart * (topP2y - topP1y);
+      const chanTopAtEnd = hPicketBtmP1y + tEnd * (hPicketBtmP2y - hPicketBtmP1y);
+      const handrailBtmAtEnd = topP1y + tEnd * (topP2y - topP1y);
+
       for (let i = 0; i < n; i++) {
         const hvIn = gapIn + i * (gapIn + thickIn) + thickIn / 2;
         const tv = hvIn / openingIn;
 
-        const sx = p1Base.x;
-        const sy = btmP1y + tv * (topP1y - btmP1y);
-        const sz = p1Base.z;
+        const sy = chanTopAtStart + tv * (handrailBtmAtStart - chanTopAtStart);
+        const ey = chanTopAtEnd + tv * (handrailBtmAtEnd - chanTopAtEnd);
 
-        const ex = p2Base.x;
-        const ey = btmP2y + tv * (topP2y - btmP2y);
-        const ez = p2Base.z;
+        if (infillType === 'horizontalPicket') {
+          const halfThickU = (thickIn * INtoU) / 2;
+          const halfDepthU = (effectiveHPicketWidthIn * INtoU) / 2;
 
-        const seg = Math.sqrt((ex - sx) ** 2 + (ey - sy) ** 2 + (ez - sz) ** 2);
-        if (seg < 0.01) continue;
+          // 8-vertex mitered prism: start face at post1 inside face, end face at post2 inside face
+          const verts = new Float32Array([
+            // Start face (v0–v3) all at hpSX, hpSZ
+            hpSX, sy + halfThickU, hpSZ - halfDepthU,  // v0: top-start-front
+            hpSX, sy + halfThickU, hpSZ + halfDepthU,  // v1: top-start-back
+            hpSX, sy - halfThickU, hpSZ - halfDepthU,  // v2: bot-start-front
+            hpSX, sy - halfThickU, hpSZ + halfDepthU,  // v3: bot-start-back
+            // End face (v4–v7) all at hpEX, hpEZ
+            hpEX, ey + halfThickU, hpEZ - halfDepthU,  // v4: top-end-front
+            hpEX, ey + halfThickU, hpEZ + halfDepthU,  // v5: top-end-back
+            hpEX, ey - halfThickU, hpEZ - halfDepthU,  // v6: bot-end-front
+            hpEX, ey - halfThickU, hpEZ + halfDepthU,  // v7: bot-end-back
+          ]);
 
-        specs.push({
-          kind: 'box',
-          key: `${infillType === 'horizontalPicket' ? 'hp' : 'hc'}-${i}`,
-          x: (sx + ex) / 2, y: (sy + ey) / 2, z: (sz + ez) / 2,
-          length: seg,
-          height: thickIn * INtoU,
-          depth: (infillType === 'horizontalPicket' ? effectiveHPicketWidthIn : thickIn) * INtoU,
-          ux: (ex - sx) / seg,
-          uy: (ey - sy) / seg,
-          uz: (ez - sz) / seg,
-        });
+          const idx = new Uint16Array([
+            // top face
+            0, 4, 5,   0, 5, 1,
+            // bottom face
+            2, 3, 7,   2, 7, 6,
+            // front face (z-front)
+            0, 2, 6,   0, 6, 4,
+            // back face (z-back)
+            1, 5, 7,   1, 7, 3,
+            // start face (post1 inside)
+            0, 1, 3,   0, 3, 2,
+            // end face (post2 inside)
+            4, 6, 7,   4, 7, 5,
+          ]);
+
+          specs.push({ kind: 'h-miter-prism', key: `hp-${i}`, verts, idx });
+        } else {
+          // horizontalCable: keep as flat-ended box
+          const seg = Math.sqrt((hpEX - hpSX) ** 2 + (ey - sy) ** 2 + (hpEZ - hpSZ) ** 2);
+          if (seg < 0.01) continue;
+
+          specs.push({
+            kind: 'box',
+            key: `hc-${i}`,
+            x: (hpSX + hpEX) / 2, y: (sy + ey) / 2, z: (hpSZ + hpEZ) / 2,
+            length: seg,
+            height: thickIn * INtoU,
+            depth: thickIn * INtoU,
+            ux: (hpEX - hpSX) / seg,
+            uy: (ey - sy) / seg,
+            uz: (hpEZ - hpSZ) / seg,
+          });
+        }
       }
     }
 
@@ -899,7 +952,7 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
   return (
     <>
       {meshSpecs.map((s) => {
-        if (s.kind === 'sloped-prism') {
+        if (s.kind === 'sloped-prism' || s.kind === 'h-miter-prism') {
           const geo = new THREE.BufferGeometry();
           geo.setAttribute('position', new THREE.BufferAttribute(s.verts, 3));
           geo.setIndex(new THREE.BufferAttribute(s.idx, 1));
