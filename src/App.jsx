@@ -727,11 +727,23 @@ export default function App() {
   };
 
   const handleSaveProject = async () => {
+    if (projectMode === 'measure') {
+      alert('iMeasure cloud save will be enabled after project_type migration.');
+      return;
+    }
     const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualDimensions, manualPosts, manualTopRails, manualTextAnnotations, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, units, currentProjectId, pdfDrafts });
     if (result.ok && result.projectId) {
       setCurrentProjectId(result.projectId);
     }
     return result;
+  };
+
+  const handleOpenProject = () => {
+    if (projectMode === 'measure') {
+      alert('iMeasure cloud open will be enabled after project_type migration.');
+      return;
+    }
+    setOpenProjectModalOpen(true);
   };
 
   const handleSelectProject = async (projectId) => {
@@ -894,7 +906,7 @@ export default function App() {
         onPrint={handlePrint}
         units={units}
         onUnitsChange={setUnits}
-        onOpenProject={() => setOpenProjectModalOpen(true)}
+        onOpenProject={handleOpenProject}
         projectMode={projectMode}
         onProjectModeChange={setProjectMode}
       />
@@ -950,7 +962,7 @@ export default function App() {
         materials={materials}
         onNewProject={handleNewProject}
         onSaveProject={handleSaveProject}
-        onOpenProject={() => setOpenProjectModalOpen(true)}
+        onOpenProject={handleOpenProject}
         onExportPdf={handleExportPdf}
         units={units}
         activeTool={activeTool}
