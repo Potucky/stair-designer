@@ -953,9 +953,10 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
     <>
       {meshSpecs.map((s) => {
         if (s.kind === 'sloped-prism' || s.kind === 'h-miter-prism') {
-          const geo = new THREE.BufferGeometry();
+          let geo = new THREE.BufferGeometry();
           geo.setAttribute('position', new THREE.BufferAttribute(s.verts, 3));
           geo.setIndex(new THREE.BufferAttribute(s.idx, 1));
+          geo = geo.toNonIndexed();
           geo.computeVertexNormals();
           return (
             <mesh key={s.key} geometry={geo}>
@@ -964,6 +965,7 @@ function InfillRenderer({ manualPosts, treadPositions, riserHeight, run, infillT
                 metalness={0.55}
                 roughness={0.35}
                 side={THREE.DoubleSide}
+                flatShading={true}
               />
             </mesh>
           );
