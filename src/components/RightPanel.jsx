@@ -403,7 +403,11 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         </div>
         <div className="stair-kv-row">
           <span className="chip-label">Step Width</span>
-          <DimensionDraftInput className="field-input" units={units} value={stairConfig.width} onCommit={commitDim('width')} />
+          {projectMode === 'measure' ? (
+            <DimensionDraftInput className="field-input" units={units} value={iMeasureConfig?.stepWidthIn ?? 48} onCommit={commitIMeasure('stepWidthIn')} />
+          ) : (
+            <DimensionDraftInput className="field-input" units={units} value={stairConfig.width} onCommit={commitDim('width')} />
+          )}
           <button
             className={`panel-btn${(stairConfig.railingSideMode ?? 'left') === 'right' ? ' panel-btn-active' : ''}`}
             onClick={() => setStairConfig(s => ({ ...s, railingSideMode: 'right' }))}

@@ -82,6 +82,7 @@ function createDefaultIMeasureConfig() {
     angleDeg: 0,
     postCenterDistanceIn: 0,
     overallHeightIn: 36,
+    stepWidthIn: 48,
     bcLowP1In: 0,
     bcLowP2In: 0,
     bcHeightIn: 0,
@@ -933,10 +934,12 @@ export default function App() {
   } else if (measureQ === 0) {
     activeStairConfig = { ...DEFAULT_STAIR, steps: 0, height: 0, run: 0, bottomLandingEnabled: false, topLandingEnabled: false };
   } else if (measureQ === 1) {
-    activeStairConfig = { ...DEFAULT_STAIR, steps: 0, width: 48, height: 0, run: 0, bottomLandingEnabled: true, topLandingEnabled: false, topLandingWidth: 48 };
+    const sw = activeIMeasureConfig.stepWidthIn || 48;
+    activeStairConfig = { ...DEFAULT_STAIR, steps: 0, width: sw, height: 0, run: 0, bottomLandingEnabled: true, topLandingEnabled: false, topLandingWidth: sw };
   } else {
+    const sw = activeIMeasureConfig.stepWidthIn || 48;
     const normalTreads = measureQ - 1;
-    activeStairConfig = { ...DEFAULT_STAIR, steps: normalTreads, width: 48, height: normalTreads * 7, run: normalTreads * 9, bottomLandingEnabled: true, topLandingEnabled: true, topLandingWidth: 48 };
+    activeStairConfig = { ...DEFAULT_STAIR, steps: normalTreads, width: sw, height: normalTreads * 7, run: normalTreads * 9, bottomLandingEnabled: true, topLandingEnabled: true, topLandingWidth: sw };
   }
   const activeCalc = projectMode !== 'measure' ? calc : calcStair(activeStairConfig);
 
