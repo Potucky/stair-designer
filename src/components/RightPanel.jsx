@@ -432,8 +432,16 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
 
         <div className="stair-kv-row">
           <span className="chip-label">Top Landing</span>
-          <DimensionDraftInput className="field-input" units={units} value={stairConfig.topLandingLength ?? 36} onCommit={commitDim('topLandingLength')} />
-          <DimensionDraftInput className="field-input" units={units} value={stairConfig.topLandingWidth ?? stairConfig.width} onCommit={commitDim('topLandingWidth')} />
+          {projectMode === 'measure' ? (
+            <DimensionDraftInput className="field-input" units={units} allowZero value={iMeasureConfig?.topLandingWidthIn ?? 0} onCommit={commitIMeasure('topLandingWidthIn')} />
+          ) : (
+            <DimensionDraftInput className="field-input" units={units} value={stairConfig.topLandingLength ?? 36} onCommit={commitDim('topLandingLength')} />
+          )}
+          {projectMode === 'measure' ? (
+            <DimensionDraftInput className="field-input" units={units} value={iMeasureConfig?.topLandingLengthIn ?? 36} onCommit={commitIMeasure('topLandingLengthIn')} />
+          ) : (
+            <DimensionDraftInput className="field-input" units={units} value={stairConfig.topLandingWidth ?? stairConfig.width} onCommit={commitDim('topLandingWidth')} />
+          )}
         </div>
       </section>
 

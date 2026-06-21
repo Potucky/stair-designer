@@ -83,6 +83,8 @@ function createDefaultIMeasureConfig() {
     postCenterDistanceIn: 0,
     overallHeightIn: 36,
     stepWidthIn: 48,
+    topLandingWidthIn: 0,
+    topLandingLengthIn: 36,
     bcLowP1In: 0,
     bcLowP2In: 0,
     bcHeightIn: 0,
@@ -939,7 +941,9 @@ export default function App() {
   } else {
     const sw = activeIMeasureConfig.stepWidthIn || 48;
     const normalTreads = measureQ - 1;
-    activeStairConfig = { ...DEFAULT_STAIR, steps: normalTreads, width: sw, height: normalTreads * 7, run: normalTreads * 9, bottomLandingEnabled: true, topLandingEnabled: true, topLandingWidth: sw };
+    const tlw = activeIMeasureConfig.topLandingWidthIn || sw;
+    const tll = activeIMeasureConfig.topLandingLengthIn || 36;
+    activeStairConfig = { ...DEFAULT_STAIR, steps: normalTreads, width: sw, height: normalTreads * 7, run: normalTreads * 9, bottomLandingEnabled: true, topLandingEnabled: true, topLandingWidth: tlw, topLandingLength: tll };
   }
   const activeCalc = projectMode !== 'measure' ? calc : calcStair(activeStairConfig);
 
