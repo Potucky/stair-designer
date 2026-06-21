@@ -770,19 +770,34 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
         }
 
         if (compactTopEnabled) {
-          const dx = p2Top.x - p1Top.x;
-          const dz = p2Top.z - p1Top.z;
-          const length = Math.sqrt((p2Top.x - p1Top.x) ** 2 + (p2Top.y - p1Top.y) ** 2 + (p2Top.z - p1Top.z) ** 2);
-          const cosSlope = length > 0 ? Math.sqrt(dx * dx + dz * dz) / length : 1;
-          const centerLift = (handrailHIn / 2) * INtoU * cosSlope;
-          drawSceneLineAdj(
-            { x: p1Top.x, y: p1Top.y + centerLift, z: p1Top.z },
-            { x: p2Top.x, y: p2Top.y + centerLift, z: p2Top.z },
-            railColors.railLine,
-            topRailWidthPt,
-            p1YAdj,
-            p2YAdj
-          );
+          const dxCenters = p2Top.x - p1Top.x;
+          if (Math.abs(dxCenters) > 0.01) {
+            // Handrail bottom slope (world Y per world X) from post top centers
+            const slope = (p2Top.y - p1Top.y) / dxCenters;
+            const cosA = 1 / Math.sqrt(1 + slope * slope);
+
+            const fallbackPostWidthIn = getTubeProfile(stairConfig.tubeSize).width;
+            const post1HalfIn = parseSectionIn(stairConfig.post1Section, fallbackPostWidthIn, fallbackPostWidthIn).w / 2;
+            const post2HalfIn = parseSectionIn(stairConfig.post2Section, fallbackPostWidthIn, fallbackPostWidthIn).w / 2;
+
+            // Outer-face X positions (vertical cut planes flush with post outer faces)
+            const x_s = p1Top.x - post1HalfIn * INtoU;
+            const x_e = p2Top.x + post2HalfIn * INtoU;
+
+            // Handrail bottom Y at each outer face; center Y adds half the vertical height
+            const y_bot_s = p1Top.y + slope * (x_s - p1Top.x);
+            const y_bot_e = p1Top.y + slope * (x_e - p1Top.x);
+            const centerLift = (handrailHIn / 2) * INtoU * cosA;
+
+            drawSceneLineAdj(
+              { x: x_s, y: y_bot_s + centerLift, z: p1Top.z },
+              { x: x_e, y: y_bot_e + centerLift, z: p2Top.z },
+              railColors.railLine,
+              topRailWidthPt,
+              p1YAdj,
+              p2YAdj
+            );
+          }
         }
       }
     }

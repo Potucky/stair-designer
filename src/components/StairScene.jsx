@@ -422,10 +422,115 @@ function TopLanding({ run, width, topLandingWidth, height, steps, topLandingLeng
   );
 }
 
+// Compact Top Handrail with vertical-cut ends flush with each post's outer face.
+// Both end faces are vertical planes (constant world X) so the handrail looks fabrication-correct.
+// railHVert = RAIL_H * cos(slope_angle) = vertical height of the cross-section in world Y.
+// hw = half of the handrail depth/width in world Z.
+function createMiteredHandrailGeometry(x_s, y_bot_s, x_e, y_bot_e, z_c, railHVert, hw) {
+  const y_top_s = y_bot_s + railHVert;
+  const y_top_e = y_bot_e + railHVert;
+  const verts = [
+    [x_s, y_bot_s, z_c - hw], // 0 start bottom-left
+    [x_s, y_bot_s, z_c + hw], // 1 start bottom-right
+    [x_s, y_top_s, z_c - hw], // 2 start top-left
+    [x_s, y_top_s, z_c + hw], // 3 start top-right
+    [x_e, y_bot_e, z_c - hw], // 4 end bottom-left
+    [x_e, y_bot_e, z_c + hw], // 5 end bottom-right
+    [x_e, y_top_e, z_c - hw], // 6 end top-left
+    [x_e, y_top_e, z_c + hw], // 7 end top-right
+  ];
+  const tris = [
+    [1, 3, 2], [1, 2, 0], // start face (normal −X)
+    [4, 6, 7], [4, 7, 5], // end face   (normal +X)
+    [0, 5, 1], [0, 4, 5], // bottom     (normal ~−Y, sloped)
+    [2, 3, 7], [2, 7, 6], // top        (normal ~+Y, sloped)
+    [0, 2, 6], [0, 6, 4], // left side  (normal −Z)
+    [1, 5, 3], [3, 5, 7], // right side (normal +Z)
+  ];
+  const pos = new Float32Array(tris.length * 9);
+  let i = 0;
+  for (const [a, b, c] of tris) {
+    for (const vi of [a, b, c]) {
+      pos[i++] = verts[vi][0];
+      pos[i++] = verts[vi][1];
+      pos[i++] = verts[vi][2];
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// Creates a box-like BufferGeometry whose top face is mitered to match a sloped handrail.
+// hw/hh/hd = half-extents in scene units; delta = Y offset at x=±hw (positive: +X side is higher).
+// Non-indexed geometry gives per-triangle (flat-shaded) normals via computeVertexNormals().
+function createMiteredPostGeometry(hw, hh, hd, delta) {
+  const verts = [
+    [-hw, -hh, -hd], // 0 bottom back-left
+    [ hw, -hh, -hd], // 1 bottom back-right
+    [ hw, -hh,  hd], // 2 bottom front-right
+    [-hw, -hh,  hd], // 3 bottom front-left
+    [-hw,  hh - delta, -hd], // 4 top back-left
+    [ hw,  hh + delta, -hd], // 5 top back-right
+    [ hw,  hh + delta,  hd], // 6 top front-right
+    [-hw,  hh - delta,  hd], // 7 top front-left
+  ];
+  const tris = [
+    [0, 1, 2], [0, 2, 3], // bottom (−Y)
+    [4, 6, 5], [4, 7, 6], // top    (mitered)
+    [3, 2, 6], [3, 6, 7], // front  (+Z)
+    [0, 4, 5], [0, 5, 1], // back   (−Z)
+    [0, 3, 7], [0, 7, 4], // left   (−X)
+    [1, 5, 6], [1, 6, 2], // right  (+X)
+  ];
+  const pos = new Float32Array(tris.length * 9);
+  let i = 0;
+  for (const [a, b, c] of tris) {
+    for (const vi of [a, b, c]) {
+      pos[i++] = verts[vi][0];
+      pos[i++] = verts[vi][1];
+      pos[i++] = verts[vi][2];
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// Compact post whose top face is miter-cut to sit flush against the sloped handrail underside.
+// miterDelta: scene-unit Y offset applied at x = +postW/2 (positive = right/inner side is higher).
+function CompactMiteredPost({ worldX, worldY, worldZ, postW, postH, postD, miterDelta, color, onClick }) {
+  const geo = useMemo(
+    () => createMiteredPostGeometry(postW / 2, postH / 2, postD / 2, miterDelta),
+    [postW, postH, postD, miterDelta]
+  );
+  useEffect(() => () => { geo.dispose(); }, [geo]);
+  return (
+    <mesh position={[worldX, worldY, worldZ]} onClick={onClick}>
+      <primitive object={geo} attach="geometry" />
+      <meshStandardMaterial color={color} metalness={0.55} roughness={0.35} />
+    </mesh>
+  );
+}
+
 // Renders manually placed posts from the manualPosts array.
 function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tubeSize, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, railingColorMode, fastRailsMode, fastRailsPrevPostId, onFastRailsPostSelect, isDims, post1Section, post2Section }) {
   const INtoU = 0.5;
   const profile = getTubeProfile(tubeSize);
+
+  // Slope of the compact handrail in scene Y-per-X, used to miter compact post tops.
+  const compactMiterSlopeXY = useMemo(() => {
+    const cp1 = manualPosts.find(p => p.compactSlot === 'post1');
+    const cp2 = manualPosts.find(p => p.compactSlot === 'post2');
+    if (!cp1 || !cp2) return 0;
+    const top1 = getManualPostTop(cp1, treadPositions, riserHeight, run);
+    const top2 = getManualPostTop(cp2, treadPositions, riserHeight, run);
+    if (!top1 || !top2) return 0;
+    const dx = top2.x - top1.x;
+    return Math.abs(dx) > 0.001 ? (top2.y - top1.y) / dx : 0;
+  }, [manualPosts, treadPositions, riserHeight, run]);
 
   return (
     <>
@@ -465,6 +570,25 @@ function ManualPostsRenderer({ manualPosts, treadPositions, riserHeight, run, tu
             onSelectManualPost(id);
           }
         };
+
+        // Compact posts get a mitered top face so the inside corner meets the sloped handrail underside.
+        if (post.compactSlot === 'post1' || post.compactSlot === 'post2') {
+          const miterDelta = compactMiterSlopeXY * (postW / 2);
+          return (
+            <CompactMiteredPost
+              key={id}
+              worldX={worldX}
+              worldY={worldY}
+              worldZ={worldZ}
+              postW={postW}
+              postH={postH}
+              postD={postD}
+              miterDelta={miterDelta}
+              color={color}
+              onClick={handleClick}
+            />
+          );
+        }
 
         return (
           <mesh
@@ -597,8 +721,8 @@ function ManualMiddleRailsRenderer({ manualTopRails, manualPosts, treadPositions
   );
 }
 
-// Compact handrail: rectangular beam from Post 1 top to Post 2 top.
-function CompactHandrailRenderer({ manualPosts, treadPositions, riserHeight, run, handrailSection, railingColorMode }) {
+// Compact handrail: rectangular beam capping over Post 1 outside face to Post 2 outside face.
+function CompactHandrailRenderer({ manualPosts, treadPositions, riserHeight, run, handrailSection, railingColorMode, post1Section, post2Section }) {
   const INtoU = 0.5;
   const { w: railWIn, h: railHIn } = parseSectionIn(handrailSection, 2, 1);
   const RAIL_W = railWIn * INtoU;
@@ -606,27 +730,48 @@ function CompactHandrailRenderer({ manualPosts, treadPositions, riserHeight, run
 
   const p1 = manualPosts.find(p => p.compactSlot === 'post1');
   const p2 = manualPosts.find(p => p.compactSlot === 'post2');
-  if (!p1 || !p2) return null;
+  const p1Top = p1 ? getManualPostTop(p1, treadPositions, riserHeight, run) : null;
+  const p2Top = p2 ? getManualPostTop(p2, treadPositions, riserHeight, run) : null;
 
-  const p1Top = getManualPostTop(p1, treadPositions, riserHeight, run);
-  const p2Top = getManualPostTop(p2, treadPositions, riserHeight, run);
-  if (!p1Top || !p2Top) return null;
+  const fallbackPostWidthIn = 2;
+  const post1HalfIn = parseSectionIn(post1Section, fallbackPostWidthIn, fallbackPostWidthIn).w / 2;
+  const post2HalfIn = parseSectionIn(post2Section, fallbackPostWidthIn, fallbackPostWidthIn).w / 2;
 
-  const startV = new THREE.Vector3(p1Top.x, p1Top.y, p1Top.z);
-  const endV = new THREE.Vector3(p2Top.x, p2Top.y, p2Top.z);
-  const length = startV.distanceTo(endV);
-  if (length < 0.01) return null;
+  // Extract primitive values so useMemo deps are stable across renders
+  const p1x = p1Top?.x, p1y = p1Top?.y, p1z = p1Top?.z;
+  const p2x = p2Top?.x, p2y = p2Top?.y, p2z = p2Top?.z;
 
-  const midV = startV.clone().lerp(endV, 0.5);
-  const dx = endV.x - startV.x, dz = endV.z - startV.z;
-  const cosSlope = length > 0 ? Math.sqrt(dx * dx + dz * dz) / length : 1;
-  midV.y += (RAIL_H / 2) * cosSlope;
-  const direction = endV.clone().sub(startV).normalize();
-  const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
+  const geo = useMemo(() => {
+    if (p1x == null || p2x == null) return null;
+    const dxCenters = p2x - p1x;
+    if (Math.abs(dxCenters) < 0.01) return null;
+
+    // Handrail bottom slope (world Y per world X) from post top centers
+    const slope = (p2y - p1y) / dxCenters;
+    const cosA = 1 / Math.sqrt(1 + slope * slope);
+
+    // Outer-face X positions: Post 1 outer = left of center, Post 2 outer = right of center
+    const x_s = p1x - post1HalfIn * INtoU;
+    const x_e = p2x + post2HalfIn * INtoU;
+
+    // Handrail bottom Y at each outer face, computed from the slope through p1 center
+    const y_bot_s = p1y + slope * (x_s - p1x);
+    const y_bot_e = p1y + slope * (x_e - p1x);
+
+    // Vertical height of handrail cross-section = RAIL_H * cos(slope_angle)
+    const railHVert = RAIL_H * cosA;
+    const z_c = ((p1z ?? 0) + (p2z ?? 0)) / 2;
+
+    return createMiteredHandrailGeometry(x_s, y_bot_s, x_e, y_bot_e, z_c, railHVert, RAIL_W / 2);
+  }, [p1x, p1y, p1z, p2x, p2y, p2z, post1HalfIn, post2HalfIn, RAIL_H, RAIL_W, INtoU]);
+
+  useEffect(() => () => { geo?.dispose(); }, [geo]);
+
+  if (!geo) return null;
 
   return (
-    <mesh position={midV.toArray()} quaternion={quat}>
-      <boxGeometry args={[length, RAIL_H, RAIL_W]} />
+    <mesh>
+      <primitive object={geo} attach="geometry" />
       <meshStandardMaterial color={railingColorMode === 'black' ? '#111111' : '#e07820'} metalness={0.3} roughness={0.5} />
     </mesh>
   );
@@ -1857,6 +2002,8 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
               run={run}
               handrailSection={stairConfig.handrailSection}
               railingColorMode={effectiveColorMode}
+              post1Section={stairConfig.post1Section}
+              post2Section={stairConfig.post2Section}
             />
           )}
 
