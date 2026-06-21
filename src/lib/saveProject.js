@@ -17,6 +17,7 @@ export async function saveProject({
   units = 'in',
   currentProjectId = null,
   pdfDrafts = null,
+  project_type = null,
 }) {
   if (!supabase) {
     return { ok: false, error: 'Supabase is not configured.' };
@@ -33,6 +34,7 @@ export async function saveProject({
           project_name: project.name || 'Untitled',
           client_name: project.client || null,
           units,
+          ...(project_type !== null && { project_type }),
         })
         .eq('id', projectId);
       if (updateError) return { ok: false, error: updateError.message };
@@ -47,6 +49,7 @@ export async function saveProject({
           client_name: project.client || null,
           units,
           notes: null,
+          ...(project_type !== null && { project_type }),
         });
       if (projectError) return { ok: false, error: projectError.message };
     }

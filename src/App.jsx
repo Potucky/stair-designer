@@ -732,7 +732,7 @@ export default function App() {
       alert('iMeasure cloud save will be enabled after project_type migration.');
       return;
     }
-    const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualDimensions, manualPosts, manualTopRails, manualTextAnnotations, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, units, currentProjectId, pdfDrafts });
+    const result = await saveProject({ project, stairConfig, calc, warnings, materials, manualDimensions, manualPosts, manualTopRails, manualTextAnnotations, structureOffsetXIn, structureOffsetZIn, pdfMirrored, topRailPathMode, units, currentProjectId, pdfDrafts, project_type: 'build' });
     if (result.ok && result.projectId) {
       setCurrentProjectId(result.projectId);
     }
