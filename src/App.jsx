@@ -78,6 +78,7 @@ function loadMeasureDraft() {
 
 function createDefaultIMeasureConfig() {
   return {
+    quantityStep: 0,
     angleDeg: 0,
     postCenterDistanceIn: 0,
     overallHeightIn: 36,
@@ -925,6 +926,12 @@ export default function App() {
     ? measureProjectShell.iMeasureConfig
     : iMeasureConfig;
 
+  const measureSteps = projectMode === 'measure' ? (activeIMeasureConfig.quantityStep || 0) : 0;
+  const activeStairConfig = measureSteps > 0
+    ? { ...DEFAULT_STAIR, steps: measureSteps, width: 48, height: measureSteps * 7, run: measureSteps * 9, topLandingEnabled: true }
+    : stairConfig;
+  const activeCalc = measureSteps > 0 ? calcStair(activeStairConfig) : calc;
+
   return (
     <div className="app-shell">
       <Header
@@ -940,8 +947,8 @@ export default function App() {
       />
       <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onViewChange={handleViewChange} showDimensions={showDimensions} onToggleDimensions={() => setShowDimensions((v) => !v)} manualDimensionsCount={manualDimensions.length} onUndoLastManualDimension={handleUndoLastManualDimension} onOpenSidePdf={handleOpenSidePdf} onOpen3dPdf={handleOpen3dPdf} activePdfDraftMode={activePdfDraftMode} />
       <StairScene
-        stairConfig={stairConfig}
-        calc={calc}
+        stairConfig={activeStairConfig}
+        calc={activeCalc}
         view={view}
         viewResetToken={viewResetToken}
         units={units}
@@ -951,7 +958,7 @@ export default function App() {
         projectMode={projectMode}
         manualDimensions={projectMode === 'measure' ? [] : manualDimensions}
         onAddManualDimension={handleAddManualDimension}
-        manualTextAnnotations={projectMode === 'measure' ? [{ id: 'measure-hello', text: 'Hello POTUCKY', xIn: 0, yIn: 0, zIn: 0 }] : manualTextAnnotations}
+        manualTextAnnotations={projectMode === 'measure' ? (measureSteps > 0 ? [] : [{ id: 'measure-hello', text: 'Hello POTUCKY', xIn: 0, yIn: 0, zIn: 0 }]) : manualTextAnnotations}
         onAddManualTextAnnotation={handleAddManualTextAnnotation}
         manualPosts={projectMode === 'measure' ? [] : manualPosts}
         postPlacementMode={postPlacementMode}

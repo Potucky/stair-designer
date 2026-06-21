@@ -373,7 +373,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
       <section className="panel-section">
         <div className="stair-kv-row">
           <span className="chip-label">Quantity Step</span>
-          <NumericDraftInput className="field-input" inputMode="numeric" integer={true} value={stairConfig.steps} onCommit={commitSteps} />
+          <NumericDraftInput className="field-input" inputMode="numeric" integer={true} value={projectMode === 'measure' ? (iMeasureConfig?.quantityStep ?? 0) : stairConfig.steps} onCommit={projectMode === 'measure' ? (v) => onIMeasureConfigChange(cfg => ({ ...cfg, quantityStep: Math.max(0, Math.round(v)) })) : commitSteps} />
           <button
             className={`panel-btn${(stairConfig.railingSideMode ?? 'left') === 'left' ? ' panel-btn-active' : ''}`}
             onClick={() => setStairConfig(s => ({ ...s, railingSideMode: 'left' }))}
