@@ -85,11 +85,35 @@ function createDefaultIMeasureConfig() {
     stepWidthIn: 48,
     topLandingWidthIn: 0,
     topLandingLengthIn: 36,
+    post1Anchor: null,
+    post2Anchor: null,
     bcLowP1In: 0,
     bcLowP2In: 0,
     bcHeightIn: 0,
     stepSizeRangeText: '',
     stepSizeDistanceIn: 0,
+    // Railing controls (shared with iBuild, stored independently per department)
+    railingSideMode: 'left',
+    railingColorMode: 'color',
+    post1HeightIn: 36,
+    post1Section: '2x2',
+    post1Thickness: '1.8',
+    post2HeightIn: 36,
+    post2Section: '2x2',
+    post2Thickness: '1.8',
+    compactTopHandrailEnabled: true,
+    handrailSection: '2x1',
+    handrailThickness: '1.8',
+    compactBottomChannelEnabled: true,
+    bottomChannelSection: '2x1',
+    bottomChannelThickness: '1.8',
+    infillType: 'none',
+    picketVerticalSection: '1x1',
+    picketVerticalThickness: '1.8',
+    picketHorizontalSection: '1x1',
+    picketHorizontalThickness: '1.8',
+    cableSize: '1/8',
+    cableFinish: 'Black',
   };
 }
 
@@ -414,6 +438,18 @@ export default function App() {
   };
 
   const handleAddManualPost = (postData) => {
+    if (projectMode === 'measure' && compactPostTarget !== null) {
+      const slotKey = `post${compactPostTarget}`;
+      const anchorKey = `post${compactPostTarget}Anchor`;
+      const anchor = { ...postData, compactSlot: slotKey, id: `imeasure-${slotKey}` };
+      setMeasureProjectShell(shell => ({
+        ...shell,
+        iMeasureConfig: { ...shell.iMeasureConfig, [anchorKey]: anchor },
+      }));
+      setCompactPostTarget(null);
+      setPostPlacementMode(false);
+      return;
+    }
     if (compactPostTarget !== null) {
       const slotKey = `post${compactPostTarget}`;
       const height = compactPostTarget === 1
@@ -945,6 +981,32 @@ export default function App() {
     const tll = activeIMeasureConfig.topLandingLengthIn || 36;
     activeStairConfig = { ...DEFAULT_STAIR, steps: normalTreads, width: sw, height: normalTreads * 7, run: normalTreads * 9, bottomLandingEnabled: true, topLandingEnabled: true, topLandingWidth: tlw, topLandingLength: tll };
   }
+  if (projectMode === 'measure') {
+    activeStairConfig = {
+      ...activeStairConfig,
+      railingSideMode: activeIMeasureConfig.railingSideMode ?? 'left',
+      railingColorMode: activeIMeasureConfig.railingColorMode ?? 'color',
+      post1HeightIn: activeIMeasureConfig.post1HeightIn ?? 36,
+      post1Section: activeIMeasureConfig.post1Section ?? '2x2',
+      post1Thickness: activeIMeasureConfig.post1Thickness ?? '1.8',
+      post2HeightIn: activeIMeasureConfig.post2HeightIn ?? 36,
+      post2Section: activeIMeasureConfig.post2Section ?? '2x2',
+      post2Thickness: activeIMeasureConfig.post2Thickness ?? '1.8',
+      compactTopHandrailEnabled: activeIMeasureConfig.compactTopHandrailEnabled ?? true,
+      handrailSection: activeIMeasureConfig.handrailSection ?? '2x1',
+      handrailThickness: activeIMeasureConfig.handrailThickness ?? '1.8',
+      compactBottomChannelEnabled: activeIMeasureConfig.compactBottomChannelEnabled ?? true,
+      bottomChannelSection: activeIMeasureConfig.bottomChannelSection ?? '2x1',
+      bottomChannelThickness: activeIMeasureConfig.bottomChannelThickness ?? '1.8',
+      infillType: activeIMeasureConfig.infillType ?? 'none',
+      picketVerticalSection: activeIMeasureConfig.picketVerticalSection ?? '1x1',
+      picketVerticalThickness: activeIMeasureConfig.picketVerticalThickness ?? '1.8',
+      picketHorizontalSection: activeIMeasureConfig.picketHorizontalSection ?? '1x1',
+      picketHorizontalThickness: activeIMeasureConfig.picketHorizontalThickness ?? '1.8',
+      cableSize: activeIMeasureConfig.cableSize ?? '1/8',
+      cableFinish: activeIMeasureConfig.cableFinish ?? 'Black',
+    };
+  }
   const activeCalc = projectMode !== 'measure' ? calc : calcStair(activeStairConfig);
 
   return (
@@ -975,7 +1037,9 @@ export default function App() {
         onAddManualDimension={handleAddManualDimension}
         manualTextAnnotations={projectMode === 'measure' ? (measureQ > 0 ? [] : [{ id: 'measure-hello', text: 'Hello POTUCKY', xIn: 0, yIn: 0, zIn: 0 }]) : manualTextAnnotations}
         onAddManualTextAnnotation={handleAddManualTextAnnotation}
-        manualPosts={projectMode === 'measure' ? [] : manualPosts}
+        manualPosts={projectMode === 'measure'
+          ? [activeIMeasureConfig.post1Anchor, activeIMeasureConfig.post2Anchor].filter(Boolean)
+          : manualPosts}
         postPlacementMode={postPlacementMode}
         onAddManualPost={handleAddManualPost}
         selectedManualPostId={selectedManualPostId}
@@ -984,7 +1048,7 @@ export default function App() {
         topRailFirstPostId={topRailFirstPostId}
         onTopRailPostClick={handleTopRailPostClick}
         manualTopRails={projectMode === 'measure' ? [] : manualTopRails}
-        railingColorMode={stairConfig.railingColorMode}
+        railingColorMode={activeStairConfig.railingColorMode}
         structureOffsetXIn={structureOffsetXIn}
         structureOffsetZIn={structureOffsetZIn}
         topRailPathMode={topRailPathMode}
