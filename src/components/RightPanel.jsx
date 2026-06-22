@@ -141,7 +141,8 @@ function StepRangeChipInput({ value, onCommit }) {
 
 // Editable field for inch/mm dimension values. Displays formatted fractions or mm.
 // Parses user input on blur/Enter; does not reformat on every keystroke.
-function DimensionDraftInput({ value, onCommit, units, className, style, allowZero = false }) {
+// Pass onLiveChange to also fire on every valid intermediate change while typing.
+function DimensionDraftInput({ value, onCommit, units, className, style, allowZero = false, onLiveChange }) {
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState('');
   const cancelRef = useRef(false);
@@ -159,7 +160,16 @@ function DimensionDraftInput({ value, onCommit, units, className, style, allowZe
     requestAnimationFrame(() => { el.select(); });
   };
 
-  const handleChange = (e) => { setDraft(e.target.value); };
+  const handleChange = (e) => {
+    const raw = e.target.value;
+    setDraft(raw);
+    if (onLiveChange) {
+      const v = parseDimensionByUnit(raw, units);
+      if (v !== null && (allowZero ? v >= 0 : v > 0)) {
+        onLiveChange(v);
+      }
+    }
+  };
 
   const handleBlur = () => {
     if (!cancelRef.current) {
@@ -340,6 +350,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               units={units}
               value={iMeasureConfig?.postCenterDistanceIn ?? 0}
               onCommit={commitIMeasure('postCenterDistanceIn')}
+              onLiveChange={commitIMeasure('postCenterDistanceIn')}
             />
 
             {/* Row 2: Height | Step Range chip | Step Distance */}
@@ -369,6 +380,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               units={units}
               value={iMeasureConfig?.bcLowP1In ?? 0}
               onCommit={commitIMeasure('bcLowP1In')}
+              onLiveChange={commitIMeasure('bcLowP1In')}
             />
             <span className="chip-label">BC Height</span>
             <DimensionDraftInput
@@ -376,6 +388,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               units={units}
               value={iMeasureConfig?.bcHeightIn ?? 0}
               onCommit={commitIMeasure('bcHeightIn')}
+              onLiveChange={commitIMeasure('bcHeightIn')}
             />
 
             {/* Row 4: Horizontal | Vertical (read-only calculated) */}
@@ -425,7 +438,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         <div className="stair-kv-row">
           <span className="chip-label">Step Width</span>
           {projectMode === 'measure' ? (
-            <DimensionDraftInput className="field-input" units={units} value={iMeasureConfig?.stepWidthIn ?? 48} onCommit={commitIMeasure('stepWidthIn')} />
+            <DimensionDraftInput className="field-input" units={units} value={iMeasureConfig?.stepWidthIn ?? 48} onCommit={commitIMeasure('stepWidthIn')} onLiveChange={commitIMeasure('stepWidthIn')} />
           ) : (
             <DimensionDraftInput className="field-input" units={units} value={stairConfig.width} onCommit={commitDim('width')} />
           )}
@@ -454,12 +467,12 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         <div className="stair-kv-row">
           <span className="chip-label">Top Landing</span>
           {projectMode === 'measure' ? (
-            <DimensionDraftInput className="field-input" units={units} allowZero value={iMeasureConfig?.topLandingWidthIn ?? 0} onCommit={commitIMeasure('topLandingWidthIn')} />
+            <DimensionDraftInput className="field-input" units={units} allowZero value={iMeasureConfig?.topLandingWidthIn ?? 0} onCommit={commitIMeasure('topLandingWidthIn')} onLiveChange={commitIMeasure('topLandingWidthIn')} />
           ) : (
             <DimensionDraftInput className="field-input" units={units} value={stairConfig.topLandingLength ?? 36} onCommit={commitDim('topLandingLength')} />
           )}
           {projectMode === 'measure' ? (
-            <DimensionDraftInput className="field-input" units={units} value={iMeasureConfig?.topLandingLengthIn ?? 36} onCommit={commitIMeasure('topLandingLengthIn')} />
+            <DimensionDraftInput className="field-input" units={units} value={iMeasureConfig?.topLandingLengthIn ?? 36} onCommit={commitIMeasure('topLandingLengthIn')} onLiveChange={commitIMeasure('topLandingLengthIn')} />
           ) : (
             <DimensionDraftInput className="field-input" units={units} value={stairConfig.topLandingWidth ?? stairConfig.width} onCommit={commitDim('topLandingWidth')} />
           )}
