@@ -145,6 +145,8 @@ const MEASURE_LABEL_STYLE = {
 const SHOW_INLINE_DIMS = false;
 const DIM_COLOR = '#1e3a5f';
 const EXT_COLOR = '#4a7fad';
+const DIM_RED = '#dc2626';
+const EXT_DASH_COLOR = '#8a9dbf';
 const LABEL_STYLE = {
   background: 'rgba(30, 58, 92, 0.88)',
   color: '#e8f0fe',
@@ -157,12 +159,27 @@ const LABEL_STYLE = {
   userSelect: 'none',
 };
 
+const CC_LABEL_STYLE = {
+  background: 'rgba(30, 58, 92, 0.92)',
+  color: '#e8f0fe',
+  fontSize: '15px',
+  fontFamily: 'ui-monospace, monospace',
+  fontWeight: '600',
+  padding: '2px 7px',
+  borderRadius: '3px',
+  whiteSpace: 'nowrap',
+  pointerEvents: 'none',
+  userSelect: 'none',
+};
+
 const S = 1.4;  // arrowhead length (scene units) — standard stair dims
 const AW = S * 0.28; // arrowhead half-width — standard stair dims
 const MANUAL_S = 2.5;  // arrowhead length for manual 3D dimensions
 const MANUAL_AW = MANUAL_S * 0.32; // arrowhead half-width for manual 3D dimensions
+const CC_S = 0.78;   // iMeasure PostCC arrowhead length — smaller than manual dims
+const CC_AW = CC_S * 0.22; // iMeasure PostCC arrowhead half-width — narrow CAD style
 
-function ArrowHead({ tip, wingA, wingB }) {
+function ArrowHead({ tip, wingA, wingB, color = DIM_COLOR }) {
   const verts = useMemo(
     () => new Float32Array([...tip, ...wingA, ...wingB]),
     [tip, wingA, wingB]
@@ -172,7 +189,24 @@ function ArrowHead({ tip, wingA, wingB }) {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" array={verts} count={3} itemSize={3} />
       </bufferGeometry>
-      <meshBasicMaterial color={DIM_COLOR} side={THREE.DoubleSide} />
+      <meshBasicMaterial color={color} side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
+
+// Single filled triangle arrowhead oriented in the vertical plane of the dim line.
+// DoubleSide makes it visible from front and back at typical stair camera angles.
+function FilledDimArrowHead({ tip, wingA, wingB, color = DIM_RED }) {
+  const verts = useMemo(
+    () => new Float32Array([...tip, ...wingA, ...wingB]),
+    [tip, wingA, wingB]
+  );
+  return (
+    <mesh userData={{ isDimMarker: true }}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" array={verts} count={3} itemSize={3} />
+      </bufferGeometry>
+      <meshBasicMaterial color={color} side={THREE.DoubleSide} />
     </mesh>
   );
 }
@@ -1348,6 +1382,93 @@ function PersistedDim({ dim }) {
   );
 }
 
+function IMeasurePostCCDim({ p1, p2, treadPositions, riserHeight, run, postCCDistanceIn, units }) {
+  const INtoU = 0.5;
+  const { camera, gl } = useThree();
+  const labelRef = useRef(null);
+  const geomRef = useRef(null);
+
+  const geom = useMemo(() => {
+    const b1 = getManualPostBase(p1, treadPositions, riserHeight, run);
+    const b2 = getManualPostBase(p2, treadPositions, riserHeight, run);
+    if (!b1 || !b2) return null;
+
+    // Post tops (where handrail sits)
+    const t1 = new THREE.Vector3(b1.x, b1.y + p1.heightIn * INtoU, b1.z);
+    const t2 = new THREE.Vector3(b2.x, b2.y + p2.heightIn * INtoU, b2.z);
+
+    // Dim line endpoints: directly above each post center (vertical offset only, stays on post axis)
+    const OFFSET = 4.5; // scene units ≈ 9 inches
+    const o1 = new THREE.Vector3(b1.x, t1.y + OFFSET, b1.z);
+    const o2 = new THREE.Vector3(b2.x, t2.y + OFFSET, b2.z);
+
+    const dimDist = o1.distanceTo(o2);
+    if (dimDist < 2 * CC_S + 0.5) return null;
+
+    // Wing in the vertical plane containing dimDir: project Y-up perpendicular to dimDir.
+    // Oriented vertically so the triangle is visible from typical above-and-side camera angles.
+    const dimDir = o2.clone().sub(o1).normalize();
+    const up = new THREE.Vector3(0, 1, 0);
+    let wing = up.clone().sub(dimDir.clone().multiplyScalar(dimDir.dot(up)));
+    if (wing.lengthSq() < 0.0001) wing.set(0, 0, 1);
+    wing.normalize().multiplyScalar(CC_AW);
+
+    const aInner = o1.clone().addScaledVector(dimDir, CC_S);
+    const bInner = o2.clone().addScaledVector(dimDir, -CC_S);
+    const mid = o1.clone().lerp(o2, 0.5);
+
+    return {
+      // Extension lines: post base center → straight up to dim line (parallel to post)
+      ext1: [new THREE.Vector3(b1.x, b1.y, b1.z).toArray(), o1.toArray()],
+      ext2: [new THREE.Vector3(b2.x, b2.y, b2.z).toArray(), o2.toArray()],
+      // Dimension line endpoints
+      o1, o2, aInner, bInner, mid,
+      aWingA: aInner.clone().add(wing), aWingB: aInner.clone().sub(wing),
+      bWingA: bInner.clone().add(wing), bWingB: bInner.clone().sub(wing),
+    };
+  }, [p1.xIn, p1.zIn, p1.heightIn, p1.stepIndex, p1.surfaceType, p1.offsetXIn, p1.offsetZIn,
+      p2.xIn, p2.zIn, p2.heightIn, p2.stepIndex, p2.surfaceType, p2.offsetXIn, p2.offsetZIn,
+      treadPositions, riserHeight, run]);
+
+  useLayoutEffect(() => { geomRef.current = geom; }, [geom]);
+
+  useFrame(() => {
+    const g = geomRef.current;
+    if (!g || !labelRef.current) return;
+    const w = gl.domElement.clientWidth;
+    const h = gl.domElement.clientHeight;
+    const toScreen = (v) => {
+      const c = v.clone().project(camera);
+      return { x: (c.x + 1) * 0.5 * w, y: (1 - c.y) * 0.5 * h };
+    };
+    const sa = toScreen(g.o1);
+    const sb = toScreen(g.o2);
+    let angleDeg = Math.atan2(sb.y - sa.y, sb.x - sa.x) * (180 / Math.PI);
+    if (angleDeg > 90) angleDeg -= 180;
+    else if (angleDeg < -90) angleDeg += 180;
+    labelRef.current.style.transform = `rotate(${angleDeg.toFixed(2)}deg) translateY(-8px)`;
+  });
+
+  if (!geom) return null;
+
+  return (
+    <>
+      {/* Dashed extension lines from each post center to the offset dim line */}
+      <Line points={geom.ext1} color={EXT_DASH_COLOR} lineWidth={0.9} dashed dashSize={0.6} gapSize={0.35} />
+      <Line points={geom.ext2} color={EXT_DASH_COLOR} lineWidth={0.9} dashed dashSize={0.6} gapSize={0.35} />
+      {/* Main dimension line in red */}
+      <Line points={[geom.aInner.toArray(), geom.bInner.toArray()]} color={DIM_RED} lineWidth={1.2} />
+      {/* Slim red arrowheads — single triangle in vertical plane, visible from normal 3D angles */}
+      <FilledDimArrowHead tip={geom.o1.toArray()} wingA={geom.aWingA.toArray()} wingB={geom.aWingB.toArray()} color={DIM_RED} />
+      <FilledDimArrowHead tip={geom.o2.toArray()} wingA={geom.bWingA.toArray()} wingB={geom.bWingB.toArray()} color={DIM_RED} />
+      {/* Label at midpoint of dimension line */}
+      <Html position={geom.mid.toArray()} center>
+        <div ref={labelRef} style={CC_LABEL_STYLE}>{fmtUnit(postCCDistanceIn, units)}</div>
+      </Html>
+    </>
+  );
+}
+
 function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDimension, units, stairHeight, view }) {
   const [pendingPointA, setPendingPointA] = useState(null);
   const pendingPointARef = useRef(null);
@@ -1832,7 +1953,7 @@ function PdfModePanel({ mode, pdfDraft, activeTool, onAddPdfDimension, onAddPdfT
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, projectMode = 'build', manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation, capture3dRef = null, activePdfDraftMode = null, pdfDrafts = null, onAddPdfDimension, onAddPdfText, onDeleteLastPdfAnnotation, onExitPdfMode, selectedPdfDraftDimensionId = null, onSelectPdfDraftDimension }) {
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, projectMode = 'build', manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation, capture3dRef = null, activePdfDraftMode = null, pdfDrafts = null, onAddPdfDimension, onAddPdfText, onDeleteLastPdfAnnotation, onExitPdfMode, selectedPdfDraftDimensionId = null, onSelectPdfDraftDimension, iMeasurePostCCDistanceIn = 0 }) {
   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingLength, topLandingLength, topLandingWidth, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, railingSideMode, post1Section, post2Section, post1HeightIn, post2HeightIn, compactTopHandrailEnabled, compactBottomChannelEnabled } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'color';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
@@ -2061,6 +2182,18 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
           view={view}
         />
         <ManualTextAnnotationsRenderer annotations={manualTextAnnotations} />
+
+        {isIMeasureMode && showDimensions && compactPostPair !== null && iMeasurePostCCDistanceIn > 0 && (
+          <IMeasurePostCCDim
+            p1={compactPostPair.p1}
+            p2={compactPostPair.p2}
+            treadPositions={calc.treadPositions}
+            riserHeight={calc.riserHeight}
+            run={run}
+            postCCDistanceIn={iMeasurePostCCDistanceIn}
+            units={units}
+          />
+        )}
         </>)}
 
         <OrbitControls
