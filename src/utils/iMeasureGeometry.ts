@@ -175,10 +175,12 @@ export function calculateIMeasureGeometry(
   const risePerIntervalIn = verticalProjectionIn / spanIntervals;
 
   // Bottom Channel lower edge in 2D side-view (xIn = run, yIn = height).
+  // bcLowIn and bcHighIn are local offsets from their respective post bases.
+  // Post 1 base is at y=0; post 2 base is at y=verticalProjectionIn.
   const bottomChannelLowerStart: IMeasurePoint2D = { xIn: 0, yIn: bcLowIn };
   const bottomChannelLowerEnd: IMeasurePoint2D = {
     xIn: horizontalProjectionIn,
-    yIn: bcHighIn,
+    yIn: verticalProjectionIn + bcHighIn,
   };
 
   // Direction along the bottom channel lower edge, normalized.
