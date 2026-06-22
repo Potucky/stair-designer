@@ -17,6 +17,7 @@ import { saveProject } from './lib/saveProject.js';
 import { loadProject } from './lib/loadProject.js';
 import { DEFAULT_STAIR, DEFAULT_PROJECT } from './constants/defaults.js';
 import { normalizeRailEndpoints, normalizeSection, resolveCompactPostAnchors } from './geometry/railingGeometry.js';
+import { calculateIMeasureGeometry } from './utils/iMeasureGeometry.ts';
 
 const SECTION_KEYS = ['post1Section', 'post2Section', 'handrailSection', 'bottomChannelSection', 'picketVerticalSection', 'picketHorizontalSection'];
 
@@ -976,10 +977,39 @@ export default function App() {
     activeStairConfig = { ...DEFAULT_STAIR, steps: 0, width: sw, height: 0, run: 0, bottomLandingEnabled: true, topLandingEnabled: false, topLandingWidth: sw };
   } else {
     const sw = activeIMeasureConfig.stepWidthIn || 48;
-    const normalTreads = measureQ - 1;
+    const normalTreads = Math.max(0, measureQ - 1);
     const tlw = activeIMeasureConfig.topLandingWidthIn || sw;
     const tll = activeIMeasureConfig.topLandingLengthIn || 36;
-    activeStairConfig = { ...DEFAULT_STAIR, steps: normalTreads, width: sw, height: normalTreads * 7, run: normalTreads * 9, bottomLandingEnabled: true, topLandingEnabled: true, topLandingWidth: tlw, topLandingLength: tll };
+
+    const canUseCalculator =
+      (activeIMeasureConfig.postCenterDistanceIn ?? 0) > 0 &&
+      Number.isFinite(activeIMeasureConfig.angleDeg) &&
+      Number.isFinite(activeIMeasureConfig.bcLowP1In) &&
+      Number.isFinite(activeIMeasureConfig.bcHeightIn);
+
+    let calcHeight = normalTreads * 7;
+    let calcRun = normalTreads * 9;
+
+    if (canUseCalculator) {
+      const iMeasureGeometry = calculateIMeasureGeometry({
+        quantityStep: measureQ,
+        post1LevelIndex: 0,
+        post2LevelIndex: measureQ,
+        postCenterDistanceIn: activeIMeasureConfig.postCenterDistanceIn,
+        angleDeg: activeIMeasureConfig.angleDeg,
+        bcLowIn: activeIMeasureConfig.bcLowP1In,
+        bcHighIn: activeIMeasureConfig.bcHeightIn,
+      });
+      if (iMeasureGeometry.valid) {
+        const lvls = iMeasureGeometry.levels;
+        const nosingTotalRise = lvls[lvls.length - 1].yIn - lvls[0].yIn;
+        const nosingTotalRun = lvls[lvls.length - 1].xIn - lvls[0].xIn;
+        calcHeight = nosingTotalRise / iMeasureGeometry.spanIntervals * normalTreads;
+        calcRun = nosingTotalRun / iMeasureGeometry.spanIntervals * normalTreads;
+      }
+    }
+
+    activeStairConfig = { ...DEFAULT_STAIR, steps: measureQ, width: sw, height: calcHeight, run: calcRun, bottomLandingEnabled: true, topLandingEnabled: true, topLandingWidth: tlw, topLandingLength: tll };
   }
   if (projectMode === 'measure') {
     activeStairConfig = {

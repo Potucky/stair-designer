@@ -221,6 +221,23 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
   const railingConfig = projectMode === 'measure' ? iMeasureConfig : stairConfig;
   const setRailingConfig = projectMode === 'measure' ? onIMeasureConfigChange : setStairConfig;
 
+  // iMeasure 7-step input guidance: highlight the first incomplete required field
+  let guidanceStep = null;
+  if (projectMode === 'measure') {
+    const cfg = iMeasureConfig ?? {};
+    const done = [
+      (cfg.quantityStep ?? 0) > 0,
+      cfg.post1Anchor != null,
+      cfg.post2Anchor != null,
+      (cfg.angleDeg ?? 0) > 0,
+      (cfg.postCenterDistanceIn ?? 0) > 0,
+      (cfg.bcLowP1In ?? 0) > 0,
+      (cfg.bcHeightIn ?? 0) > 0,
+    ];
+    const idx = done.indexOf(false);
+    guidanceStep = idx >= 0 ? idx + 1 : null;
+  }
+
   return (
     <aside className="right-panel">
 
@@ -312,14 +329,14 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             {/* Row 1: Angle | Post C-C */}
             <span className="chip-label">Angle</span>
             <NumericDraftInput
-              className="field-input"
+              className={`field-input${guidanceStep === 4 ? ' im-guidance-highlight' : ''}`}
               inputMode="decimal"
               value={iMeasureConfig?.angleDeg ?? 0}
               onCommit={commitIMeasure('angleDeg')}
             />
             <span className="chip-label">Post C-C</span>
             <DimensionDraftInput
-              className="field-input"
+              className={`field-input${guidanceStep === 5 ? ' im-guidance-highlight' : ''}`}
               units={units}
               value={iMeasureConfig?.postCenterDistanceIn ?? 0}
               onCommit={commitIMeasure('postCenterDistanceIn')}
@@ -348,14 +365,14 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
             {/* Row 3: BC Low | BC Height */}
             <span className="chip-label">BC Low</span>
             <DimensionDraftInput
-              className="field-input"
+              className={`field-input${guidanceStep === 6 ? ' im-guidance-highlight' : ''}`}
               units={units}
               value={iMeasureConfig?.bcLowP1In ?? 0}
               onCommit={commitIMeasure('bcLowP1In')}
             />
             <span className="chip-label">BC Height</span>
             <DimensionDraftInput
-              className="field-input"
+              className={`field-input${guidanceStep === 7 ? ' im-guidance-highlight' : ''}`}
               units={units}
               value={iMeasureConfig?.bcHeightIn ?? 0}
               onCommit={commitIMeasure('bcHeightIn')}
@@ -381,7 +398,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           <span className="chip-label">Quantity Step</span>
           {projectMode === 'measure' ? (
             <input
-              className="field-input"
+              className={`field-input${guidanceStep === 1 ? ' im-guidance-highlight' : ''}`}
               inputMode="numeric"
               value={measureQtyFocused ? measureQtyDraft : (iMeasureConfig?.quantityStep > 0 ? String(iMeasureConfig.quantityStep) : '')}
               onFocus={() => {
@@ -454,7 +471,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         <div>
         <div className="rc-comp-row">
           <button
-            className={`chip-label chip-label-btn${compactPostTarget === 1 ? ' chip-label-active' : ''}`}
+            className={`chip-label chip-label-btn${compactPostTarget === 1 ? ' chip-label-active' : ''}${guidanceStep === 2 ? ' im-guidance-highlight' : ''}`}
             title={compactPostTarget === 1 ? 'Cancel Post 1 placement' : 'Click to place Post 1 on any step or landing'}
             onClick={() => onToggleCompactPostPlacement(1)}
           >Post 1</button>
@@ -474,7 +491,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
         <div>
         <div className="rc-comp-row">
           <button
-            className={`chip-label chip-label-btn${compactPostTarget === 2 ? ' chip-label-active' : ''}`}
+            className={`chip-label chip-label-btn${compactPostTarget === 2 ? ' chip-label-active' : ''}${guidanceStep === 3 ? ' im-guidance-highlight' : ''}`}
             title={compactPostTarget === 2 ? 'Cancel Post 2 placement' : 'Click to place Post 2 on any step or landing'}
             onClick={() => onToggleCompactPostPlacement(2)}
           >Post 2</button>

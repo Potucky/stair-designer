@@ -348,6 +348,8 @@ html, body, #root {
   cursor: default;
 }
 
+.im-guidance-highlight { outline: 2px solid var(--error) !important; outline-offset: -1px; }
+
 .step-range-chip-input {
   cursor: text;
   -webkit-user-select: text;
