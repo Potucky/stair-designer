@@ -1096,6 +1096,7 @@ export default function App() {
         selectedPdfDraftDimensionId={selectedPdfDraftDimensionId}
         onSelectPdfDraftDimension={handleSelectPdfDraftDimension}
         iMeasurePostCCDistanceIn={projectMode === 'measure' ? (activeIMeasureConfig.postCenterDistanceIn ?? 0) : 0}
+        iMeasureAngleDeg={projectMode === 'measure' ? (activeIMeasureConfig.angleDeg ?? 0) : 0}
       />
       <RightPanel
         project={activeProject}
