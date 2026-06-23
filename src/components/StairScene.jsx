@@ -1469,6 +1469,181 @@ function IMeasurePostCCDim({ p1, p2, treadPositions, riserHeight, run, postCCDis
   );
 }
 
+function IMeasureHVADims({ p1, p2, treadPositions, riserHeight, run, postCCDistanceIn, angleDeg, units }) {
+  const INtoU = 0.5;
+  const { camera, gl } = useThree();
+  const hLabelRef = useRef(null);
+  const vLabelRef = useRef(null);
+  const aLabelRef = useRef(null);
+  const geomRef = useRef(null);
+
+  const angleRad = angleDeg * (Math.PI / 180);
+  const hValue = postCCDistanceIn * Math.cos(angleRad);
+  const vValue = postCCDistanceIn * Math.sin(angleRad);
+
+  const CC_OFFSET = 4.5;
+  const LEVEL_GAP = 3.0;
+  const OFFSET_H = CC_OFFSET + LEVEL_GAP;
+  const OFFSET_V = CC_OFFSET + LEVEL_GAP * 2;
+  const OFFSET_A = CC_OFFSET + LEVEL_GAP * 3;
+
+  const geom = useMemo(() => {
+    const aRad = angleDeg * (Math.PI / 180);
+    const b1 = getManualPostBase(p1, treadPositions, riserHeight, run);
+    const b2 = getManualPostBase(p2, treadPositions, riserHeight, run);
+    if (!b1 || !b2) return null;
+
+    const t1 = new THREE.Vector3(b1.x, b1.y + p1.heightIn * INtoU, b1.z);
+    const t2 = new THREE.Vector3(b2.x, b2.y + p2.heightIn * INtoU, b2.z);
+
+    const buildLevel = (offset) => {
+      const e1 = new THREE.Vector3(b1.x, t1.y + offset, b1.z);
+      const e2 = new THREE.Vector3(b2.x, t2.y + offset, b2.z);
+      if (e1.distanceTo(e2) < 2 * CC_S + 0.5) return null;
+
+      const dimDir = e2.clone().sub(e1).normalize();
+      const up = new THREE.Vector3(0, 1, 0);
+      let wing = up.clone().sub(dimDir.clone().multiplyScalar(dimDir.dot(up)));
+      if (wing.lengthSq() < 0.0001) wing.set(0, 0, 1);
+      wing.normalize().multiplyScalar(CC_AW);
+
+      const aInner = e1.clone().addScaledVector(dimDir, CC_S);
+      const bInner = e2.clone().addScaledVector(dimDir, -CC_S);
+      const mid = e1.clone().lerp(e2, 0.5);
+
+      return {
+        e1, e2, aInner, bInner, mid,
+        aWingA: aInner.clone().add(wing), aWingB: aInner.clone().sub(wing),
+        bWingA: bInner.clone().add(wing), bWingB: bInner.clone().sub(wing),
+      };
+    };
+
+    const hLevel = buildLevel(OFFSET_H);
+    const vLevel = buildLevel(OFFSET_V);
+
+    // Extension connectors: from CC endpoints straight up to angle level
+    const ccE1 = new THREE.Vector3(b1.x, t1.y + CC_OFFSET, b1.z);
+    const ccE2 = new THREE.Vector3(b2.x, t2.y + CC_OFFSET, b2.z);
+    const aE1 = new THREE.Vector3(b1.x, t1.y + OFFSET_A, b1.z);
+    const aE2 = new THREE.Vector3(b2.x, t2.y + OFFSET_A, b2.z);
+
+    // Angle arc at post-1 end of angle level
+    const arcCenter = aE1.clone();
+    const horizDir = new THREE.Vector3(b2.x - b1.x, 0, b2.z - b1.z);
+    if (horizDir.lengthSq() > 0.0001) horizDir.normalize();
+    else horizDir.set(1, 0, 0);
+    const upVec = new THREE.Vector3(0, 1, 0);
+
+    const ARC_R = 1.5;
+    const nPts = Math.max(8, Math.round(Math.abs(angleDeg) / 3));
+    const arcPts = [];
+    for (let i = 0; i <= nPts; i++) {
+      const a = (i / nPts) * aRad;
+      arcPts.push(
+        arcCenter.clone()
+          .addScaledVector(horizDir, ARC_R * Math.cos(a))
+          .addScaledVector(upVec, ARC_R * Math.sin(a))
+          .toArray()
+      );
+    }
+
+    const aMid = aRad * 0.5;
+    const arcLabelPos = arcCenter.clone()
+      .addScaledVector(horizDir, (ARC_R + 1.6) * Math.cos(aMid))
+      .addScaledVector(upVec, (ARC_R + 1.6) * Math.sin(aMid));
+
+    const hRefEnd = arcCenter.clone().addScaledVector(horizDir, ARC_R);
+    const sRefEnd = arcCenter.clone()
+      .addScaledVector(horizDir, ARC_R * Math.cos(aRad))
+      .addScaledVector(upVec, ARC_R * Math.sin(aRad));
+
+    return {
+      hLevel, vLevel,
+      extLeft: [ccE1.toArray(), aE1.toArray()],
+      extRight: [ccE2.toArray(), aE2.toArray()],
+      arcPts, arcCenter, arcLabelPos, hRefEnd, sRefEnd,
+      showArc: Math.abs(angleDeg) > 0.5,
+    };
+  }, [p1.xIn, p1.zIn, p1.heightIn, p1.stepIndex, p1.surfaceType, p1.offsetXIn, p1.offsetZIn,
+      p2.xIn, p2.zIn, p2.heightIn, p2.stepIndex, p2.surfaceType, p2.offsetXIn, p2.offsetZIn,
+      treadPositions, riserHeight, run, angleDeg]);
+
+  useLayoutEffect(() => { geomRef.current = geom; }, [geom]);
+
+  useFrame(() => {
+    const g = geomRef.current;
+    if (!g) return;
+    const w = gl.domElement.clientWidth;
+    const h = gl.domElement.clientHeight;
+    const toScreen = (v) => {
+      const c = v.clone().project(camera);
+      return { x: (c.x + 1) * 0.5 * w, y: (1 - c.y) * 0.5 * h };
+    };
+    if (g.hLevel && hLabelRef.current) {
+      const sa = toScreen(g.hLevel.e1);
+      const sb = toScreen(g.hLevel.e2);
+      let deg = Math.atan2(sb.y - sa.y, sb.x - sa.x) * (180 / Math.PI);
+      if (deg > 90) deg -= 180;
+      else if (deg < -90) deg += 180;
+      hLabelRef.current.style.transform = `rotate(${deg.toFixed(2)}deg) translateY(-8px)`;
+    }
+    if (g.vLevel && vLabelRef.current) {
+      const sa = toScreen(g.vLevel.e1);
+      const sb = toScreen(g.vLevel.e2);
+      let deg = Math.atan2(sb.y - sa.y, sb.x - sa.x) * (180 / Math.PI);
+      if (deg > 90) deg -= 180;
+      else if (deg < -90) deg += 180;
+      vLabelRef.current.style.transform = `rotate(${deg.toFixed(2)}deg) translateY(-8px)`;
+    }
+  });
+
+  if (!geom) return null;
+
+  return (
+    <>
+      {/* Continuation extension lines from CC level up to angle level */}
+      <Line points={geom.extLeft} color={EXT_DASH_COLOR} lineWidth={0.9} dashed dashSize={0.6} gapSize={0.35} />
+      <Line points={geom.extRight} color={EXT_DASH_COLOR} lineWidth={0.9} dashed dashSize={0.6} gapSize={0.35} />
+
+      {/* Horizontal projection dim */}
+      {geom.hLevel && (
+        <>
+          <Line points={[geom.hLevel.aInner.toArray(), geom.hLevel.bInner.toArray()]} color={DIM_RED} lineWidth={1.2} />
+          <FilledDimArrowHead tip={geom.hLevel.e1.toArray()} wingA={geom.hLevel.aWingA.toArray()} wingB={geom.hLevel.aWingB.toArray()} color={DIM_RED} />
+          <FilledDimArrowHead tip={geom.hLevel.e2.toArray()} wingA={geom.hLevel.bWingA.toArray()} wingB={geom.hLevel.bWingB.toArray()} color={DIM_RED} />
+          <Html position={geom.hLevel.mid.toArray()} center>
+            <div ref={hLabelRef} style={CC_LABEL_STYLE}>H  {fmtUnit(hValue, units)}</div>
+          </Html>
+        </>
+      )}
+
+      {/* Vertical projection dim */}
+      {geom.vLevel && (
+        <>
+          <Line points={[geom.vLevel.aInner.toArray(), geom.vLevel.bInner.toArray()]} color={DIM_RED} lineWidth={1.2} />
+          <FilledDimArrowHead tip={geom.vLevel.e1.toArray()} wingA={geom.vLevel.aWingA.toArray()} wingB={geom.vLevel.aWingB.toArray()} color={DIM_RED} />
+          <FilledDimArrowHead tip={geom.vLevel.e2.toArray()} wingA={geom.vLevel.bWingA.toArray()} wingB={geom.vLevel.bWingB.toArray()} color={DIM_RED} />
+          <Html position={geom.vLevel.mid.toArray()} center>
+            <div ref={vLabelRef} style={CC_LABEL_STYLE}>V  {fmtUnit(vValue, units)}</div>
+          </Html>
+        </>
+      )}
+
+      {/* Angle arc + label */}
+      {geom.showArc && (
+        <>
+          <Line points={[geom.arcCenter.toArray(), geom.hRefEnd.toArray()]} color={EXT_DASH_COLOR} lineWidth={0.9} dashed dashSize={0.6} gapSize={0.35} />
+          <Line points={[geom.arcCenter.toArray(), geom.sRefEnd.toArray()]} color={EXT_DASH_COLOR} lineWidth={0.9} dashed dashSize={0.6} gapSize={0.35} />
+          <Line points={geom.arcPts} color={DIM_RED} lineWidth={1.2} />
+          <Html position={geom.arcLabelPos.toArray()} center>
+            <div ref={aLabelRef} style={CC_LABEL_STYLE}>{angleDeg.toFixed(1)}°</div>
+          </Html>
+        </>
+      )}
+    </>
+  );
+}
+
 function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDimension, units, stairHeight, view }) {
   const [pendingPointA, setPendingPointA] = useState(null);
   const pendingPointARef = useRef(null);
@@ -1953,7 +2128,7 @@ function PdfModePanel({ mode, pdfDraft, activeTool, onAddPdfDimension, onAddPdfT
   );
 }
 
-export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, projectMode = 'build', manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation, capture3dRef = null, activePdfDraftMode = null, pdfDrafts = null, onAddPdfDimension, onAddPdfText, onDeleteLastPdfAnnotation, onExitPdfMode, selectedPdfDraftDimensionId = null, onSelectPdfDraftDimension, iMeasurePostCCDistanceIn = 0 }) {
+export default function StairScene({ stairConfig, calc, view, viewResetToken, units, showDimensions, activeTool, projectMode = 'build', manualPosts, postPlacementMode, onAddManualPost, selectedManualPostId, onSelectManualPost, topRailMode, topRailFirstPostId, onTopRailPostClick, manualTopRails, railingColorMode, structureOffsetXIn = 0, structureOffsetZIn = 0, topRailPathMode = 'standard', fastRailsMode = false, fastRailsPrevPostId = null, onFastRailsPost, onFastRailsPostSelect, manualDimensions = [], onAddManualDimension, manualTextAnnotations = [], onAddManualTextAnnotation, capture3dRef = null, activePdfDraftMode = null, pdfDrafts = null, onAddPdfDimension, onAddPdfText, onDeleteLastPdfAnnotation, onExitPdfMode, selectedPdfDraftDimensionId = null, onSelectPdfDraftDimension, iMeasurePostCCDistanceIn = 0, iMeasureAngleDeg = 0 }) {
   const { height, run, width, steps, handrailHeight, tubeSize, bottomLandingLength, topLandingLength, topLandingWidth, bottomRailEnabled, bottomRailHeight, middleRailEnabled, middleRailHeights, middleRailHeight, railLowerExtensionIn = 0, railUpperExtensionIn = 0, railingSideMode, post1Section, post2Section, post1HeightIn, post2HeightIn, compactTopHandrailEnabled, compactBottomChannelEnabled } = stairConfig;
   const effectiveColorMode = railingColorMode ?? 'color';
   const effectiveMiddleRailHeights = middleRailHeights ?? (middleRailHeight != null ? [middleRailHeight] : [18]);
@@ -2183,7 +2358,8 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
         />
         <ManualTextAnnotationsRenderer annotations={manualTextAnnotations} />
 
-        {isIMeasureMode && showDimensions && compactPostPair !== null && iMeasurePostCCDistanceIn > 0 && (
+        </>)}
+        {isIMeasureMode && showDimensions && compactPostPair !== null && Number.isFinite(iMeasurePostCCDistanceIn) && iMeasurePostCCDistanceIn > 0 && (
           <IMeasurePostCCDim
             p1={compactPostPair.p1}
             p2={compactPostPair.p2}
@@ -2194,7 +2370,18 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             units={units}
           />
         )}
-        </>)}
+        {isIMeasureMode && showDimensions && compactPostPair !== null && Number.isFinite(iMeasurePostCCDistanceIn) && iMeasurePostCCDistanceIn > 0 && Number.isFinite(iMeasureAngleDeg) && (
+          <IMeasureHVADims
+            p1={compactPostPair.p1}
+            p2={compactPostPair.p2}
+            treadPositions={calc.treadPositions}
+            riserHeight={calc.riserHeight}
+            run={run}
+            postCCDistanceIn={iMeasurePostCCDistanceIn}
+            angleDeg={iMeasureAngleDeg}
+            units={units}
+          />
+        )}
 
         <OrbitControls
           ref={orbitRef}
