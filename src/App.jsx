@@ -363,23 +363,26 @@ export default function App() {
 
   const calc = useMemo(() => calcStair(stairConfig), [stairConfig]);
 
-  const warnings = useMemo(() => validateStair({
-    angleDeg: calc.angleDeg,
-    riserHeight: calc.riserHeight,
-    treadDepth: calc.treadDepth,
-    width: stairConfig.width,
-    steps: stairConfig.steps,
-    handrailHeight: stairConfig.handrailHeight,
-    pinOpening: stairConfig.pinOpening,
-    railingEnabled: stairConfig.railingEnabled,
-    railingRunMode: stairConfig.railingRunMode,
-    manualRailingRun: stairConfig.manualRailingRun,
-    run: stairConfig.run,
-    rawPostCount: calc.rawPostCount,
-    postCountCapped: calc.postCountCapped,
-    maxPostCount: calc.maxPostCount,
-    units,
-  }), [calc, stairConfig, units]);
+  const warnings = useMemo(() => {
+    if (projectMode === 'measure') return [];
+    return validateStair({
+      angleDeg: calc.angleDeg,
+      riserHeight: calc.riserHeight,
+      treadDepth: calc.treadDepth,
+      width: stairConfig.width,
+      steps: stairConfig.steps,
+      handrailHeight: stairConfig.handrailHeight,
+      pinOpening: stairConfig.pinOpening,
+      railingEnabled: stairConfig.railingEnabled,
+      railingRunMode: stairConfig.railingRunMode,
+      manualRailingRun: stairConfig.manualRailingRun,
+      run: stairConfig.run,
+      rawPostCount: calc.rawPostCount,
+      postCountCapped: calc.postCountCapped,
+      maxPostCount: calc.maxPostCount,
+      units,
+    });
+  }, [projectMode, calc, stairConfig, units]);
 
   const materials = useMemo(() => buildMaterialList({
     width: stairConfig.width,
