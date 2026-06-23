@@ -813,7 +813,7 @@ function CompactHandrailRenderer({ manualPosts, treadPositions, riserHeight, run
 
 // Compact U-channel (bottom channel): П-shaped, open on the bottom, between Post 1 and Post 2.
 // Built from 3 rectangular pieces: top web + left wall + right wall. Wall thickness: 0.125 in (visual only).
-function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight, run, bottomChannelSection, railingColorMode }) {
+function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight, run, bottomChannelSection, railingColorMode, post1Section, post2Section }) {
   const INtoU = 0.5;
   const { w: chanWIn, h: chanHIn } = parseSectionIn(bottomChannelSection, 2, 1);
   const chanW = chanWIn * INtoU;
@@ -827,6 +827,11 @@ function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight
   const p1Base = getManualPostBase(p1, treadPositions, riserHeight, run);
   const p2Base = getManualPostBase(p2, treadPositions, riserHeight, run);
   if (!p1Base || !p2Base) return null;
+
+  // Post half-widths: used to inset channel endpoints to inner post faces.
+  const fallbackPostWidthIn = 2;
+  const post1HalfIn = parseSectionIn(post1Section, fallbackPostWidthIn, fallbackPostWidthIn).w / 2;
+  const post2HalfIn = parseSectionIn(post2Section, fallbackPostWidthIn, fallbackPostWidthIn).w / 2;
 
   // Side offset: align channel center to post centerline.
   const chanCenterZ = p1Base.z;
@@ -852,11 +857,27 @@ function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight
 
   const startV = new THREE.Vector3(p1Base.x, p1CenterY, chanCenterZ);
   const endV = new THREE.Vector3(p2Base.x, p2CenterY, chanCenterZ);
-  const length = startV.distanceTo(endV);
+  if (startV.distanceTo(endV) < 0.01) return null;
+
+  // Unit vector along the channel beam direction.
+  const direction = endV.clone().sub(startV).normalize();
+
+  // Solve beam parameter t to reach each post's inner vertical face plane (world-X).
+  // The inner face is offset by postHalfIn in world X from the post center.
+  // Since the beam is sloped, traveling postHalfIn along it only advances
+  // postHalfIn * direction.x in X — short of the face by 1/direction.x factor.
+  // t_face = postHalfIn * INtoU / |direction.x| gives the exact intersection.
+  const absDirX = Math.abs(direction.x);
+  if (absDirX < 1e-6) return null; // guard: near-vertical beam has no usable X faces
+
+  const t1 = (post1HalfIn * INtoU) / absDirX;
+  const t2 = (post2HalfIn * INtoU) / absDirX;
+  const startInset = startV.clone().addScaledVector(direction, t1);
+  const endInset = endV.clone().addScaledVector(direction, -t2);
+  const length = startInset.distanceTo(endInset);
   if (length < 0.01) return null;
 
-  const midV = startV.clone().lerp(endV, 0.5);
-  const direction = endV.clone().sub(startV).normalize();
+  const midV = startInset.clone().lerp(endInset, 0.5);
   const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
   const color = railingColorMode === 'black' ? '#111111' : '#2a8a3a';
 
@@ -2313,6 +2334,8 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
               run={run}
               bottomChannelSection={stairConfig.bottomChannelSection}
               railingColorMode={effectiveColorMode}
+              post1Section={stairConfig.post1Section}
+              post2Section={stairConfig.post2Section}
             />
           )}
 
