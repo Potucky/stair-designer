@@ -206,7 +206,7 @@ function DimensionDraftInput({ value, onCommit, units, className, style, allowZe
   );
 }
 
-export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, onNewProject, onSaveProject, onOpenProject, units, compactPostTarget, onToggleCompactPostPlacement, activePdfDraftMode, pdfDrafts, selectedPdfDraftDimensionId, onUpdatePdfDraftDimension, onDeletePdfDraftDimension, onDeleteLastPdfDraftDimension, onClearAllPdfDraftDimensions, projectMode, iMeasureConfig, onIMeasureConfigChange }) {
+export default function RightPanel({ project, setProject, stairConfig, setStairConfig, calc, onNewProject, onSaveProject, onOpenProject, units, compactPostTarget, onToggleCompactPostPlacement, activePdfDraftMode, pdfDrafts, selectedPdfDraftDimensionId, onUpdatePdfDraftDimension, onDeletePdfDraftDimension, onDeleteLastPdfDraftDimension, onClearAllPdfDraftDimensions, projectMode, iMeasureConfig, onIMeasureConfigChange, iMeasureDisplayStepHeight, iMeasureDisplayStepLength }) {
   const [saveStatus, setSaveStatus] = useState(null);
   const [measureQtyDraft, setMeasureQtyDraft] = useState('');
   const [measureQtyFocused, setMeasureQtyFocused] = useState(false);
@@ -230,6 +230,7 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
   // Railing controls are shared between iBuild and iMeasure — route reads/writes by mode.
   const railingConfig = projectMode === 'measure' ? iMeasureConfig : stairConfig;
   const setRailingConfig = projectMode === 'measure' ? onIMeasureConfigChange : setStairConfig;
+
 
   // iMeasure 7-step input guidance: highlight the first incomplete required field
   let guidanceStep = null;
@@ -448,16 +449,28 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
           >Right</button>
         </div>
         <div className="stair-kv-row">
-          <span className="chip-label" style={projectMode === 'measure' ? { opacity: 0.45 } : {}}>Step Height</span>
-          <DimensionDraftInput className="field-input" style={projectMode === 'measure' ? { opacity: 0.45, pointerEvents: 'none' } : {}} units={units} value={calc.riserHeight} onCommit={v => setStairConfig(s => ({ ...s, height: v * s.steps }))} />
+          <span className="chip-label">Step Height</span>
+          {projectMode === 'measure' ? (
+            <span className="field-input im-value-preview">
+              {iMeasureDisplayStepHeight !== null ? formatDimensionByUnit(iMeasureDisplayStepHeight, units) : '—'}
+            </span>
+          ) : (
+            <DimensionDraftInput className="field-input" units={units} value={calc.riserHeight} onCommit={v => setStairConfig(s => ({ ...s, height: v * s.steps }))} />
+          )}
           <button
             className={`panel-btn${(railingConfig.railingColorMode ?? 'color') !== 'black' ? ' panel-btn-active' : ''}`}
             onClick={() => setRailingConfig(s => ({ ...s, railingColorMode: 'color' }))}
           >Color</button>
         </div>
         <div className="stair-kv-row">
-          <span className="chip-label" style={projectMode === 'measure' ? { opacity: 0.45 } : {}}>Step Length</span>
-          <DimensionDraftInput className="field-input" style={projectMode === 'measure' ? { opacity: 0.45, pointerEvents: 'none' } : {}} units={units} value={calc.treadDepth} onCommit={v => setStairConfig(s => ({ ...s, run: v * s.steps }))} />
+          <span className="chip-label">Step Length</span>
+          {projectMode === 'measure' ? (
+            <span className="field-input im-value-preview">
+              {iMeasureDisplayStepLength !== null ? formatDimensionByUnit(iMeasureDisplayStepLength, units) : '—'}
+            </span>
+          ) : (
+            <DimensionDraftInput className="field-input" units={units} value={calc.treadDepth} onCommit={v => setStairConfig(s => ({ ...s, run: v * s.steps }))} />
+          )}
           <button
             className={`panel-btn${(railingConfig.railingColorMode ?? 'color') === 'black' ? ' panel-btn-active' : ''}`}
             onClick={() => setRailingConfig(s => ({ ...s, railingColorMode: 'black' }))}

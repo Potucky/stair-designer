@@ -970,6 +970,10 @@ export default function App() {
     : iMeasureConfig;
 
   const measureQ = projectMode === 'measure' ? (activeIMeasureConfig.quantityStep ?? 0) : 0;
+  // Per-step display values derived from the same iMeasure geometry used to build the 3D model.
+  // Null when inputs are incomplete or mode is iBuild.
+  let iMeasureDisplayStepHeight = null;
+  let iMeasureDisplayStepLength = null;
   let activeStairConfig;
   if (projectMode !== 'measure') {
     activeStairConfig = stairConfig;
@@ -1009,6 +1013,9 @@ export default function App() {
         const nosingTotalRun = lvls[lvls.length - 1].xIn - lvls[0].xIn;
         calcHeight = nosingTotalRise / iMeasureGeometry.spanIntervals * normalTreads;
         calcRun = nosingTotalRun / iMeasureGeometry.spanIntervals * normalTreads;
+        // Exact per-interval values that the 3D model uses — passed to RightPanel for display.
+        iMeasureDisplayStepHeight = nosingTotalRise / iMeasureGeometry.spanIntervals;
+        iMeasureDisplayStepLength = nosingTotalRun / iMeasureGeometry.spanIntervals;
       }
     }
 
@@ -1164,6 +1171,8 @@ export default function App() {
         projectMode={projectMode}
         iMeasureConfig={activeIMeasureConfig}
         onIMeasureConfigChange={handleActiveIMeasureConfigChange}
+        iMeasureDisplayStepHeight={iMeasureDisplayStepHeight}
+        iMeasureDisplayStepLength={iMeasureDisplayStepLength}
       />
       <StatusBar activeTool={activeTool} calc={calc} warnings={warnings} units={units} />
       {openProjectModalOpen && (
