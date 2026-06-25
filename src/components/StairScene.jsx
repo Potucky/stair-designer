@@ -813,93 +813,146 @@ function CompactHandrailRenderer({ manualPosts, treadPositions, riserHeight, run
 
 // Compact U-channel (bottom channel): П-shaped, open on the bottom, between Post 1 and Post 2.
 // Built from 3 rectangular pieces: top web + left wall + right wall. Wall thickness: 0.125 in (visual only).
+// Builds a mitered box where both end faces lie on vertical world-X planes.
+// si / ei  : Vector3 — channel-center at start / end miter face.
+// yMin/yMax: cross-section Y range in channel-local (beam-perp, vertical-plane) space.
+// zMin/zMax: cross-section Z range in world Z (width direction; same at both ends
+//            because direction.z = 0 for all stair channels).
+// dx       : direction.x (> 0) — miter-projection divisor.
+//
+// Miter math: a corner at channel-local offset (yOff, zOff) naively sits at world
+//   si + quat*(0, yOff, zOff)  whose worldX = si.x − dy*yOff ≠ si.x when sloped.
+// Shifting it along the beam by t = dy*yOff/dx restores worldX = si.x, and the
+// resulting world position collapses to: (si.x,  si.y + yOff/dx,  si.z + zOff).
+// Every corner of the face shares the same worldX, so the cap is a vertical plane. ✓
+function buildMiteredBoxGeo(si, ei, yMin, yMax, zMin, zMax, dx) {
+  const sx = si.x, sy = si.y, sz = si.z;
+  const ex = ei.x, ey = ei.y;
+  // ei.z === si.z (direction.z = 0) so sz covers both ends.
+  const p = [
+    [sx, sy + yMin / dx, sz + zMin], // 0: start yMin zMin
+    [sx, sy + yMax / dx, sz + zMin], // 1: start yMax zMin
+    [sx, sy + yMax / dx, sz + zMax], // 2: start yMax zMax
+    [sx, sy + yMin / dx, sz + zMax], // 3: start yMin zMax
+    [ex, ey + yMin / dx, sz + zMin], // 4: end yMin zMin
+    [ex, ey + yMax / dx, sz + zMin], // 5: end yMax zMin
+    [ex, ey + yMax / dx, sz + zMax], // 6: end yMax zMax
+    [ex, ey + yMin / dx, sz + zMax], // 7: end yMin zMax
+  ];
+  // 6 quads (CCW winding = outward normals), each as 2 triangles.
+  const quads = [
+    [1, 2, 6, 5], // top (yMax)    normal: +localY
+    [0, 4, 7, 3], // bottom (yMin) normal: −localY
+    [0, 1, 5, 4], // near (zMin)   normal: −Z
+    [3, 7, 6, 2], // far (zMax)    normal: +Z
+    [0, 3, 2, 1], // start cap     normal: −X (toward post1)
+    [4, 5, 6, 7], // end cap       normal: +X (toward post2)
+  ];
+  const pos = [];
+  for (const [a, b, c, d] of quads) {
+    pos.push(...p[a], ...p[b], ...p[c]);
+    pos.push(...p[a], ...p[c], ...p[d]);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
 function CompactBottomChannelRenderer({ manualPosts, treadPositions, riserHeight, run, bottomChannelSection, railingColorMode, post1Section, post2Section }) {
-  const INtoU = 0.5;
-  const { w: chanWIn, h: chanHIn } = parseSectionIn(bottomChannelSection, 2, 1);
-  const chanW = chanWIn * INtoU;
-  const chanH = chanHIn * INtoU;
-  const wallT = 0.125 * INtoU; // 0.125 in visual wall thickness for 3D display
+  const geos = useMemo(() => {
+    const INtoU = 0.5;
+    const { w: chanWIn, h: chanHIn } = parseSectionIn(bottomChannelSection, 2, 1);
+    const chanW = chanWIn * INtoU;
+    const chanH = chanHIn * INtoU;
+    const wallT = 0.125 * INtoU;
 
-  const p1 = manualPosts.find(p => p.compactSlot === 'post1');
-  const p2 = manualPosts.find(p => p.compactSlot === 'post2');
-  if (!p1 || !p2) return null;
+    const p1 = manualPosts.find(p => p.compactSlot === 'post1');
+    const p2 = manualPosts.find(p => p.compactSlot === 'post2');
+    if (!p1 || !p2) return null;
 
-  const p1Base = getManualPostBase(p1, treadPositions, riserHeight, run);
-  const p2Base = getManualPostBase(p2, treadPositions, riserHeight, run);
-  if (!p1Base || !p2Base) return null;
+    const p1Base = getManualPostBase(p1, treadPositions, riserHeight, run);
+    const p2Base = getManualPostBase(p2, treadPositions, riserHeight, run);
+    if (!p1Base || !p2Base) return null;
 
-  // Post half-widths: used to inset channel endpoints to inner post faces.
-  const fallbackPostWidthIn = 2;
-  const post1HalfIn = parseSectionIn(post1Section, fallbackPostWidthIn, fallbackPostWidthIn).w / 2;
-  const post2HalfIn = parseSectionIn(post2Section, fallbackPostWidthIn, fallbackPostWidthIn).w / 2;
+    const fallbackPostWidthIn = 2;
+    const post1HalfIn = parseSectionIn(post1Section, fallbackPostWidthIn, fallbackPostWidthIn).w / 2;
+    const post2HalfIn = parseSectionIn(post2Section, fallbackPostWidthIn, fallbackPostWidthIn).w / 2;
 
-  // Side offset: align channel center to post centerline.
-  const chanCenterZ = p1Base.z;
+    const chanCenterZ = p1Base.z;
+    const r_u = run * INtoU;
+    const rH_u = riserHeight * INtoU;
+    const steps = treadPositions.length;
+    const tD_u = steps > 0 ? (run / steps) * INtoU : 0;
+    const nosingSlope = tD_u > 0 ? rH_u / tD_u : 0;
+    const p1IsLanding = p1.surfaceType === 'bottomLanding' || p1.surfaceType === 'topLanding';
+    const p2IsLanding = p2.surfaceType === 'bottomLanding' || p2.surfaceType === 'topLanding';
+    const p1SurfaceY = p1IsLanding ? p1Base.y : (tD_u > 0 ? nosingSlope * (p1Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK : p1Base.y);
+    const p2SurfaceY = p2IsLanding ? p2Base.y : (tD_u > 0 ? nosingSlope * (p2Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK : p2Base.y);
 
-  // Stair surface reference: use nosing-line Y at each post's actual X position.
-  // For landing posts use the flat landing surface (p_Base.y from getManualPostBase)
-  // instead of the nosing-slope formula, which would overshoot a flat landing.
-  const r_u = run * INtoU;
-  const rH_u = riserHeight * INtoU;
-  const steps = treadPositions.length;
-  const tD_u = steps > 0 ? (run / steps) * INtoU : 0;
-  const nosingSlope = tD_u > 0 ? rH_u / tD_u : 0;
-  const p1IsLanding = p1.surfaceType === 'bottomLanding' || p1.surfaceType === 'topLanding';
-  const p2IsLanding = p2.surfaceType === 'bottomLanding' || p2.surfaceType === 'topLanding';
-  const p1SurfaceY = p1IsLanding ? p1Base.y : (tD_u > 0 ? nosingSlope * (p1Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK : p1Base.y);
-  const p2SurfaceY = p2IsLanding ? p2Base.y : (tD_u > 0 ? nosingSlope * (p2Base.x + r_u / 2) + 0.5 * rH_u + TREAD_THICK : p2Base.y);
+    const clearanceIn = 1.0;
+    const p1CenterY = p1SurfaceY + (clearanceIn + chanHIn / 2) * INtoU;
+    const p2CenterY = p2SurfaceY + (clearanceIn + chanHIn / 2) * INtoU;
 
-  // Channel center: 1.0 inch clearance above stair surface + half channel height.
-  // This places the bottom lower edge exactly 1.0 inch above the stair tread corner reference line.
-  const clearanceIn = 1.0;
-  const p1CenterY = p1SurfaceY + (clearanceIn + chanHIn / 2) * INtoU;
-  const p2CenterY = p2SurfaceY + (clearanceIn + chanHIn / 2) * INtoU;
+    const startV = new THREE.Vector3(p1Base.x, p1CenterY, chanCenterZ);
+    const endV = new THREE.Vector3(p2Base.x, p2CenterY, chanCenterZ);
+    if (startV.distanceTo(endV) < 0.01) return null;
 
-  const startV = new THREE.Vector3(p1Base.x, p1CenterY, chanCenterZ);
-  const endV = new THREE.Vector3(p2Base.x, p2CenterY, chanCenterZ);
-  if (startV.distanceTo(endV) < 0.01) return null;
+    const direction = endV.clone().sub(startV).normalize();
+    const absDirX = Math.abs(direction.x);
+    if (absDirX < 1e-6) return null;
 
-  // Unit vector along the channel beam direction.
-  const direction = endV.clone().sub(startV).normalize();
+    const t1 = (post1HalfIn * INtoU) / absDirX;
+    const t2 = (post2HalfIn * INtoU) / absDirX;
+    const startInset = startV.clone().addScaledVector(direction, t1);
+    const endInset = endV.clone().addScaledVector(direction, -t2);
+    if (startInset.distanceTo(endInset) < 0.01) return null;
 
-  // Solve beam parameter t to reach each post's inner vertical face plane (world-X).
-  // The inner face is offset by postHalfIn in world X from the post center.
-  // Since the beam is sloped, traveling postHalfIn along it only advances
-  // postHalfIn * direction.x in X — short of the face by 1/direction.x factor.
-  // t_face = postHalfIn * INtoU / |direction.x| gives the exact intersection.
-  const absDirX = Math.abs(direction.x);
-  if (absDirX < 1e-6) return null; // guard: near-vertical beam has no usable X faces
+    // dx = direction.x (> 0 for any valid stair after the guard above).
+    const dx = absDirX;
 
-  const t1 = (post1HalfIn * INtoU) / absDirX;
-  const t2 = (post2HalfIn * INtoU) / absDirX;
-  const startInset = startV.clone().addScaledVector(direction, t1);
-  const endInset = endV.clone().addScaledVector(direction, -t2);
-  const length = startInset.distanceTo(endInset);
-  if (length < 0.01) return null;
+    // Build one mitered box per channel piece.
+    // Cross-section bounds match the original BoxGeometry positions exactly:
+    //   top web:   Y [chanH/2−wallT .. chanH/2],   Z [−chanW/2 .. chanW/2]
+    //   left wall: Y [−chanH/2 .. chanH/2−wallT],  Z [−chanW/2 .. wallT−chanW/2]
+    //   right wall:Y [−chanH/2 .. chanH/2−wallT],  Z [chanW/2−wallT .. chanW/2]
+    const webGeo = buildMiteredBoxGeo(
+      startInset, endInset,
+      chanH / 2 - wallT, chanH / 2,
+      -chanW / 2, chanW / 2,
+      dx
+    );
+    const leftGeo = buildMiteredBoxGeo(
+      startInset, endInset,
+      -chanH / 2, chanH / 2 - wallT,
+      -chanW / 2, wallT - chanW / 2,
+      dx
+    );
+    const rightGeo = buildMiteredBoxGeo(
+      startInset, endInset,
+      -chanH / 2, chanH / 2 - wallT,
+      chanW / 2 - wallT, chanW / 2,
+      dx
+    );
 
-  const midV = startInset.clone().lerp(endInset, 0.5);
-  const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
+    return { webGeo, leftGeo, rightGeo };
+  }, [manualPosts, treadPositions, riserHeight, run, bottomChannelSection, post1Section, post2Section]);
+
+  if (!geos) return null;
+
   const color = railingColorMode === 'black' ? '#111111' : '#2a8a3a';
-
-  // In beam-local frame: X = length, Y = up, Z = width. Channel opens at local -Y (downward).
   return (
-    <group position={midV.toArray()} quaternion={quat}>
-      {/* Top web: full width, sits at top of bounding box */}
-      <mesh position={[0, chanH / 2 - wallT / 2, 0]}>
-        <boxGeometry args={[length, wallT, chanW]} />
+    <>
+      <mesh geometry={geos.webGeo}>
         <meshStandardMaterial color={color} metalness={0.3} roughness={0.5} />
       </mesh>
-      {/* Left side wall: hangs from web to open bottom */}
-      <mesh position={[0, -wallT / 2, -(chanW / 2 - wallT / 2)]}>
-        <boxGeometry args={[length, chanH - wallT, wallT]} />
+      <mesh geometry={geos.leftGeo}>
         <meshStandardMaterial color={color} metalness={0.3} roughness={0.5} />
       </mesh>
-      {/* Right side wall: hangs from web to open bottom */}
-      <mesh position={[0, -wallT / 2, chanW / 2 - wallT / 2]}>
-        <boxGeometry args={[length, chanH - wallT, wallT]} />
+      <mesh geometry={geos.rightGeo}>
         <meshStandardMaterial color={color} metalness={0.3} roughness={0.5} />
       </mesh>
-    </group>
+    </>
   );
 }
 
