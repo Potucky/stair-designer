@@ -1718,6 +1718,113 @@ function IMeasureHVADims({ p1, p2, treadPositions, riserHeight, run, postCCDista
   );
 }
 
+function IMeasureHVGeoDims({ p1, p2, treadPositions, riserHeight, run, horizontalIn, verticalIn, units }) {
+  const { camera, gl } = useThree();
+  const hLabelRef = useRef(null);
+  const vLabelRef = useRef(null);
+  const geomRef = useRef(null);
+
+  const geom = useMemo(() => {
+    const b1 = getManualPostBase(p1, treadPositions, riserHeight, run);
+    const b2 = getManualPostBase(p2, treadPositions, riserHeight, run);
+    if (!b1 || !b2) return null;
+
+    const Z = b1.z;
+    const H_BELOW = 3.0;
+    const V_LEFT = 3.0;
+    const TICK = 1.0;
+
+    // Horizontal dim: flat line below the stair
+    const Y_H = Math.min(b1.y, b2.y) - H_BELOW;
+    const hE1 = new THREE.Vector3(b1.x, Y_H, Z);
+    const hE2 = new THREE.Vector3(b2.x, Y_H, Z);
+    if (Math.abs(b2.x - b1.x) < 2 * CC_S + 0.5) return null;
+    const hDimDir = hE2.clone().sub(hE1).normalize();
+    const hWing = new THREE.Vector3(0, CC_AW, 0);
+    const hAInner = hE1.clone().addScaledVector(hDimDir, CC_S);
+    const hBInner = hE2.clone().addScaledVector(hDimDir, -CC_S);
+    const hMid = hE1.clone().lerp(hE2, 0.5);
+
+    // Vertical dim: vertical line to the left side
+    const X_V = Math.min(b1.x, b2.x) - V_LEFT;
+    const vE1 = new THREE.Vector3(X_V, b1.y, Z);
+    const vE2 = new THREE.Vector3(X_V, b2.y, Z);
+    if (Math.abs(b2.y - b1.y) < 2 * CC_S + 0.5) return null;
+    const vDimDir = vE2.clone().sub(vE1).normalize();
+    const vWing = new THREE.Vector3(CC_AW, 0, 0);
+    const vAInner = vE1.clone().addScaledVector(vDimDir, CC_S);
+    const vBInner = vE2.clone().addScaledVector(vDimDir, -CC_S);
+    const vMid = vE1.clone().lerp(vE2, 0.5);
+
+    return {
+      hE1, hE2, hAInner, hBInner, hMid,
+      hAWingA: hAInner.clone().add(hWing), hAWingB: hAInner.clone().sub(hWing),
+      hBWingA: hBInner.clone().add(hWing), hBWingB: hBInner.clone().sub(hWing),
+      hTick1: [[b1.x, Y_H - TICK, Z], [b1.x, Y_H + TICK, Z]],
+      hTick2: [[b2.x, Y_H - TICK, Z], [b2.x, Y_H + TICK, Z]],
+      vE1, vE2, vAInner, vBInner, vMid,
+      vAWingA: vAInner.clone().add(vWing), vAWingB: vAInner.clone().sub(vWing),
+      vBWingA: vBInner.clone().add(vWing), vBWingB: vBInner.clone().sub(vWing),
+      vTick1: [[X_V - TICK, b1.y, Z], [X_V + TICK, b1.y, Z]],
+      vTick2: [[X_V - TICK, b2.y, Z], [X_V + TICK, b2.y, Z]],
+    };
+  }, [p1.xIn, p1.zIn, p1.heightIn, p1.stepIndex, p1.surfaceType, p1.offsetXIn, p1.offsetZIn,
+      p2.xIn, p2.zIn, p2.heightIn, p2.stepIndex, p2.surfaceType, p2.offsetXIn, p2.offsetZIn,
+      treadPositions, riserHeight, run]);
+
+  useLayoutEffect(() => { geomRef.current = geom; }, [geom]);
+
+  useFrame(() => {
+    const g = geomRef.current;
+    if (!g) return;
+    const w = gl.domElement.clientWidth;
+    const h = gl.domElement.clientHeight;
+    const toScreen = (v) => {
+      const c = v.clone().project(camera);
+      return { x: (c.x + 1) * 0.5 * w, y: (1 - c.y) * 0.5 * h };
+    };
+    if (hLabelRef.current) {
+      const sa = toScreen(g.hE1);
+      const sb = toScreen(g.hE2);
+      let deg = Math.atan2(sb.y - sa.y, sb.x - sa.x) * (180 / Math.PI);
+      if (deg > 90) deg -= 180;
+      else if (deg < -90) deg += 180;
+      hLabelRef.current.style.transform = `rotate(${deg.toFixed(2)}deg) translateY(-8px)`;
+    }
+    if (vLabelRef.current) {
+      const sa = toScreen(g.vE1);
+      const sb = toScreen(g.vE2);
+      let deg = Math.atan2(sb.y - sa.y, sb.x - sa.x) * (180 / Math.PI);
+      if (deg > 90) deg -= 180;
+      else if (deg < -90) deg += 180;
+      vLabelRef.current.style.transform = `rotate(${deg.toFixed(2)}deg) translateY(-8px)`;
+    }
+  });
+
+  if (!geom) return null;
+
+  return (
+    <>
+      <Line points={geom.hTick1} color={EXT_DASH_COLOR} lineWidth={0.9} />
+      <Line points={geom.hTick2} color={EXT_DASH_COLOR} lineWidth={0.9} />
+      <Line points={[geom.hAInner.toArray(), geom.hBInner.toArray()]} color={DIM_RED} lineWidth={1.2} />
+      <FilledDimArrowHead tip={geom.hE1.toArray()} wingA={geom.hAWingA.toArray()} wingB={geom.hAWingB.toArray()} color={DIM_RED} />
+      <FilledDimArrowHead tip={geom.hE2.toArray()} wingA={geom.hBWingA.toArray()} wingB={geom.hBWingB.toArray()} color={DIM_RED} />
+      <Html position={geom.hMid.toArray()} center>
+        <div ref={hLabelRef} style={CC_LABEL_STYLE}>H  {fmtUnit(horizontalIn, units)}</div>
+      </Html>
+      <Line points={geom.vTick1} color={EXT_DASH_COLOR} lineWidth={0.9} />
+      <Line points={geom.vTick2} color={EXT_DASH_COLOR} lineWidth={0.9} />
+      <Line points={[geom.vAInner.toArray(), geom.vBInner.toArray()]} color={DIM_RED} lineWidth={1.2} />
+      <FilledDimArrowHead tip={geom.vE1.toArray()} wingA={geom.vAWingA.toArray()} wingB={geom.vAWingB.toArray()} color={DIM_RED} />
+      <FilledDimArrowHead tip={geom.vE2.toArray()} wingA={geom.vBWingA.toArray()} wingB={geom.vBWingB.toArray()} color={DIM_RED} />
+      <Html position={geom.vMid.toArray()} center>
+        <div ref={vLabelRef} style={CC_LABEL_STYLE}>V  {fmtUnit(verticalIn, units)}</div>
+      </Html>
+    </>
+  );
+}
+
 function ManualDimTool({ active, showDimensions, manualDimensions, onAddManualDimension, units, stairHeight, view }) {
   const [pendingPointA, setPendingPointA] = useState(null);
   const pendingPointARef = useRef(null);
@@ -2455,6 +2562,18 @@ export default function StairScene({ stairConfig, calc, view, viewResetToken, un
             run={run}
             postCCDistanceIn={iMeasurePostCCDistanceIn}
             angleDeg={iMeasureAngleDeg}
+            units={units}
+          />
+        )}
+        {isIMeasureMode && showDimensions && compactPostPair !== null && Number.isFinite(iMeasurePostCCDistanceIn) && iMeasurePostCCDistanceIn > 0 && Number.isFinite(iMeasureAngleDeg) && (
+          <IMeasureHVGeoDims
+            p1={compactPostPair.p1}
+            p2={compactPostPair.p2}
+            treadPositions={calc.treadPositions}
+            riserHeight={calc.riserHeight}
+            run={run}
+            horizontalIn={iMeasurePostCCDistanceIn * Math.cos(iMeasureAngleDeg * Math.PI / 180)}
+            verticalIn={iMeasurePostCCDistanceIn * Math.sin(iMeasureAngleDeg * Math.PI / 180)}
             units={units}
           />
         )}
