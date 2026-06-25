@@ -402,6 +402,26 @@ export default function RightPanel({ project, setProject, stairConfig, setStairC
               {formatDimensionByUnit((iMeasureConfig?.postCenterDistanceIn ?? 0) * Math.sin((iMeasureConfig?.angleDeg ?? 0) * Math.PI / 180), units)}
             </span>
 
+            {/* Row 5: P1 Offset | P2 Offset */}
+            <span className="chip-label">P1 Offset</span>
+            <DimensionDraftInput
+              className="field-input"
+              units={units}
+              allowZero={true}
+              value={iMeasureConfig?.p1OffsetIn ?? 0}
+              onCommit={commitIMeasure('p1OffsetIn')}
+              onLiveChange={commitIMeasure('p1OffsetIn')}
+            />
+            <span className="chip-label">P2 Offset</span>
+            <DimensionDraftInput
+              className="field-input"
+              units={units}
+              allowZero={true}
+              value={iMeasureConfig?.p2OffsetIn ?? 0}
+              onCommit={commitIMeasure('p2OffsetIn')}
+              onLiveChange={commitIMeasure('p2OffsetIn')}
+            />
+
           </div>
         </section>
       )}

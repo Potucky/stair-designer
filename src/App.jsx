@@ -91,6 +91,8 @@ function createDefaultIMeasureConfig() {
     bcLowP1In: 0,
     bcLowP2In: 0,
     bcHeightIn: 0,
+    p1OffsetIn: 0,
+    p2OffsetIn: 0,
     stepSizeRangeText: '',
     stepSizeDistanceIn: 0,
     // Railing controls (shared with iBuild, stored independently per department)
