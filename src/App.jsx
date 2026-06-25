@@ -972,6 +972,10 @@ export default function App() {
     : iMeasureConfig;
 
   const measureQ = projectMode === 'measure' ? (activeIMeasureConfig.quantityStep ?? 0) : 0;
+  // Safe post-offset values available at the top level — used in both the run calculation
+  // (measureQ >= 2 branch) and the JSX manualPosts injection below.
+  const iMeasureP1OffsetIn = Number.isFinite(activeIMeasureConfig?.p1OffsetIn) ? activeIMeasureConfig.p1OffsetIn : 0;
+  const iMeasureP2OffsetIn = Number.isFinite(activeIMeasureConfig?.p2OffsetIn) ? activeIMeasureConfig.p2OffsetIn : 0;
   // Per-step display values derived from the same iMeasure geometry used to build the 3D model.
   // Null when inputs are incomplete or mode is iBuild.
   let iMeasureDisplayStepHeight = null;
@@ -999,6 +1003,9 @@ export default function App() {
     let calcHeight = normalTreads * 7;
     let calcRun = normalTreads * 9;
 
+    // Total horizontal span addition from P1/P2 post offsets.
+    const horizontalOffsetIn = iMeasureP1OffsetIn + iMeasureP2OffsetIn;
+
     if (canUseCalculator) {
       const iMeasureGeometry = calculateIMeasureGeometry({
         quantityStep: measureQ,
@@ -1012,12 +1019,15 @@ export default function App() {
       if (iMeasureGeometry.valid) {
         const lvls = iMeasureGeometry.levels;
         const nosingTotalRise = lvls[lvls.length - 1].yIn - lvls[0].yIn;
-        const nosingTotalRun = lvls[lvls.length - 1].xIn - lvls[0].xIn;
+        // horizontalIn: raw Post C-C horizontal projection (nosing reference span from geometry).
+        // effectiveHorizontalIn: adds P1/P2 offsets — used for step run and 3D preview width.
+        const horizontalIn = lvls[lvls.length - 1].xIn - lvls[0].xIn;
+        const effectiveHorizontalIn = horizontalIn + horizontalOffsetIn;
         calcHeight = nosingTotalRise / iMeasureGeometry.spanIntervals * normalTreads;
-        calcRun = nosingTotalRun / iMeasureGeometry.spanIntervals * normalTreads;
+        calcRun = effectiveHorizontalIn / iMeasureGeometry.spanIntervals * normalTreads;
         // Exact per-interval values that the 3D model uses — passed to RightPanel for display.
         iMeasureDisplayStepHeight = nosingTotalRise / iMeasureGeometry.spanIntervals;
-        iMeasureDisplayStepLength = nosingTotalRun / iMeasureGeometry.spanIntervals;
+        iMeasureDisplayStepLength = effectiveHorizontalIn / iMeasureGeometry.spanIntervals;
       }
     }
 
@@ -1080,7 +1090,14 @@ export default function App() {
         manualTextAnnotations={projectMode === 'measure' ? (measureQ > 0 ? [] : [{ id: 'measure-hello', text: 'Hello POTUCKY', xIn: 0, yIn: 0, zIn: 0 }]) : manualTextAnnotations}
         onAddManualTextAnnotation={handleAddManualTextAnnotation}
         manualPosts={projectMode === 'measure'
-          ? [activeIMeasureConfig.post1Anchor, activeIMeasureConfig.post2Anchor].filter(Boolean)
+          ? [
+              activeIMeasureConfig.post1Anchor
+                ? { ...activeIMeasureConfig.post1Anchor, offsetXIn: -iMeasureP1OffsetIn }
+                : null,
+              activeIMeasureConfig.post2Anchor
+                ? { ...activeIMeasureConfig.post2Anchor, offsetXIn: iMeasureP2OffsetIn }
+                : null,
+            ].filter(Boolean)
           : manualPosts}
         postPlacementMode={postPlacementMode}
         onAddManualPost={handleAddManualPost}
