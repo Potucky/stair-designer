@@ -618,13 +618,21 @@ export function generatePdf({ project, stairConfig, calc, warnings, materials, u
 
         if (compactBottomEnabled) {
           const channelHalfH = (channelHIn / 2) * INtoU;
+          // Clip channel endpoints to inner post faces so it doesn't visually run through the posts.
+          const _fbPW = getTubeProfile(stairConfig.tubeSize).width;
+          const _chP1Half = parseSectionIn(stairConfig.post1Section, _fbPW, _fbPW).w / 2;
+          const _chP2Half = parseSectionIn(stairConfig.post2Section, _fbPW, _fbPW).w / 2;
+          const _chSpanX = p2Base.x - p1Base.x;
+          const _chTS = _chSpanX > 0.001 ? (_chP1Half * INtoU) / _chSpanX : 0;
+          const _chTE = _chSpanX > 0.001 ? 1 - (_chP2Half * INtoU) / _chSpanX : 1;
+          const _chDY = bottomFace.p2.y - bottomFace.p1.y;
           drawSceneLineAdj(
-            { x: bottomFace.p1.x, y: bottomFace.p1.y + channelHalfH, z: p1Base.z },
-            { x: bottomFace.p2.x, y: bottomFace.p2.y + channelHalfH, z: p1Base.z },
+            { x: bottomFace.p1.x + _chTS * (bottomFace.p2.x - bottomFace.p1.x), y: bottomFace.p1.y + channelHalfH + _chTS * _chDY, z: p1Base.z },
+            { x: bottomFace.p1.x + _chTE * (bottomFace.p2.x - bottomFace.p1.x), y: bottomFace.p1.y + channelHalfH + _chTE * _chDY, z: p1Base.z },
             bottomColor,
             channelWidthPt,
-            p1YAdj,
-            p2YAdj
+            p1YAdj + _chTS * (p2YAdj - p1YAdj),
+            p1YAdj + _chTE * (p2YAdj - p1YAdj)
           );
         }
 
