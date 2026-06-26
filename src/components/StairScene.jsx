@@ -1730,11 +1730,11 @@ function IMeasureHVGeoDims({ p1, p2, treadPositions, riserHeight, run, horizonta
     if (!b1 || !b2) return null;
 
     const Z = b1.z;
-    const H_BELOW = 3.0;
-    const V_LEFT = 3.0;
-    const TICK = 1.0;
+    const H_BELOW = 4.0;
+    // Place V dim far left so it reads as a global stair dimension, not a post height
+    const V_LEFT = 10.0;
 
-    // Horizontal dim: flat line below the stair
+    // Horizontal dim: flat line below the stair with vertical extension lines from each post base
     const Y_H = Math.min(b1.y, b2.y) - H_BELOW;
     const hE1 = new THREE.Vector3(b1.x, Y_H, Z);
     const hE2 = new THREE.Vector3(b2.x, Y_H, Z);
@@ -1745,7 +1745,7 @@ function IMeasureHVGeoDims({ p1, p2, treadPositions, riserHeight, run, horizonta
     const hBInner = hE2.clone().addScaledVector(hDimDir, -CC_S);
     const hMid = hE1.clone().lerp(hE2, 0.5);
 
-    // Vertical dim: vertical line to the left side
+    // Vertical dim: vertical line well to the left, with horizontal extension lines from each post base
     const X_V = Math.min(b1.x, b2.x) - V_LEFT;
     const vE1 = new THREE.Vector3(X_V, b1.y, Z);
     const vE2 = new THREE.Vector3(X_V, b2.y, Z);
@@ -1760,13 +1760,15 @@ function IMeasureHVGeoDims({ p1, p2, treadPositions, riserHeight, run, horizonta
       hE1, hE2, hAInner, hBInner, hMid,
       hAWingA: hAInner.clone().add(hWing), hAWingB: hAInner.clone().sub(hWing),
       hBWingA: hBInner.clone().add(hWing), hBWingB: hBInner.clone().sub(hWing),
-      hTick1: [[b1.x, Y_H - TICK, Z], [b1.x, Y_H + TICK, Z]],
-      hTick2: [[b2.x, Y_H - TICK, Z], [b2.x, Y_H + TICK, Z]],
+      // Extension lines: from each post base straight down to the H dim line
+      hExt1: [[b1.x, b1.y, Z], [b1.x, Y_H, Z]],
+      hExt2: [[b2.x, b2.y, Z], [b2.x, Y_H, Z]],
       vE1, vE2, vAInner, vBInner, vMid,
       vAWingA: vAInner.clone().add(vWing), vAWingB: vAInner.clone().sub(vWing),
       vBWingA: vBInner.clone().add(vWing), vBWingB: vBInner.clone().sub(vWing),
-      vTick1: [[X_V - TICK, b1.y, Z], [X_V + TICK, b1.y, Z]],
-      vTick2: [[X_V - TICK, b2.y, Z], [X_V + TICK, b2.y, Z]],
+      // Extension lines: from each post base horizontally to the V dim line
+      vExt1: [[b1.x, b1.y, Z], [X_V, b1.y, Z]],
+      vExt2: [[b2.x, b2.y, Z], [X_V, b2.y, Z]],
     };
   }, [p1.xIn, p1.zIn, p1.heightIn, p1.stepIndex, p1.surfaceType, p1.offsetXIn, p1.offsetZIn,
       p2.xIn, p2.zIn, p2.heightIn, p2.stepIndex, p2.surfaceType, p2.offsetXIn, p2.offsetZIn,
@@ -1805,21 +1807,23 @@ function IMeasureHVGeoDims({ p1, p2, treadPositions, riserHeight, run, horizonta
 
   return (
     <>
-      <Line points={geom.hTick1} color={EXT_DASH_COLOR} lineWidth={0.9} />
-      <Line points={geom.hTick2} color={EXT_DASH_COLOR} lineWidth={0.9} />
+      {/* H dim: dashed extensions from post bases down, then flat dim line */}
+      <Line points={geom.hExt1} color={EXT_DASH_COLOR} lineWidth={0.9} dashed dashSize={0.6} gapSize={0.35} />
+      <Line points={geom.hExt2} color={EXT_DASH_COLOR} lineWidth={0.9} dashed dashSize={0.6} gapSize={0.35} />
       <Line points={[geom.hAInner.toArray(), geom.hBInner.toArray()]} color={DIM_RED} lineWidth={1.2} />
       <FilledDimArrowHead tip={geom.hE1.toArray()} wingA={geom.hAWingA.toArray()} wingB={geom.hAWingB.toArray()} color={DIM_RED} />
       <FilledDimArrowHead tip={geom.hE2.toArray()} wingA={geom.hBWingA.toArray()} wingB={geom.hBWingB.toArray()} color={DIM_RED} />
       <Html position={geom.hMid.toArray()} center>
         <div ref={hLabelRef} style={CC_LABEL_STYLE}>H  {fmtUnit(horizontalIn, units)}</div>
       </Html>
-      <Line points={geom.vTick1} color={EXT_DASH_COLOR} lineWidth={0.9} />
-      <Line points={geom.vTick2} color={EXT_DASH_COLOR} lineWidth={0.9} />
+      {/* V dim: dashed extensions from both post bases to the far-left dim line */}
+      <Line points={geom.vExt1} color={EXT_DASH_COLOR} lineWidth={0.9} dashed dashSize={0.6} gapSize={0.35} />
+      <Line points={geom.vExt2} color={EXT_DASH_COLOR} lineWidth={0.9} dashed dashSize={0.6} gapSize={0.35} />
       <Line points={[geom.vAInner.toArray(), geom.vBInner.toArray()]} color={DIM_RED} lineWidth={1.2} />
       <FilledDimArrowHead tip={geom.vE1.toArray()} wingA={geom.vAWingA.toArray()} wingB={geom.vAWingB.toArray()} color={DIM_RED} />
       <FilledDimArrowHead tip={geom.vE2.toArray()} wingA={geom.vBWingA.toArray()} wingB={geom.vBWingB.toArray()} color={DIM_RED} />
       <Html position={geom.vMid.toArray()} center>
-        <div ref={vLabelRef} style={CC_LABEL_STYLE}>V  {fmtUnit(verticalIn, units)}</div>
+        <div ref={vLabelRef} style={CC_LABEL_STYLE}>Vertical  {fmtUnit(verticalIn, units)}</div>
       </Html>
     </>
   );
