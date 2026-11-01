@@ -1,21 +1,8 @@
-# Stair Designer — v0.0.2 MVP Printable PDF
+# Stair Designer
 
 A browser-based CAD-style tool for metal stair and railing fabrication.
 
-## Quick Start
-
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173).
-
-## Build
-
-```bash
-npm run build
-```
+Version 0.0.2 (MVP): printable PDF output.
 
 ## What it does
 
@@ -33,6 +20,27 @@ npm run build
 
 React · Vite · Three.js · @react-three/fiber · @react-three/drei · jsPDF · Plain CSS
 
+## Quick Start
+
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173).
+
+## Build
+
+```bash
+npm run build
+```
+
+## GitHub Pages
+
+Deployed automatically on every push to `main`.
+
+URL: [https://potucky.github.io/stair-designer/](https://potucky.github.io/stair-designer/)
+
 ## Current Limitations
 
 - Local only — no backend, no cloud sync
@@ -46,12 +54,6 @@ React · Vite · Three.js · @react-three/fiber · @react-three/drei · jsPDF ·
 - Use only the **anon key** (`VITE_SUPABASE_ANON_KEY`) in the frontend — it is safe to expose in the browser
 - **Never** use the `service_role` key in the frontend — it bypasses Row Level Security
 - Save/Load cloud integration is a later step; this file only sets up the client placeholder
-
-## GitHub Pages
-
-Deployed automatically on every push to `main`.
-
-URL: [https://potucky.github.io/stair-designer/](https://potucky.github.io/stair-designer/)
 
 ## Current Milestone
 
